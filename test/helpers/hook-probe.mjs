@@ -30,6 +30,19 @@ if (command === 'lock-probe') {
 } else if (command === 'supersede-destroy') {
   console.log('supersede-destroy running');
   setTimeout(() => {}, 1000);
+} else if (command === 'check-lock') {
+  import('proper-lockfile').then(({ check }) => {
+    check(process.env.GROVE_POOL_DIR).then((isLocked) => {
+      import('node:fs').then(({ writeFileSync }) => {
+        import('node:path').then(({ join }) => {
+          writeFileSync(join(process.env.GROVE_OUT_DIR, 'lock-status.txt'), isLocked ? 'LOCKED' : 'UNLOCKED');
+        });
+      });
+    }).catch(err => {
+      console.error(err);
+      process.exit(1);
+    });
+  });
 } else {
   console.error(`Unknown command: ${command}`);
   process.exit(1);

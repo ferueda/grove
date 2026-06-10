@@ -1035,9 +1035,9 @@ Wire `createGrove()` early in Cluster A — validates config → `resolveGroveDi
 | `TestAcquire_RunsPostCreateHookAfterReleasingStateLock` | `hook-probe.mjs lock-probe` during post_create |
 | `TestAcquire_DoesNotReuseWorktreeReservedByPostCreateHook` | `hook-probe.mjs acquire-during-hook` gets different path |
 
-**Then implement:** post_create outside lock; hook invocation via `runHooks`.
+**Then implement:** post_create outside lock; hook invocation via `runHooks`. [x]
 
-**Green gate:** Cluster B tests pass.
+**Green gate:** Cluster B tests pass. [x]
 
 ---
 

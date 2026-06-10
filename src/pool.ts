@@ -4,6 +4,7 @@ import { getDefaultBranch, fetchOrigin, addWorktree, resetWorktree, hasRemote, i
 import { withStateLock } from './lock.js';
 import { readState, writeState, healState } from './state.js';
 import { reserveOwner, ownerAlive, isWorktreeInUse } from './process/detect.js';
+import { runHooks } from './hooks.js';
 import type { GroveConfig } from './index.js';
 
 export class Grove {
@@ -16,7 +17,10 @@ export class Grove {
       await fetchOrigin(this.config.repoRoot);
     }
 
-    return await withStateLock(this.poolDir, async () => {
+    let acquiredPath = '';
+    let runPostCreate = false;
+
+    await withStateLock(this.poolDir, async () => {
       let state = await readState(this.poolDir);
       state = await healState(state);
 
@@ -37,7 +41,9 @@ export class Grove {
         }
         await reserveOwner(wt);
         await writeState(this.poolDir, state);
-        return wt.path;
+        acquiredPath = wt.path;
+        runPostCreate = true;
+        return;
       }
 
       const maxTrees = this.config.maxTrees || 16;
@@ -62,8 +68,19 @@ export class Grove {
       state.worktrees.push(entry);
       await writeState(this.poolDir, state);
 
-      return wtPath;
+      acquiredPath = wtPath;
+      runPostCreate = true;
     });
+
+    if (runPostCreate && this.config.hooks?.postCreate) {
+      try {
+        await runHooks(this.config.hooks.postCreate, acquiredPath);
+      } catch {
+        // hook failure does not fail acquire
+      }
+    }
+
+    return acquiredPath;
   }
 
   async release(worktreePath: string): Promise<void> {
