@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, rename } from 'node:fs/promises';
 import { join } from 'node:path';
 import { GroveStateSchema } from './schemas.js';
 import type { GroveState } from './schemas.js';
@@ -38,7 +38,10 @@ export async function readState(groveDir: string): Promise<GroveState> {
 
 export async function writeState(groveDir: string, state: GroveState): Promise<void> {
   const data = JSON.stringify(state, null, 2);
-  await writeFile(stateFilePath(groveDir), data, { mode: 0o644 });
+  const target = stateFilePath(groveDir);
+  const tmp = `${target}.tmp`;
+  await writeFile(tmp, data, { mode: 0o644 });
+  await rename(tmp, target);
 }
 
 export async function healState(state: GroveState): Promise<GroveState> {
