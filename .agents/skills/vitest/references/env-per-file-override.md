@@ -16,9 +16,9 @@ Not all tests need a DOM environment. Running DOM tests in node mode fails, whil
 export default defineConfig({
   test: {
     // All tests run in jsdom, even pure logic tests
-    environment: "jsdom",
+    environment: 'jsdom',
   },
-});
+})
 ```
 
 **Correct (per-file environment):**
@@ -26,13 +26,13 @@ export default defineConfig({
 ```typescript
 // src/utils/math.test.ts
 // Pure logic - no DOM needed, runs faster in node
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from 'vitest'
 
-describe("math utils", () => {
-  it("should add numbers", () => {
-    expect(add(1, 2)).toBe(3);
-  });
-});
+describe('math utils', () => {
+  it('should add numbers', () => {
+    expect(add(1, 2)).toBe(3)
+  })
+})
 ```
 
 ```typescript
@@ -53,12 +53,12 @@ describe('Button', () => {
 
 **Environment options:**
 
-| Environment      | Use For                                      |
-| ---------------- | -------------------------------------------- |
-| `node` (default) | Pure logic, Node.js APIs, utilities          |
-| `jsdom`          | Full DOM compatibility, complex browser APIs |
-| `happy-dom`      | Fast DOM testing, most component tests       |
-| `edge-runtime`   | Edge function testing                        |
+| Environment | Use For |
+|-------------|---------|
+| `node` (default) | Pure logic, Node.js APIs, utilities |
+| `jsdom` | Full DOM compatibility, complex browser APIs |
+| `happy-dom` | Fast DOM testing, most component tests |
+| `edge-runtime` | Edge function testing |
 
 **Configuration-based overrides:**
 
@@ -67,20 +67,19 @@ describe('Button', () => {
 export default defineConfig({
   test: {
     // Default to node for speed
-    environment: "node",
+    environment: 'node',
 
     // Pattern-based overrides
     environmentMatchGlobs: [
-      ["src/components/**", "happy-dom"],
-      ["src/hooks/**", "happy-dom"],
-      ["tests/e2e/**", "jsdom"],
+      ['src/components/**', 'happy-dom'],
+      ['src/hooks/**', 'happy-dom'],
+      ['tests/e2e/**', 'jsdom'],
     ],
   },
-});
+})
 ```
 
 **Benefits:**
-
 - Faster tests for pure logic
 - Correct environment for DOM tests
 - Flexible per-test-file control

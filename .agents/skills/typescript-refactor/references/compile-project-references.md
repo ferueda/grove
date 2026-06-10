@@ -51,7 +51,6 @@ Project references split a monorepo into independently compilable units. Each pr
 ```
 
 **Benefits:**
-
 - `tsc --build` only recompiles changed projects
 - Parallel compilation across independent projects
 - IDE navigation works across project boundaries with declaration maps

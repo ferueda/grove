@@ -66,14 +66,12 @@ jobs:
 ```
 
 **Questions to ask when reviewing:**
-
 - Did I expect this output to change?
 - Does the new output look correct?
 - Is this change related to my code changes?
 - Could this be hiding a regression?
 
 **Benefits:**
-
 - Catches accidental behavior changes
 - Maintains snapshot quality as documentation
 - Forces intentional changes

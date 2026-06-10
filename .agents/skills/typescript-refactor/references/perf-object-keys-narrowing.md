@@ -13,36 +13,36 @@ tags: perf, object-keys, type-widening, utility-types
 
 ```typescript
 interface ThemeColors {
-  primary: string;
-  secondary: string;
-  accent: string;
+  primary: string
+  secondary: string
+  accent: string
 }
 
-const theme: ThemeColors = { primary: "#000", secondary: "#333", accent: "#0070f3" };
+const theme: ThemeColors = { primary: "#000", secondary: "#333", accent: "#0070f3" }
 
-Object.keys(theme).forEach((key) => {
-  const color = theme[key]; // Error: string can't index ThemeColors
-});
+Object.keys(theme).forEach(key => {
+  const color = theme[key] // Error: string can't index ThemeColors
+})
 ```
 
 **Correct (typed key iteration):**
 
 ```typescript
 interface ThemeColors {
-  primary: string;
-  secondary: string;
-  accent: string;
+  primary: string
+  secondary: string
+  accent: string
 }
 
-const theme: ThemeColors = { primary: "#000", secondary: "#333", accent: "#0070f3" };
+const theme: ThemeColors = { primary: "#000", secondary: "#333", accent: "#0070f3" }
 
 function typedKeys<T extends object>(obj: T): (keyof T)[] {
-  return Object.keys(obj) as (keyof T)[];
+  return Object.keys(obj) as (keyof T)[]
 }
 
-typedKeys(theme).forEach((key) => {
-  const color = theme[key]; // Type: string — works correctly
-});
+typedKeys(theme).forEach(key => {
+  const color = theme[key] // Type: string — works correctly
+})
 ```
 
 **Alternative (for-in with type guard):**
@@ -50,7 +50,7 @@ typedKeys(theme).forEach((key) => {
 ```typescript
 for (const key in theme) {
   if (key in theme) {
-    const color = theme[key as keyof ThemeColors];
+    const color = theme[key as keyof ThemeColors]
   }
 }
 ```

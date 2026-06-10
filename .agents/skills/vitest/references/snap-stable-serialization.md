@@ -12,11 +12,11 @@ Snapshots containing dates, random IDs, or other non-deterministic values change
 **Incorrect (unstable data):**
 
 ```typescript
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from 'vitest'
 
-describe("OrderSerializer", () => {
-  it("should serialize order", () => {
-    const order = createOrder({ item: "Widget" });
+describe('OrderSerializer', () => {
+  it('should serialize order', () => {
+    const order = createOrder({ item: 'Widget' })
     // Snapshot changes every run due to timestamp and ID
     expect(order).toMatchInlineSnapshot(`
       {
@@ -24,42 +24,42 @@ describe("OrderSerializer", () => {
         "createdAt": "2024-01-15T10:30:00.000Z",
         "item": "Widget"
       }
-    `);
-  });
-});
+    `)
+  })
+})
 ```
 
 **Correct (stable serialization):**
 
 ```typescript
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi } from 'vitest'
 
-describe("OrderSerializer", () => {
-  it("should serialize order", () => {
+describe('OrderSerializer', () => {
+  it('should serialize order', () => {
     // Fix the date
-    vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+    vi.setSystemTime(new Date('2024-01-01T00:00:00Z'))
 
     // Mock ID generation
-    vi.spyOn(crypto, "randomUUID").mockReturnValue("test-uuid-1234");
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue('test-uuid-1234')
 
-    const order = createOrder({ item: "Widget" });
+    const order = createOrder({ item: 'Widget' })
     expect(order).toMatchInlineSnapshot(`
       {
         "id": "test-uuid-1234",
         "createdAt": "2024-01-01T00:00:00.000Z",
         "item": "Widget"
       }
-    `);
-  });
-});
+    `)
+  })
+})
 ```
 
 **Using property matchers:**
 
 ```typescript
-describe("OrderSerializer", () => {
-  it("should serialize order with dynamic fields", () => {
-    const order = createOrder({ item: "Widget" });
+describe('OrderSerializer', () => {
+  it('should serialize order with dynamic fields', () => {
+    const order = createOrder({ item: 'Widget' })
 
     expect(order).toMatchInlineSnapshot(
       {
@@ -72,10 +72,10 @@ describe("OrderSerializer", () => {
         "createdAt": Any<Date>,
         "item": "Widget"
       }
-    `,
-    );
-  });
-});
+    `
+    )
+  })
+})
 ```
 
 **Custom serializers for complex types:**
@@ -84,13 +84,12 @@ describe("OrderSerializer", () => {
 // vitest.config.ts
 export default defineConfig({
   test: {
-    snapshotSerializers: ["./test/serializers/date-serializer.ts"],
+    snapshotSerializers: ['./test/serializers/date-serializer.ts'],
   },
-});
+})
 ```
 
 **Benefits:**
-
 - Snapshots only change when behavior changes
 - No false positives from timestamps
 - Reliable CI builds

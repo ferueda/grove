@@ -16,12 +16,16 @@ If the prompt mentions **CSV**, **ETL**, **ingestion**, **large files**, **trans
 Always use `pipeline` instead of `.pipe()` for proper error handling:
 
 ```typescript
-import { pipeline } from "node:stream/promises";
-import { createReadStream, createWriteStream } from "node:fs";
-import { createGzip } from "node:zlib";
+import { pipeline } from 'node:stream/promises';
+import { createReadStream, createWriteStream } from 'node:fs';
+import { createGzip } from 'node:zlib';
 
 async function compressFile(input: string, output: string): Promise<void> {
-  await pipeline(createReadStream(input), createGzip(), createWriteStream(output));
+  await pipeline(
+    createReadStream(input),
+    createGzip(),
+    createWriteStream(output)
+  );
 }
 ```
 
@@ -30,8 +34,8 @@ async function compressFile(input: string, output: string): Promise<void> {
 Use async generators for transformation:
 
 ```typescript
-import { pipeline } from "node:stream/promises";
-import { createReadStream, createWriteStream } from "node:fs";
+import { pipeline } from 'node:stream/promises';
+import { createReadStream, createWriteStream } from 'node:fs';
 
 async function* toUpperCase(source: AsyncIterable<Buffer>): AsyncGenerator<string> {
   for await (const chunk of source) {
@@ -40,7 +44,11 @@ async function* toUpperCase(source: AsyncIterable<Buffer>): AsyncGenerator<strin
 }
 
 async function processFile(input: string, output: string): Promise<void> {
-  await pipeline(createReadStream(input), toUpperCase, createWriteStream(output));
+  await pipeline(
+    createReadStream(input),
+    toUpperCase,
+    createWriteStream(output)
+  );
 }
 ```
 
@@ -49,49 +57,47 @@ async function processFile(input: string, output: string): Promise<void> {
 For ingestion-style tasks, show an explicit `async function*` transform and integrate deduped async lookups:
 
 ```typescript
-import { pipeline } from "node:stream/promises";
-import { createReadStream, createWriteStream } from "node:fs";
-import { createCache } from "async-cache-dedupe";
+import { pipeline } from 'node:stream/promises';
+import { createReadStream, createWriteStream } from 'node:fs';
+import { createCache } from 'async-cache-dedupe';
 
 const cache = createCache({
   ttl: 60,
   stale: 5,
-  storage: { type: "memory" },
+  storage: { type: 'memory' },
 });
 
-cache.define("lookupPlan", async (planId: string) => {
-  return await fetch(`https://billing.internal/plans/${planId}`).then(
-    async (res) => await res.json(),
-  );
+cache.define('lookupPlan', async (planId: string) => {
+  return await fetch(`https://billing.internal/plans/${planId}`).then(async (res) => await res.json());
 });
 
 async function* enrichCsvRows(source: AsyncIterable<Buffer>): AsyncGenerator<string> {
-  let tail = "";
+  let tail = '';
 
   for await (const chunk of source) {
-    tail += chunk.toString("utf8");
-    const lines = tail.split("\n");
-    tail = lines.pop() ?? "";
+    tail += chunk.toString('utf8');
+    const lines = tail.split('\n');
+    tail = lines.pop() ?? '';
 
     for (const line of lines) {
       if (line.trim().length === 0) continue;
-      const [userId, planId] = line.split(",");
+      const [userId, planId] = line.split(',');
       const plan = await cache.lookupPlan(planId); // concurrent requests dedupe by key
       yield `${userId},${planId},${plan.tier}\n`;
     }
   }
 
   if (tail.trim().length > 0) {
-    const [userId, planId] = tail.split(",");
+    const [userId, planId] = tail.split(',');
     const plan = await cache.lookupPlan(planId);
     yield `${userId},${planId},${plan.tier}\n`;
   }
 }
 
 await pipeline(
-  createReadStream("users.csv"),
+  createReadStream('users.csv'),
   enrichCsvRows,
-  createWriteStream("users-enriched.csv"),
+  createWriteStream('users-enriched.csv')
 );
 ```
 
@@ -100,14 +106,14 @@ await pipeline(
 Chain multiple async generators:
 
 ```typescript
-import { pipeline } from "node:stream/promises";
+import { pipeline } from 'node:stream/promises';
 
 async function* parseLines(source: AsyncIterable<Buffer>): AsyncGenerator<string> {
-  let buffer = "";
+  let buffer = '';
   for await (const chunk of source) {
     buffer += chunk.toString();
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
     for (const line of lines) {
       yield line;
     }
@@ -118,16 +124,16 @@ async function* parseLines(source: AsyncIterable<Buffer>): AsyncGenerator<string
 async function* filterNonEmpty(source: AsyncIterable<string>): AsyncGenerator<string> {
   for await (const line of source) {
     if (line.trim()) {
-      yield line + "\n";
+      yield line + '\n';
     }
   }
 }
 
 await pipeline(
-  createReadStream("input.txt"),
+  createReadStream('input.txt'),
   parseLines,
   filterNonEmpty,
-  createWriteStream("output.txt"),
+  createWriteStream('output.txt')
 );
 ```
 
@@ -136,8 +142,8 @@ await pipeline(
 Use async iterators for consuming streams:
 
 ```typescript
-import { createReadStream } from "node:fs";
-import { createInterface } from "node:readline";
+import { createReadStream } from 'node:fs';
+import { createInterface } from 'node:readline';
 
 async function processLines(filePath: string): Promise<void> {
   const fileStream = createReadStream(filePath);
@@ -157,11 +163,11 @@ async function processLines(filePath: string): Promise<void> {
 Create readable streams from iterables:
 
 ```typescript
-import { Readable } from "node:stream";
+import { Readable } from 'node:stream';
 
 async function* generateData(): AsyncGenerator<string> {
   for (let i = 0; i < 100; i++) {
-    yield JSON.stringify({ id: i, timestamp: Date.now() }) + "\n";
+    yield JSON.stringify({ id: i, timestamp: Date.now() }) + '\n';
   }
 }
 
@@ -173,14 +179,17 @@ const stream = Readable.from(generateData());
 Respect backpressure signals using `once` from events:
 
 ```typescript
-import { Writable } from "node:stream";
-import { once } from "node:events";
+import { Writable } from 'node:stream';
+import { once } from 'node:events';
 
-async function writeData(writable: Writable, data: string[]): Promise<void> {
+async function writeData(
+  writable: Writable,
+  data: string[]
+): Promise<void> {
   for (const chunk of data) {
     const canContinue = writable.write(chunk);
     if (!canContinue) {
-      await once(writable, "drain");
+      await once(writable, 'drain');
     }
   }
 }
@@ -191,8 +200,8 @@ async function writeData(writable: Writable, data: string[]): Promise<void> {
 Use stream consumers for common operations:
 
 ```typescript
-import { text, json, buffer } from "node:stream/consumers";
-import { Readable } from "node:stream";
+import { text, json, buffer } from 'node:stream/consumers';
+import { Readable } from 'node:stream';
 
 async function readStreamAsJson<T>(stream: Readable): Promise<T> {
   return json(stream) as Promise<T>;

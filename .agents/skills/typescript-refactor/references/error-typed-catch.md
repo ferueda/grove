@@ -13,10 +13,10 @@ Caught values in JavaScript can be anything — not just `Error` instances. Type
 
 ```typescript
 try {
-  await submitOrder(order);
+  await submitOrder(order)
 } catch (err) {
-  console.error(err.message); // Runtime crash if err is a string or number
-  logError(err.stack); // .stack might not exist
+  console.error(err.message) // Runtime crash if err is a string or number
+  logError(err.stack)        // .stack might not exist
 }
 ```
 
@@ -24,13 +24,13 @@ try {
 
 ```typescript
 try {
-  await submitOrder(order);
+  await submitOrder(order)
 } catch (err: unknown) {
   if (err instanceof Error) {
-    console.error(err.message);
-    logError(err.stack);
+    console.error(err.message)
+    logError(err.stack)
   } else {
-    console.error("Unexpected error:", String(err));
+    console.error("Unexpected error:", String(err))
   }
 }
 ```

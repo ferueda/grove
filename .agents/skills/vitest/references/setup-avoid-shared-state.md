@@ -12,62 +12,62 @@ Sharing mutable state between tests creates hidden dependencies. Tests pass when
 **Incorrect (shared mutable state):**
 
 ```typescript
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll } from 'vitest'
 
 // Shared state - modified by tests
-const testUsers: User[] = [];
+const testUsers: User[] = []
 
-describe("UserRepository", () => {
+describe('UserRepository', () => {
   beforeAll(() => {
-    testUsers.push({ id: 1, name: "Alice" });
-  });
+    testUsers.push({ id: 1, name: 'Alice' })
+  })
 
-  it("should find user by id", () => {
-    const user = repository.find(testUsers, 1);
-    expect(user.name).toBe("Alice");
-  });
+  it('should find user by id', () => {
+    const user = repository.find(testUsers, 1)
+    expect(user.name).toBe('Alice')
+  })
 
-  it("should add new user", () => {
-    testUsers.push({ id: 2, name: "Bob" });
-    expect(testUsers).toHaveLength(2);
-  });
+  it('should add new user', () => {
+    testUsers.push({ id: 2, name: 'Bob' })
+    expect(testUsers).toHaveLength(2)
+  })
 
-  it("should list all users", () => {
+  it('should list all users', () => {
     // FLAKY - depends on previous test running first
     // May have 1 or 2 users depending on test order
-    expect(repository.list(testUsers)).toHaveLength(2);
-  });
-});
+    expect(repository.list(testUsers)).toHaveLength(2)
+  })
+})
 ```
 
 **Correct (isolated state per test):**
 
 ```typescript
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from 'vitest'
 
-describe("UserRepository", () => {
-  let testUsers: User[];
+describe('UserRepository', () => {
+  let testUsers: User[]
 
   beforeEach(() => {
     // Fresh state for each test
-    testUsers = [{ id: 1, name: "Alice" }];
-  });
+    testUsers = [{ id: 1, name: 'Alice' }]
+  })
 
-  it("should find user by id", () => {
-    const user = repository.find(testUsers, 1);
-    expect(user.name).toBe("Alice");
-  });
+  it('should find user by id', () => {
+    const user = repository.find(testUsers, 1)
+    expect(user.name).toBe('Alice')
+  })
 
-  it("should add new user", () => {
-    testUsers.push({ id: 2, name: "Bob" });
-    expect(testUsers).toHaveLength(2);
-  });
+  it('should add new user', () => {
+    testUsers.push({ id: 2, name: 'Bob' })
+    expect(testUsers).toHaveLength(2)
+  })
 
-  it("should list all users", () => {
+  it('should list all users', () => {
     // Always 1 user - independent of other tests
-    expect(repository.list(testUsers)).toHaveLength(1);
-  });
-});
+    expect(repository.list(testUsers)).toHaveLength(1)
+  })
+})
 ```
 
 **Factory pattern for complex state:**
@@ -76,22 +76,21 @@ describe("UserRepository", () => {
 function createTestUser(overrides?: Partial<User>): User {
   return {
     id: Math.random(),
-    name: "Test User",
-    email: "test@example.com",
+    name: 'Test User',
+    email: 'test@example.com',
     ...overrides,
-  };
+  }
 }
 
-describe("UserService", () => {
-  it("should validate user email", () => {
-    const user = createTestUser({ email: "invalid" });
-    expect(service.validate(user)).toBe(false);
-  });
-});
+describe('UserService', () => {
+  it('should validate user email', () => {
+    const user = createTestUser({ email: 'invalid' })
+    expect(service.validate(user)).toBe(false)
+  })
+})
 ```
 
 **Benefits:**
-
 - Tests can run in any order
 - Tests can run in parallel safely
 - Failures are isolated and easy to debug

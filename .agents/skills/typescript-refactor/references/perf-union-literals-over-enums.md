@@ -20,7 +20,7 @@ enum OrderStatus {
 }
 
 function isComplete(status: OrderStatus): boolean {
-  return status === OrderStatus.Delivered;
+  return status === OrderStatus.Delivered
 }
 // Emits a runtime IIFE — rejected when types are stripped, not compiled
 ```
@@ -28,10 +28,10 @@ function isComplete(status: OrderStatus): boolean {
 **Correct (union literal, fully erasable):**
 
 ```typescript
-type OrderStatus = "pending" | "processing" | "shipped" | "delivered";
+type OrderStatus = "pending" | "processing" | "shipped" | "delivered"
 
 function isComplete(status: OrderStatus): boolean {
-  return status === "delivered";
+  return status === "delivered"
 }
 // Erases to: function isComplete(status) { return status === "delivered" }
 ```
@@ -40,12 +40,10 @@ function isComplete(status: OrderStatus): boolean {
 
 ```typescript
 const OrderStatus = {
-  Pending: "pending",
-  Processing: "processing",
-  Shipped: "shipped",
-  Delivered: "delivered",
-} as const;
-type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus];
+  Pending: "pending", Processing: "processing",
+  Shipped: "shipped", Delivered: "delivered",
+} as const
+type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus]
 ```
 
 See [`modern-erasable-syntax`](modern-erasable-syntax.md) for the broader erasability rule.

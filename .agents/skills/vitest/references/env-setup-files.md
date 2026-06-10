@@ -13,13 +13,13 @@ Repeating setup code in every test file (like Testing Library matchers, MSW hand
 
 ```typescript
 // Every test file has this boilerplate
-import "@testing-library/jest-dom";
-import { server } from "./mocks/server";
-import { beforeAll, afterAll, afterEach } from "vitest";
+import '@testing-library/jest-dom'
+import { server } from './mocks/server'
+import { beforeAll, afterAll, afterEach } from 'vitest'
 
-beforeAll(() => server.listen());
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
+beforeAll(() => server.listen())
+afterEach(() => server.resetHandlers())
+afterAll(() => server.close())
 
 // ...actual tests
 ```
@@ -30,29 +30,29 @@ afterAll(() => server.close());
 // vitest.config.ts
 export default defineConfig({
   test: {
-    setupFiles: ["./vitest.setup.ts"],
+    setupFiles: ['./vitest.setup.ts'],
   },
-});
+})
 ```
 
 ```typescript
 // vitest.setup.ts
-import "@testing-library/jest-dom";
-import { beforeAll, afterAll, afterEach } from "vitest";
-import { server } from "./mocks/server";
+import '@testing-library/jest-dom'
+import { beforeAll, afterAll, afterEach } from 'vitest'
+import { server } from './mocks/server'
 
 // Testing Library matchers
-expect.extend(matchers);
+expect.extend(matchers)
 
 // MSW setup
-beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+afterEach(() => server.resetHandlers())
+afterAll(() => server.close())
 
 // Global mocks
-vi.mock("./config", () => ({
-  config: { apiUrl: "http://localhost:3000" },
-}));
+vi.mock('./config', () => ({
+  config: { apiUrl: 'http://localhost:3000' },
+}))
 ```
 
 **Test files become cleaner:**
@@ -78,16 +78,15 @@ describe('UserList', () => {
 export default defineConfig({
   test: {
     setupFiles: [
-      "./vitest.setup.ts", // Base setup
-      "./vitest.mocks.ts", // Global mocks
-      "./vitest.matchers.ts", // Custom matchers
+      './vitest.setup.ts',      // Base setup
+      './vitest.mocks.ts',      // Global mocks
+      './vitest.matchers.ts',   // Custom matchers
     ],
   },
-});
+})
 ```
 
 **Benefits:**
-
 - DRY - setup code in one place
 - Consistent environment across all tests
 - Easier to update global configuration

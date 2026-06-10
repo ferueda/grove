@@ -71,7 +71,6 @@ it('renders button states', () => {
 ```
 
 **Benefits:**
-
 - Easy to find specific snapshots
 - Clear failure messages
 - Self-documenting test files

@@ -10,7 +10,6 @@ Comprehensive TypeScript and TSX refactoring and modernization guide designed fo
 ## When to Apply
 
 Reference these guidelines when:
-
 - Refactoring TypeScript or React/TSX code for type safety and maintainability
 - Designing type architectures (discriminated unions, branded types, generics)
 - Narrowing types to eliminate unsafe `as` casts
@@ -22,17 +21,17 @@ Reference these guidelines when:
 
 ## Rule Categories by Priority
 
-| Priority | Category                | Impact      | Prefix     |
-| -------- | ----------------------- | ----------- | ---------- |
-| 1        | Type Architecture       | CRITICAL    | `arch-`    |
-| 2        | Type Narrowing & Guards | CRITICAL    | `narrow-`  |
-| 3        | Modern TypeScript       | HIGH        | `modern-`  |
-| 4        | React & TSX             | HIGH        | `tsx-`     |
-| 5        | Generic Patterns        | HIGH        | `generic-` |
-| 6        | Compiler Performance    | MEDIUM-HIGH | `compile-` |
-| 7        | Error Safety            | MEDIUM      | `error-`   |
-| 8        | Runtime Patterns        | MEDIUM      | `perf-`    |
-| 9        | Quirks & Pitfalls       | LOW-MEDIUM  | `quirk-`   |
+| Priority | Category | Impact | Prefix |
+|----------|----------|--------|--------|
+| 1 | Type Architecture | CRITICAL | `arch-` |
+| 2 | Type Narrowing & Guards | CRITICAL | `narrow-` |
+| 3 | Modern TypeScript | HIGH | `modern-` |
+| 4 | React & TSX | HIGH | `tsx-` |
+| 5 | Generic Patterns | HIGH | `generic-` |
+| 6 | Compiler Performance | MEDIUM-HIGH | `compile-` |
+| 7 | Error Safety | MEDIUM | `error-` |
+| 8 | Runtime Patterns | MEDIUM | `perf-` |
+| 9 | Quirks & Pitfalls | LOW-MEDIUM | `quirk-` |
 
 ## Quick Reference
 
@@ -119,8 +118,8 @@ Read individual reference files for detailed explanations and code examples:
 
 ## Reference Files
 
-| File                                                            | Description                       |
-| --------------------------------------------------------------- | --------------------------------- |
-| [references/\_sections.md](references/_sections.md)             | Category definitions and ordering |
-| [assets/templates/\_template.md](assets/templates/_template.md) | Template for new rules            |
-| [metadata.json](metadata.json)                                  | Version and reference information |
+| File | Description |
+|------|-------------|
+| [references/_sections.md](references/_sections.md) | Category definitions and ordering |
+| [assets/templates/_template.md](assets/templates/_template.md) | Template for new rules |
+| [metadata.json](metadata.json) | Version and reference information |

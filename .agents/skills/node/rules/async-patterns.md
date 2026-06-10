@@ -24,11 +24,12 @@ async function processItems(items: Item[]): Promise<Result[]> {
 
 // AVOID - callback-style Promise chains
 function processItems(items: Item[]): Promise<Result[]> {
-  return Promise.resolve([]).then((results) => {
-    return items.reduce((chain, item) => {
-      return chain.then((r) => processItem(item).then((res) => [...r, res]));
-    }, Promise.resolve(results));
-  });
+  return Promise.resolve([])
+    .then((results) => {
+      return items.reduce((chain, item) => {
+        return chain.then((r) => processItem(item).then((res) => [...r, res]));
+      }, Promise.resolve(results));
+    });
 }
 ```
 
@@ -48,17 +49,19 @@ async function fetchAllData(ids: string[]): Promise<Data[]> {
 Limit concurrent operations to prevent resource exhaustion and extreme memory usage. Use [p-limit](https://github.com/sindresorhus/p-limit) or [p-map](https://github.com/sindresorhus/p-map):
 
 ```typescript
-import pLimit from "p-limit";
+import pLimit from 'p-limit';
 
 const limit = pLimit(5); // Max 5 concurrent operations
 
-const results = await Promise.all(items.map((item) => limit(() => processItem(item))));
+const results = await Promise.all(
+  items.map((item) => limit(() => processItem(item)))
+);
 ```
 
 Or use p-map for cleaner syntax:
 
 ```typescript
-import pMap from "p-map";
+import pMap from 'p-map';
 
 const results = await pMap(items, processItem, { concurrency: 5 });
 ```
@@ -69,12 +72,17 @@ Use Promise.allSettled when some failures are acceptable:
 
 ```typescript
 async function fetchMultiple(urls: string[]): Promise<Map<string, string | Error>> {
-  const results = await Promise.allSettled(urls.map((url) => fetch(url).then((r) => r.text())));
+  const results = await Promise.allSettled(
+    urls.map((url) => fetch(url).then((r) => r.text()))
+  );
 
   const map = new Map<string, string | Error>();
   urls.forEach((url, i) => {
     const result = results[i];
-    map.set(url, result.status === "fulfilled" ? result.value : result.reason);
+    map.set(
+      url,
+      result.status === 'fulfilled' ? result.value : result.reason
+    );
   });
 
   return map;
@@ -112,7 +120,10 @@ const db = await Database.create(config);
 Use AbortController to cancel long-running operations:
 
 ```typescript
-async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+async function fetchWithTimeout(
+  url: string,
+  timeoutMs: number
+): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 

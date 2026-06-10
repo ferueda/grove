@@ -13,8 +13,8 @@ tags: tsx, react-fc, props, children
 
 ```tsx
 const UserCard: React.FC<UserCardProps> = ({ user }) => {
-  return <div>{user.name}</div>;
-};
+  return <div>{user.name}</div>
+}
 // children is silently accepted even though UserCard never renders it
 // Cannot write `const List: React.FC<ListProps<T>>` — FC is not generic
 ```
@@ -23,21 +23,16 @@ const UserCard: React.FC<UserCardProps> = ({ user }) => {
 
 ```tsx
 interface UserCardProps {
-  user: User;
-  children?: React.ReactNode; // declared only because this card renders it
+  user: User
+  children?: React.ReactNode // declared only because this card renders it
 }
 
 function UserCard({ user, children }: UserCardProps) {
-  return (
-    <div>
-      {user.name}
-      {children}
-    </div>
-  );
+  return <div>{user.name}{children}</div>
 }
 
 function List<T>({ items, renderItem }: ListProps<T>) {
-  return <ul>{items.map(renderItem)}</ul>;
+  return <ul>{items.map(renderItem)}</ul>
 }
 ```
 

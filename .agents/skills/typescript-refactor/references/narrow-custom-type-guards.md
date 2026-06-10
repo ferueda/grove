@@ -13,13 +13,13 @@ Type assertions (`as`) silence the compiler without runtime verification. Replac
 
 ```typescript
 interface ApiResponse {
-  status: number;
-  payload: unknown;
+  status: number
+  payload: unknown
 }
 
 function handleSuccess(response: ApiResponse) {
-  const order = response.payload as Order; // Unsafe — no runtime check
-  console.log(order.total);
+  const order = response.payload as Order // Unsafe — no runtime check
+  console.log(order.total)
 }
 ```
 
@@ -28,17 +28,15 @@ function handleSuccess(response: ApiResponse) {
 ```typescript
 function isOrder(value: unknown) {
   return (
-    typeof value === "object" &&
-    value !== null &&
-    "total" in value &&
-    typeof value.total === "number"
-  );
+    typeof value === "object" && value !== null &&
+    "total" in value && typeof value.total === "number"
+  )
 }
 // Inferred signature: (value: unknown) => value is { total: number }
 
 function handleSuccess(response: ApiResponse) {
-  if (!isOrder(response.payload)) throw new Error("Invalid payload");
-  console.log(response.payload.total); // Narrowed — no `as`
+  if (!isOrder(response.payload)) throw new Error("Invalid payload")
+  console.log(response.payload.total) // Narrowed — no `as`
 }
 ```
 

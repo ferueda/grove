@@ -17,28 +17,22 @@ function processMetadata(meta: {}) {
   // Actually: accepts string, number, boolean, array...
 }
 
-processMetadata("hello"); // Compiles — string satisfies {}
-processMetadata(42); // Compiles — number satisfies {}
-processMetadata([1, 2, 3]); // Compiles — array satisfies {}
+processMetadata("hello")     // Compiles — string satisfies {}
+processMetadata(42)          // Compiles — number satisfies {}
+processMetadata([1, 2, 3])   // Compiles — array satisfies {}
 ```
 
 **Correct (use the right type for your intent):**
 
 ```typescript
 // For "any non-primitive value" (objects, arrays, functions):
-function processMetadata(meta: object) {
-  /* ... */
-}
+function processMetadata(meta: object) { /* ... */ }
 
 // For "empty object with no properties":
-function processMetadata(meta: Record<string, never>) {
-  /* ... */
-}
+function processMetadata(meta: Record<string, never>) { /* ... */ }
 
 // For "object with unknown string keys":
-function processMetadata(meta: Record<string, unknown>) {
-  /* ... */
-}
+function processMetadata(meta: Record<string, unknown>) { /* ... */ }
 
-processMetadata("hello"); // Compile error with all three options
+processMetadata("hello") // Compile error with all three options
 ```

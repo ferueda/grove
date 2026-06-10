@@ -12,46 +12,46 @@ Mocks created with `vi.spyOn` or `vi.fn` persist across tests unless explicitly 
 **Incorrect (mocks not restored):**
 
 ```typescript
-import { describe, it, expect, vi } from "vitest";
-import * as api from "./api";
+import { describe, it, expect, vi } from 'vitest'
+import * as api from './api'
 
-describe("UserService", () => {
-  it("should handle API errors", () => {
-    vi.spyOn(api, "fetchUser").mockRejectedValue(new Error("Network error"));
+describe('UserService', () => {
+  it('should handle API errors', () => {
+    vi.spyOn(api, 'fetchUser').mockRejectedValue(new Error('Network error'))
 
     // Test error handling...
-  });
+  })
 
-  it("should fetch user data", async () => {
+  it('should fetch user data', async () => {
     // FAILS - fetchUser is still mocked from previous test!
-    const user = await api.fetchUser(1);
-    expect(user.name).toBe("Alice");
-  });
-});
+    const user = await api.fetchUser(1)
+    expect(user.name).toBe('Alice')
+  })
+})
 ```
 
 **Correct (mocks restored):**
 
 ```typescript
-import { describe, it, expect, vi, afterEach } from "vitest";
-import * as api from "./api";
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import * as api from './api'
 
-describe("UserService", () => {
+describe('UserService', () => {
   afterEach(() => {
-    vi.restoreAllMocks();
-  });
+    vi.restoreAllMocks()
+  })
 
-  it("should handle API errors", () => {
-    vi.spyOn(api, "fetchUser").mockRejectedValue(new Error("Network error"));
+  it('should handle API errors', () => {
+    vi.spyOn(api, 'fetchUser').mockRejectedValue(new Error('Network error'))
     // Test error handling...
-  });
+  })
 
-  it("should fetch user data", async () => {
+  it('should fetch user data', async () => {
     // Works - mock was restored
-    const user = await api.fetchUser(1);
-    expect(user.name).toBe("Alice");
-  });
-});
+    const user = await api.fetchUser(1)
+    expect(user.name).toBe('Alice')
+  })
+})
 ```
 
 **Configuration option (recommended):**
@@ -60,26 +60,25 @@ describe("UserService", () => {
 // vitest.config.ts
 export default defineConfig({
   test: {
-    restoreMocks: true, // Automatically restore mocks after each test
+    restoreMocks: true,  // Automatically restore mocks after each test
   },
-});
+})
 ```
 
 **Mock restoration methods:**
 
 ```typescript
 // Restore all mocks to original implementation
-vi.restoreAllMocks();
+vi.restoreAllMocks()
 
 // Reset mock state but keep implementation
-vi.resetAllMocks();
+vi.resetAllMocks()
 
 // Clear mock call history only
-vi.clearAllMocks();
+vi.clearAllMocks()
 ```
 
 **Benefits:**
-
 - Tests don't affect each other
 - Predictable mock behavior
 - Easier to reason about test isolation

@@ -1,5 +1,5 @@
-import { createServer, IncomingMessage, ServerResponse, Server } from "node:http";
-import closeWithGrace from "close-with-grace";
+import { createServer, IncomingMessage, ServerResponse, Server } from 'node:http';
+import closeWithGrace from 'close-with-grace';
 
 /**
  * Example of a graceful HTTP server using close-with-grace.
@@ -12,24 +12,24 @@ function createHandler() {
   return (req: IncomingMessage, res: ServerResponse) => {
     // During shutdown, disable keep-alive to drain connections
     if (isShuttingDown) {
-      res.setHeader("Connection", "close");
+      res.setHeader('Connection', 'close');
     }
 
     // Health check endpoint
-    if (req.url === "/health") {
+    if (req.url === '/health') {
       if (isShuttingDown) {
-        res.writeHead(503, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ status: "shutting_down" }));
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'shutting_down' }));
         return;
       }
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "healthy" }));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'healthy' }));
       return;
     }
 
     // Default response
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "Hello, World!" }));
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ message: 'Hello, World!' }));
   };
 }
 
@@ -39,7 +39,7 @@ function closeServer(server: Server): Promise<void> {
     server.closeIdleConnections();
 
     server.close((err) => {
-      if (err && err.message !== "Server is not running") {
+      if (err && err.message !== 'Server is not running') {
         reject(err);
         return;
       }
@@ -56,25 +56,25 @@ function closeServer(server: Server): Promise<void> {
 export async function main(): Promise<void> {
   const server = createServer(createHandler());
 
-  server.listen(3000, "0.0.0.0", () => {
-    console.log("Server listening on http://0.0.0.0:3000");
+  server.listen(3000, '0.0.0.0', () => {
+    console.log('Server listening on http://0.0.0.0:3000');
   });
 
   closeWithGrace({ delay: 10000 }, async ({ signal, err }) => {
     if (err) {
-      console.error("Error triggered shutdown:", err);
+      console.error('Error triggered shutdown:', err);
     }
 
     console.log(`${signal} received, starting graceful shutdown...`);
     isShuttingDown = true;
 
     await closeServer(server);
-    console.log("Server closed successfully");
+    console.log('Server closed successfully');
   });
 }
 
 // Run if executed directly
-const isMain = process.argv[1]?.endsWith("graceful-server.ts") ?? false;
+const isMain = process.argv[1]?.endsWith('graceful-server.ts') ?? false;
 if (isMain) {
   main().catch(console.error);
 }

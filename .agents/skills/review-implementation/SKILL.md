@@ -84,7 +84,6 @@ Evaluate across these criteria — focus on what's relevant to the change:
 ### Implementation Review: [Feature/Topic Name]
 
 #### Summary of Changes
-
 - **What was done**: [Brief description]
 - **How it was done**: [Brief technical overview]
 - **Why**: [Purpose/rationale]
@@ -103,7 +102,6 @@ that could be removed? Is there scope creep beyond the stated goal?]
 #### Findings & Recommendations
 
 ##### 1. [Finding Title]
-
 - **Category**: Correctness | Complexity | Style | Architecture | Reliability | Performance | Policy
 - **Severity**: Critical | High | Medium | Low
 - **Location**: `[file/line or function name]`

@@ -12,49 +12,49 @@ Flat test files with many `it()` blocks are hard to scan. Use `describe()` block
 **Incorrect (flat structure):**
 
 ```typescript
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from 'vitest'
 
-it("should create user with valid data", () => {});
-it("should fail to create user with invalid email", () => {});
-it("should fail to create user with short password", () => {});
-it("should update user name", () => {});
-it("should update user email", () => {});
-it("should fail to update with invalid email", () => {});
-it("should delete user", () => {});
-it("should fail to delete non-existent user", () => {});
+it('should create user with valid data', () => {})
+it('should fail to create user with invalid email', () => {})
+it('should fail to create user with short password', () => {})
+it('should update user name', () => {})
+it('should update user email', () => {})
+it('should fail to update with invalid email', () => {})
+it('should delete user', () => {})
+it('should fail to delete non-existent user', () => {})
 // Hard to see the structure
 ```
 
 **Correct (logical grouping):**
 
 ```typescript
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from 'vitest'
 
-describe("UserService", () => {
-  describe("create", () => {
-    it("should create user with valid data", () => {});
+describe('UserService', () => {
+  describe('create', () => {
+    it('should create user with valid data', () => {})
 
-    describe("validation", () => {
-      it("should reject invalid email", () => {});
-      it("should reject short password", () => {});
-    });
-  });
+    describe('validation', () => {
+      it('should reject invalid email', () => {})
+      it('should reject short password', () => {})
+    })
+  })
 
-  describe("update", () => {
+  describe('update', () => {
     beforeEach(() => {
       // Setup specific to update tests
-    });
+    })
 
-    it("should update user name", () => {});
-    it("should update user email", () => {});
-    it("should reject invalid email", () => {});
-  });
+    it('should update user name', () => {})
+    it('should update user email', () => {})
+    it('should reject invalid email', () => {})
+  })
 
-  describe("delete", () => {
-    it("should delete existing user", () => {});
-    it("should throw for non-existent user", () => {});
-  });
-});
+  describe('delete', () => {
+    it('should delete existing user', () => {})
+    it('should throw for non-existent user', () => {})
+  })
+})
 ```
 
 **Test output comparison:**
@@ -74,12 +74,10 @@ describe("UserService", () => {
 ```
 
 **Nesting limits:**
-
 - Keep nesting to 2-3 levels max
 - If deeper, consider splitting into separate files
 
 **Benefits:**
-
 - Clearer test output
 - Scoped beforeEach/afterEach
 - Easy to run subsets (`vitest UserService.create`)

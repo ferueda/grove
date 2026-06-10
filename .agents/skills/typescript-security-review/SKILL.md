@@ -67,9 +67,9 @@ Security review for TypeScript/Node.js applications. Evaluates code against OWAS
 
 ```typescript
 // ❌ Critical: Weak JWT configuration
-import jwt from "jsonwebtoken";
+import jwt from 'jsonwebtoken';
 
-const SECRET = "mysecret123"; // Hardcoded weak secret
+const SECRET = 'mysecret123'; // Hardcoded weak secret
 
 function generateToken(user: User) {
   return jwt.sign({ id: user.id, role: user.role }, SECRET);
@@ -77,11 +77,11 @@ function generateToken(user: User) {
 }
 
 // ✅ Secure: Proper JWT configuration
-import jwt from "jsonwebtoken";
+import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET || JWT_SECRET.length < 32) {
-  throw new Error("JWT_SECRET must be set and at least 32 characters");
+  throw new Error('JWT_SECRET must be set and at least 32 characters');
 }
 
 function generateToken(user: User): string {
@@ -89,19 +89,19 @@ function generateToken(user: User): string {
     { sub: user.id }, // Minimal claims, no sensitive data
     JWT_SECRET,
     {
-      algorithm: "HS256",
-      expiresIn: "15m",
-      issuer: "my-app",
-      audience: "my-app-client",
-    },
+      algorithm: 'HS256',
+      expiresIn: '15m',
+      issuer: 'my-app',
+      audience: 'my-app-client',
+    }
   );
 }
 
 function verifyToken(token: string): JwtPayload {
   return jwt.verify(token, JWT_SECRET, {
-    algorithms: ["HS256"], // Restrict accepted algorithms
-    issuer: "my-app",
-    audience: "my-app-client",
+    algorithms: ['HS256'], // Restrict accepted algorithms
+    issuer: 'my-app',
+    audience: 'my-app-client',
   }) as JwtPayload;
 }
 ```
@@ -111,27 +111,31 @@ function verifyToken(token: string): JwtPayload {
 ```typescript
 // ❌ Critical: SQL injection vulnerability
 async function findUser(email: string) {
-  const result = await db.query(`SELECT * FROM users WHERE email = '${email}'`);
+  const result = await db.query(
+    `SELECT * FROM users WHERE email = '${email}'`
+  );
   return result.rows[0];
 }
 
 // ✅ Secure: Parameterized query
 async function findUser(email: string) {
-  const result = await db.query("SELECT id, name, email FROM users WHERE email = $1", [email]);
+  const result = await db.query(
+    'SELECT id, name, email FROM users WHERE email = $1',
+    [email]
+  );
   return result.rows[0];
 }
 
 // ✅ Secure: ORM with type-safe queries (Drizzle example)
 async function findUser(email: string) {
-  return db
-    .select({
-      id: users.id,
-      name: users.name,
-      email: users.email,
-    })
-    .from(users)
-    .where(eq(users.email, email))
-    .limit(1);
+  return db.select({
+    id: users.id,
+    name: users.name,
+    email: users.email,
+  })
+  .from(users)
+  .where(eq(users.email, email))
+  .limit(1);
 }
 ```
 
@@ -142,31 +146,24 @@ See `references/xss-prevention.md` for XSS patterns and `references/security-hea
 Structure all security review findings as follows:
 
 ### 1. Security Posture Summary
-
 Overall security assessment score (1-10) with key observations and risk level.
 
 ### 2. Critical Vulnerabilities (Immediate Action)
-
 Issues that can be exploited to compromise the system, steal data, or cause unauthorized access.
 
 ### 3. High Priority (Address Within 30 Days)
-
 Security misconfigurations, missing protections, or vulnerabilities requiring near-term remediation.
 
 ### 4. Medium Priority (Address Within 90 Days)
-
 Issues that reduce security posture but have mitigating factors or limited exploitability.
 
 ### 5. Low Priority (Next Cycle)
-
 Security improvements, hardening recommendations, and defense-in-depth enhancements.
 
 ### 6. Positive Security Observations
-
 Well-implemented security patterns and practices to acknowledge.
 
 ### 7. Remediation Roadmap
-
 Prioritized action items with code examples for the most critical fixes.
 
 ## Best Practices
@@ -194,7 +191,6 @@ Prioritized action items with code examples for the most critical fixes.
 ## References
 
 See the `references/` directory for detailed security documentation:
-
 - `references/owasp-typescript.md` — OWASP Top 10 mapped to TypeScript/Node.js patterns
 - `references/common-vulnerabilities.md` — Common vulnerability patterns and remediation
 - `references/dependency-security.md` — Dependency scanning and supply chain security

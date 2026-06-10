@@ -14,15 +14,15 @@ Never perform CPU-intensive operations synchronously:
 ```typescript
 // BAD - blocks event loop
 function hashPasswordSync(password: string): string {
-  return crypto.pbkdf2Sync(password, salt, 100000, 64, "sha512").toString("hex");
+  return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
 }
 
 // GOOD - async operation
 function hashPassword(password: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    crypto.pbkdf2(password, salt, 100000, 64, "sha512", (err, key) => {
+    crypto.pbkdf2(password, salt, 100000, 64, 'sha512', (err, key) => {
       if (err) reject(err);
-      else resolve(key.toString("hex"));
+      else resolve(key.toString('hex'));
     });
   });
 }
@@ -42,13 +42,13 @@ export default function heavyComputation(data: { input: string }): string {
 
 ```typescript
 // main.ts
-import Piscina from "piscina";
+import Piscina from 'piscina';
 
 const piscina = new Piscina({
-  filename: new URL("./worker.ts", import.meta.url).href,
+  filename: new URL('./worker.ts', import.meta.url).href,
 });
 
-const result = await piscina.run({ input: "data" });
+const result = await piscina.run({ input: 'data' });
 ```
 
 Piscina handles worker pool management, task queuing, and load balancing automatically.
@@ -58,7 +58,7 @@ Piscina handles worker pool management, task queuing, and load balancing automat
 Always use connection pools for databases:
 
 ```typescript
-import { Pool } from "pg";
+import { Pool } from 'pg';
 
 const pool = new Pool({
   max: 20,
@@ -89,7 +89,7 @@ function addToCache(key: string, value: unknown) {
 }
 
 // GOOD - LRU cache with max size
-import { LRUCache } from "lru-cache";
+import { LRUCache } from 'lru-cache';
 
 const cache = new LRUCache<string, unknown>({
   max: 500,
@@ -98,13 +98,13 @@ const cache = new LRUCache<string, unknown>({
 
 // BAD - listener leak
 function subscribe(emitter: EventEmitter) {
-  emitter.on("event", handler); // Never removed
+  emitter.on('event', handler); // Never removed
 }
 
 // GOOD - cleanup listeners
 function subscribe(emitter: EventEmitter): () => void {
-  emitter.on("event", handler);
-  return () => emitter.off("event", handler);
+  emitter.on('event', handler);
+  return () => emitter.off('event', handler);
 }
 ```
 
@@ -117,7 +117,7 @@ let heavyModule: HeavyModule | null = null;
 
 async function getHeavyModule(): Promise<HeavyModule> {
   if (!heavyModule) {
-    const { HeavyModule } = await import("./heavy-module.js");
+    const { HeavyModule } = await import('./heavy-module.js');
     heavyModule = new HeavyModule();
   }
   return heavyModule;

@@ -8,7 +8,6 @@ and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 ## [1.0.0] - 2026-01
 
 ### Added
-
 - Initial release with 44 rules across 8 categories
 - Async Patterns (7 rules) - CRITICAL priority
 - Test Setup & Isolation (6 rules) - CRITICAL priority

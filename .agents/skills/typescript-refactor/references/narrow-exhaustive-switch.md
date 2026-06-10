@@ -12,16 +12,13 @@ When switching on a discriminated union, assign the default case to `never`. If 
 **Incorrect (default swallows new variants silently):**
 
 ```typescript
-type PaymentMethod = "card" | "bank" | "crypto";
+type PaymentMethod = "card" | "bank" | "crypto"
 
 function processFee(method: PaymentMethod): number {
   switch (method) {
-    case "card":
-      return 0.029;
-    case "bank":
-      return 0.005;
-    default:
-      return 0; // "crypto" silently returns 0, new methods too
+    case "card": return 0.029
+    case "bank": return 0.005
+    default: return 0 // "crypto" silently returns 0, new methods too
   }
 }
 ```
@@ -29,22 +26,18 @@ function processFee(method: PaymentMethod): number {
 **Correct (never catches unhandled variants):**
 
 ```typescript
-type PaymentMethod = "card" | "bank" | "crypto";
+type PaymentMethod = "card" | "bank" | "crypto"
 
 function assertNever(value: never): never {
-  throw new Error(`Unhandled value: ${value}`);
+  throw new Error(`Unhandled value: ${value}`)
 }
 
 function processFee(method: PaymentMethod): number {
   switch (method) {
-    case "card":
-      return 0.029;
-    case "bank":
-      return 0.005;
-    case "crypto":
-      return 0.015;
-    default:
-      return assertNever(method); // Compile error if a case is missing
+    case "card": return 0.029
+    case "bank": return 0.005
+    case "crypto": return 0.015
+    default: return assertNever(method) // Compile error if a case is missing
   }
 }
 ```

@@ -13,30 +13,30 @@ Type annotations widen literals to their base types, losing precise inference. T
 
 ```typescript
 interface RouteConfig {
-  [path: string]: { method: "GET" | "POST"; auth: boolean };
+  [path: string]: { method: "GET" | "POST"; auth: boolean }
 }
 
 const routes: RouteConfig = {
   "/users": { method: "GET", auth: true },
   "/login": { method: "POST", auth: false },
-};
+}
 
-routes["/users"].method; // Type: "GET" | "POST" — lost the literal
+routes["/users"].method // Type: "GET" | "POST" — lost the literal
 ```
 
 **Correct (satisfies preserves literals):**
 
 ```typescript
 interface RouteConfig {
-  [path: string]: { method: "GET" | "POST"; auth: boolean };
+  [path: string]: { method: "GET" | "POST"; auth: boolean }
 }
 
 const routes = {
   "/users": { method: "GET", auth: true },
   "/login": { method: "POST", auth: false },
-} satisfies RouteConfig;
+} satisfies RouteConfig
 
-routes["/users"].method; // Type: "GET" — literal preserved
+routes["/users"].method // Type: "GET" — literal preserved
 ```
 
 Reference: [TypeScript 4.9 Release Notes](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-9.html)

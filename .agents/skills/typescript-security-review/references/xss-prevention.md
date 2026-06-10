@@ -13,12 +13,12 @@ function Comment({ content }: { content: string }) {
 ### Secure: DOMPurify sanitization
 
 ```tsx
-import DOMPurify from "isomorphic-dompurify";
+import DOMPurify from 'isomorphic-dompurify';
 
 function Comment({ content }: { content: string }) {
   const sanitized = DOMPurify.sanitize(content, {
-    ALLOWED_TAGS: ["b", "i", "em", "strong", "a", "p", "br"],
-    ALLOWED_ATTR: ["href", "target", "rel"],
+    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br'],
+    ALLOWED_ATTR: ['href', 'target', 'rel'],
   });
   return <div dangerouslySetInnerHTML={{ __html: sanitized }} />;
 }
@@ -27,7 +27,7 @@ function Comment({ content }: { content: string }) {
 ### Better: Markdown renderer instead of raw HTML
 
 ```tsx
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown from 'react-markdown';
 
 function Comment({ content }: { content: string }) {
   return <ReactMarkdown>{content}</ReactMarkdown>;
@@ -41,8 +41,8 @@ function Comment({ content }: { content: string }) {
 const template = `Hello ${userInput}`; // User input directly in template
 
 // Secure: Use template engines with auto-escaping
-import Handlebars from "handlebars";
+import Handlebars from 'handlebars';
 
-const safeTemplate = Handlebars.compile("Hello {{name}}");
+const safeTemplate = Handlebars.compile('Hello {{name}}');
 const result = safeTemplate({ name: userInput }); // Auto-escaped
 ```

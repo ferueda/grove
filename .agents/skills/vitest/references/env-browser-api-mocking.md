@@ -15,9 +15,9 @@ Even with jsdom/happy-dom, some browser APIs are missing or incomplete. Tests fa
 // Component uses ResizeObserver
 export function ResponsiveComponent() {
   useEffect(() => {
-    const observer = new ResizeObserver(() => {});
+    const observer = new ResizeObserver(() => {})
     // ResizeObserver is not defined in jsdom!
-  }, []);
+  }, [])
 }
 ```
 
@@ -25,14 +25,14 @@ export function ResponsiveComponent() {
 
 ```typescript
 // vitest.setup.ts
-import { vi } from "vitest";
+import { vi } from 'vitest'
 
 // ResizeObserver mock
 global.ResizeObserver = vi.fn().mockImplementation(() => ({
   observe: vi.fn(),
   unobserve: vi.fn(),
   disconnect: vi.fn(),
-}));
+}))
 
 // IntersectionObserver mock
 global.IntersectionObserver = vi.fn().mockImplementation(() => ({
@@ -40,14 +40,14 @@ global.IntersectionObserver = vi.fn().mockImplementation(() => ({
   unobserve: vi.fn(),
   disconnect: vi.fn(),
   root: null,
-  rootMargin: "",
+  rootMargin: '',
   thresholds: [],
-}));
+}))
 
 // matchMedia mock
-Object.defineProperty(window, "matchMedia", {
+Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation((query) => ({
+  value: vi.fn().mockImplementation(query => ({
     matches: false,
     media: query,
     onchange: null,
@@ -57,7 +57,7 @@ Object.defineProperty(window, "matchMedia", {
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   })),
-});
+})
 ```
 
 **Commonly missing APIs:**
@@ -66,7 +66,7 @@ Object.defineProperty(window, "matchMedia", {
 // vitest.setup.ts
 
 // scrollTo
-window.scrollTo = vi.fn();
+window.scrollTo = vi.fn()
 
 // localStorage (enhanced mock)
 const localStorageMock = {
@@ -74,22 +74,21 @@ const localStorageMock = {
   setItem: vi.fn(),
   removeItem: vi.fn(),
   clear: vi.fn(),
-};
-Object.defineProperty(window, "localStorage", { value: localStorageMock });
+}
+Object.defineProperty(window, 'localStorage', { value: localStorageMock })
 
 // fetch (if not using MSW)
-global.fetch = vi.fn();
+global.fetch = vi.fn()
 
 // crypto.randomUUID
-Object.defineProperty(global, "crypto", {
+Object.defineProperty(global, 'crypto', {
   value: {
-    randomUUID: () => "test-uuid-1234",
+    randomUUID: () => 'test-uuid-1234',
   },
-});
+})
 ```
 
 **Benefits:**
-
 - Tests run without browser API errors
 - Predictable mock behavior
 - Can verify interactions with browser APIs

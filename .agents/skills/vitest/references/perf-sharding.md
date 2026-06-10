@@ -53,9 +53,9 @@ jobs:
 // vitest.config.ts
 export default defineConfig({
   test: {
-    reporters: process.env.CI ? ["blob"] : ["default"],
+    reporters: process.env.CI ? ['blob'] : ['default'],
   },
-});
+})
 ```
 
 **Coverage with sharding:**
@@ -78,14 +78,13 @@ jobs:
 **Optimal shard count:**
 
 | Test Suite Size | Recommended Shards |
-| --------------- | ------------------ |
-| < 100 tests     | 1-2                |
-| 100-500 tests   | 2-4                |
-| 500-1000 tests  | 4-6                |
-| > 1000 tests    | 6-10               |
+|-----------------|-------------------|
+| < 100 tests | 1-2 |
+| 100-500 tests | 2-4 |
+| 500-1000 tests | 4-6 |
+| > 1000 tests | 6-10 |
 
 **Benefits:**
-
 - Near-linear speedup with additional nodes
 - Merged coverage and reports
 - Works with any CI system

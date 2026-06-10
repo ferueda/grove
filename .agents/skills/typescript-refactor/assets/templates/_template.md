@@ -26,7 +26,6 @@ tags: {prefix}, {technique}, {related-concepts}
 {Optional sections as needed:}
 
 **When NOT to use this pattern:**
-
 - {Exception 1}
 - {Exception 2}
 
