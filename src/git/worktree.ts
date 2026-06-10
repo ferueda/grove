@@ -1,5 +1,5 @@
 import { runGit } from "./run.js";
-import { branchRef } from "./branch.js";
+import { branchRef, hasRemote } from "./branch.js";
 
 export async function addWorktree(repoRoot: string, path: string, branch: string): Promise<void> {
   const ref = await branchRef(repoRoot, branch);
@@ -31,17 +31,7 @@ export async function isDirty(path: string): Promise<boolean> {
 }
 
 export async function fetchOrigin(repoRoot: string): Promise<void> {
-  try {
-    const remotes = await runGit(repoRoot, ["remote"]);
-    if (
-      remotes
-        .split("\n")
-        .map((r) => r.trim())
-        .includes("origin")
-    ) {
-      await runGit(repoRoot, ["fetch", "origin"]);
-    }
-  } catch {
-    // ignore
+  if (await hasRemote(repoRoot, "origin")) {
+    await runGit(repoRoot, ["fetch", "origin"]);
   }
 }

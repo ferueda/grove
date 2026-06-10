@@ -7,6 +7,7 @@ export const GroveConfigSchema = z.object({
   groveRoot: z.string().optional(),
   groveDir: z.string().optional(),
   maxTrees: z.number().optional().default(16),
+  fetchOnAcquire: z.boolean().optional().default(true),
   hooks: z
     .object({
       postCreate: z.array(z.string()).optional(),

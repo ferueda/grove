@@ -9,7 +9,7 @@ function expandEnv(str: string): string {
   });
 }
 
-export async function resolveGroveDir(repoRoot: string, root: string): Promise<string> {
+export async function resolveGroveDir(repoRoot: string, root?: string): Promise<string> {
   let hashInput = repoRoot;
   try {
     hashInput = await getRemoteUrl(repoRoot);

@@ -46,7 +46,7 @@ export async function getDefaultBranch(repoRoot: string): Promise<string> {
     // ignore
   }
 
-  throw new Error("cannot determine default branch");
+  throw new Error("cannot determine default branch: try running 'git fetch' or ensure you are on a branch");
 }
 
 export async function hasRemote(repoRoot: string, name: string): Promise<boolean> {
@@ -95,10 +95,10 @@ export async function branchRef(repoRoot: string, branch: string): Promise<strin
   } catch {}
 
   if (localExists && remoteExists) {
-    if (await isAncestor(repoRoot, branch, remote)) {
+    if (await isAncestor(repoRoot, local, remote)) {
       return remote; // remote is ahead or equal
     }
-    if (await isAncestor(repoRoot, remote, branch)) {
+    if (await isAncestor(repoRoot, remote, local)) {
       return branch; // local is ahead
     }
     return remote; // diverged, prefer remote

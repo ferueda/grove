@@ -6,6 +6,7 @@ import {
   resetWorktree,
   removeWorktree,
   isDirty,
+  fetchOrigin,
 } from "./git/index.js";
 import { withStateLock } from "./lock.js";
 import { readState, writeState, healState } from "./state.js";
@@ -36,6 +37,10 @@ export class Grove {
 
   async acquire(): Promise<string> {
     const branch = await getDefaultBranch(this.config.repoRoot);
+
+    if (this.config.fetchOnAcquire !== false) {
+      await fetchOrigin(this.config.repoRoot);
+    }
 
     let acquiredPath = "";
     let runPostCreate = false;
