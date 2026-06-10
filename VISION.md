@@ -75,7 +75,6 @@ The core architecture wraps Git operations, Process detection, and State locking
 
 ## Agent And Contributor Guardrails
 
-Before making logical changes, refer to the `grove-typescript-port.md` plan.
 The primary directive is **Faithful port first**: The original Go behavior is the specification.
 
 Prefer changes that:
