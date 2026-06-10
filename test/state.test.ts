@@ -74,7 +74,7 @@ describe('State & Locking', () => {
       // Wait for child to initialize and grab the lock
       await new Promise(r => setTimeout(r, 500));
 
-      await expect(withStateLock(groveDir, async () => {})).rejects.toThrowError(LockFailedError);
+      await expect(withStateLock(groveDir, async () => {}, { retries: 1 })).rejects.toThrowError(LockFailedError);
       
       child.kill();
       // wait for child to die to prevent ECOMPROMISED errors from proper-lockfile on directory deletion
