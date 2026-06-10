@@ -68,13 +68,15 @@ describe('Config', () => {
     const absRoot = join(tmpDir, 'env-root');
 
     process.env['TEST_GROVE_ROOT'] = absRoot;
+    process.env['var2'] = 'sub';
 
-    const poolDir = await resolveGroveDir(repoDir, '$TEST_GROVE_ROOT');
+    const poolDir = await resolveGroveDir(repoDir, '${TEST_GROVE_ROOT}/$var2');
     const repoName = basename(repoDir);
 
-    const expectedPrefix = join(absRoot, '.grove', repoName);
+    const expectedPrefix = join(absRoot, 'sub', '.grove', repoName);
     expect(poolDir.startsWith(expectedPrefix)).toBe(true);
 
     delete process.env['TEST_GROVE_ROOT'];
+    delete process.env['var2'];
   });
 });

@@ -1,15 +1,18 @@
 import { join, basename, isAbsolute } from 'node:path';
 import { homedir } from 'node:os';
-import { remoteUrl, shortHash } from './git/index.js';
+import { getRemoteUrl, shortHash } from './git/index.js';
 
 function expandEnv(str: string): string {
-  return str.replace(/\$([A-Z_]+)/g, (_, n) => process.env[n] || '');
+  return str.replace(/\$(?:{([A-Za-z_][A-Za-z0-9_]*)}|([A-Za-z_][A-Za-z0-9_]*))/g, (_, n1, n2) => {
+    const name = n1 || n2 || '';
+    return process.env[name] || '';
+  });
 }
 
 export async function resolveGroveDir(repoRoot: string, root: string): Promise<string> {
   let hashInput = repoRoot;
   try {
-    hashInput = await remoteUrl(repoRoot);
+    hashInput = await getRemoteUrl(repoRoot);
   } catch {}
 
   const repoName = basename(repoRoot);
