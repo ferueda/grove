@@ -13,15 +13,15 @@ Without explicit return types, the compiler must re-infer return types from func
 
 ```typescript
 export function createOrderSummary(order: Order) {
-  const subtotal = order.items.reduce((sum, item) => sum + item.price, 0)
-  const tax = subtotal * order.taxRate
+  const subtotal = order.items.reduce((sum, item) => sum + item.price, 0);
+  const tax = subtotal * order.taxRate;
   return {
     orderId: order.id,
     subtotal,
     tax,
     total: subtotal + tax,
     itemCount: order.items.length,
-  }
+  };
   // Compiler must analyze body to determine return type
 }
 ```
@@ -30,23 +30,23 @@ export function createOrderSummary(order: Order) {
 
 ```typescript
 interface OrderSummary {
-  orderId: string
-  subtotal: number
-  tax: number
-  total: number
-  itemCount: number
+  orderId: string;
+  subtotal: number;
+  tax: number;
+  total: number;
+  itemCount: number;
 }
 
 export function createOrderSummary(order: Order): OrderSummary {
-  const subtotal = order.items.reduce((sum, item) => sum + item.price, 0)
-  const tax = subtotal * order.taxRate
+  const subtotal = order.items.reduce((sum, item) => sum + item.price, 0);
+  const tax = subtotal * order.taxRate;
   return {
     orderId: order.id,
     subtotal,
     tax,
     total: subtotal + tax,
     itemCount: order.items.length,
-  }
+  };
 }
 ```
 

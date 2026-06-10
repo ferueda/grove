@@ -51,9 +51,9 @@ src/
 export default defineConfig({
   test: {
     // Match test files next to source
-    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    include: ["src/**/*.{test,spec}.{ts,tsx}"],
   },
-})
+});
 ```
 
 **Alternative: Adjacent test directories:**
@@ -82,10 +82,11 @@ export default defineConfig({
       external: [/\.test\.tsx?$/], // Exclude test files from build
     },
   },
-})
+});
 ```
 
 **Benefits:**
+
 - Easy to find tests for any file
 - Missing tests are obvious
 - Related files stay together

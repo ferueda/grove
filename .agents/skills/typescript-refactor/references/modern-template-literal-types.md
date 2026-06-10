@@ -16,34 +16,36 @@ function on(eventName: string, handler: () => void) {
   // ...
 }
 
-on("click", handleClick)
-on("clck", handleClick) // Typo — no error
+on("click", handleClick);
+on("clck", handleClick); // Typo — no error
 ```
 
 **Correct (template literal constrains format):**
 
 ```typescript
-type DomEvent = "click" | "focus" | "blur" | "input" | "change"
-type EventHandler = `on${Capitalize<DomEvent>}`
+type DomEvent = "click" | "focus" | "blur" | "input" | "change";
+type EventHandler = `on${Capitalize<DomEvent>}`;
 
 function registerHandler(name: EventHandler, handler: () => void) {
   // ...
 }
 
-registerHandler("onClick", handleClick)
-registerHandler("onClck", handleClick) // Compile error
+registerHandler("onClick", handleClick);
+registerHandler("onClck", handleClick); // Compile error
 ```
 
 **Alternative (dynamic key patterns):**
 
 ```typescript
-type CssUnit = `${number}${"px" | "rem" | "em" | "%"}`
+type CssUnit = `${number}${"px" | "rem" | "em" | "%"}`;
 
-function setWidth(value: CssUnit) { /* ... */ }
+function setWidth(value: CssUnit) {
+  /* ... */
+}
 
-setWidth("100px")  // OK
-setWidth("2.5rem") // OK
-setWidth("100")    // Compile error — missing unit
+setWidth("100px"); // OK
+setWidth("2.5rem"); // OK
+setWidth("100"); // Compile error — missing unit
 ```
 
 Reference: [TypeScript 4.1 - Template Literal Types](https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html)

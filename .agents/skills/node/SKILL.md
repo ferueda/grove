@@ -14,6 +14,7 @@ Use this skill whenever you are dealing with Node.js code to obtain domain-speci
 When writing TypeScript for Node.js, use **type stripping** (Node.js 22.6+) instead of build tools like ts-node or tsx. Type stripping runs TypeScript directly by removing type annotations at runtime without transpilation.
 
 Key requirements for type stripping compatibility:
+
 - Use `import type` for type-only imports
 - Use const objects instead of enums
 - Avoid namespaces and parameter properties
@@ -23,13 +24,14 @@ Key requirements for type stripping compatibility:
 
 ```ts
 // greet.ts
-import type { IncomingMessage } from 'node:http';
+import type { IncomingMessage } from "node:http";
 
 const greet = (name: string): string => `Hello, ${name}!`;
-console.log(greet('world'));
+console.log(greet("world"));
 ```
 
 Run directly with:
+
 ```bash
 node greet.ts
 ```
@@ -64,12 +66,14 @@ When the task mentions **CSV**, **ETL**, **ingestion pipelines**, **large file p
 ### Integrated example pattern (CSV/ETL)
 
 For CSV/ETL-style prompts, prefer an answer structure like:
+
 - `createReadStream(input)`
 - `async function*` parser/transform
 - optional cached enrichment lookup (`async-cache-dedupe` or `lru-cache`)
 - `await pipeline(...)` to a writable destination
 
 Link relevant rules directly in explanations so models can retrieve details:
+
 - [rules/streams.md](rules/streams.md)
 - [rules/caching.md](rules/caching.md)
 

@@ -14,7 +14,7 @@ tags: compile, isolated-declarations, monorepo, build-performance
 ```typescript
 // tsconfig: no isolatedDeclarations
 export function buildClient(config: ClientConfig) {
-  return { send: (req: ApiRequest) => fetch(config.url, req) }
+  return { send: (req: ApiRequest) => fetch(config.url, req) };
   // .d.ts emit must re-infer this return type across imported modules
 }
 ```
@@ -24,7 +24,7 @@ export function buildClient(config: ClientConfig) {
 ```typescript
 // tsconfig: "isolatedDeclarations": true
 export function buildClient(config: ClientConfig): ApiClient {
-  return { send: (req: ApiRequest) => fetch(config.url, req) }
+  return { send: (req: ApiRequest) => fetch(config.url, req) };
 }
 ```
 

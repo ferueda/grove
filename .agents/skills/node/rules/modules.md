@@ -29,7 +29,7 @@ export const CONFIG = {
 };
 
 // Named imports
-import { processData, CONFIG } from './utils.js';
+import { processData, CONFIG } from "./utils.js";
 ```
 
 ## File Extensions in ESM
@@ -38,11 +38,11 @@ Always include file extensions in ESM imports:
 
 ```typescript
 // GOOD - explicit extension
-import { helper } from './helper.js';
-import config from './config.json' with { type: 'json' };
+import { helper } from "./helper.js";
+import config from "./config.json" with { type: "json" };
 
 // BAD - missing extension (works in bundlers but not native ESM)
-import { helper } from './helper';
+import { helper } from "./helper";
 ```
 
 ## Barrel Exports
@@ -51,12 +51,12 @@ Use index files to simplify imports:
 
 ```typescript
 // src/utils/index.ts
-export { formatDate, parseDate } from './date.js';
-export { formatCurrency } from './currency.js';
-export { validateEmail } from './validation.js';
+export { formatDate, parseDate } from "./date.js";
+export { formatCurrency } from "./currency.js";
+export { validateEmail } from "./validation.js";
 
 // Consumer
-import { formatDate, formatCurrency } from './utils/index.js';
+import { formatDate, formatCurrency } from "./utils/index.js";
 ```
 
 ## Default vs Named Exports
@@ -90,16 +90,16 @@ async function loadPlugin(name: string): Promise<Plugin> {
 }
 
 // Conditional loading
-const { default: heavy } = await import('./heavy-module.js');
+const { default: heavy } = await import("./heavy-module.js");
 ```
 
-## __dirname and __filename in ESM
+## **dirname and **filename in ESM
 
 Use `import.meta.dirname` and `import.meta.filename` (Node.js 20.11+):
 
 ```typescript
-import { join } from 'node:path';
+import { join } from "node:path";
 
-const configPath = join(import.meta.dirname, 'config.json');
+const configPath = join(import.meta.dirname, "config.json");
 const currentFile = import.meta.filename;
 ```

@@ -26,6 +26,7 @@ npx @platformatic/flame --output markdown app.ts
 ```
 
 This enables a fully agentic workflow where you can:
+
 1. Profile your application
 2. Get markdown output describing hotspots
 3. Feed the report to an AI assistant for optimization suggestions
@@ -33,10 +34,10 @@ This enables a fully agentic workflow where you can:
 ### Programmatic Usage
 
 ```typescript
-import { profile } from '@platformatic/flame';
+import { profile } from "@platformatic/flame";
 
 const stop = await profile({
-  outputFile: 'profile.html',
+  outputFile: "profile.html",
 });
 
 // Run your workload
@@ -63,6 +64,7 @@ npx autocannon -m POST -H "Content-Type: application/json" -b '{"name":"test"}' 
 ```
 
 Options:
+
 - `-c` - Number of concurrent connections (default: 10)
 - `-d` - Duration in seconds (default: 10)
 - `-p` - Number of pipelined requests (default: 1)
@@ -72,10 +74,10 @@ Options:
 ### Programmatic autocannon
 
 ```typescript
-import autocannon from 'autocannon';
+import autocannon from "autocannon";
 
 const result = await autocannon({
-  url: 'http://localhost:3000',
+  url: "http://localhost:3000",
   connections: 100,
   duration: 30,
   pipelining: 10,
@@ -97,6 +99,7 @@ wrk -t12 -c400 -d30s -s post.lua http://localhost:3000
 ```
 
 Options:
+
 - `-t` - Number of threads
 - `-c` - Number of connections
 - `-d` - Duration
@@ -108,19 +111,19 @@ Options:
 
 ```javascript
 // load-test.js
-import http from 'k6/http';
-import { check, sleep } from 'k6';
+import http from "k6/http";
+import { check, sleep } from "k6";
 
 export const options = {
   vus: 100,
-  duration: '30s',
+  duration: "30s",
 };
 
 export default function () {
-  const res = http.get('http://localhost:3000');
+  const res = http.get("http://localhost:3000");
   check(res, {
-    'status is 200': (r) => r.status === 200,
-    'response time < 200ms': (r) => r.timings.duration < 200,
+    "status is 200": (r) => r.status === 200,
+    "response time < 200ms": (r) => r.timings.duration < 200,
   });
   sleep(1);
 }
@@ -175,9 +178,9 @@ node --report-on-fatalerror app.js
 
 ## Tool Comparison
 
-| Tool | Best For |
-|------|----------|
-| @platformatic/flame | CPU profiling, flame graphs, AI-assisted analysis |
-| autocannon | Quick HTTP benchmarks, Node.js native |
-| wrk | Maximum throughput testing |
-| k6 | Complex scenarios, CI/CD integration, scripted tests |
+| Tool                | Best For                                             |
+| ------------------- | ---------------------------------------------------- |
+| @platformatic/flame | CPU profiling, flame graphs, AI-assisted analysis    |
+| autocannon          | Quick HTTP benchmarks, Node.js native                |
+| wrk                 | Maximum throughput testing                           |
+| k6                  | Complex scenarios, CI/CD integration, scripted tests |

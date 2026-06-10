@@ -16,15 +16,15 @@ class AppError extends Error {
   constructor(
     public code: string,
     message: string,
-    public details?: Record<string, unknown>
+    public details?: Record<string, unknown>,
   ) {
-    super(message)
+    super(message);
   }
 }
 
 function handlePaymentError(error: AppError) {
   if (error.code === "insufficient_funds") {
-    const shortfall = error.details?.shortfall as number // Unsafe cast
+    const shortfall = error.details?.shortfall as number; // Unsafe cast
   }
 }
 ```
@@ -35,11 +35,11 @@ function handlePaymentError(error: AppError) {
 type PaymentError =
   | { type: "insufficient_funds"; shortfall: number; currency: string }
   | { type: "card_declined"; reason: string; retryable: boolean }
-  | { type: "fraud_detected"; transactionId: string }
+  | { type: "fraud_detected"; transactionId: string };
 
 function handlePaymentError(error: PaymentError) {
   if (error.type === "insufficient_funds") {
-    showShortfall(error.shortfall, error.currency) // Fully typed
+    showShortfall(error.shortfall, error.currency); // Fully typed
   }
 }
 ```

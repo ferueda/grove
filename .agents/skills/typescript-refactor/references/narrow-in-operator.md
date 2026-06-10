@@ -13,22 +13,22 @@ The `in` operator narrows union types by checking for the presence of a property
 
 ```typescript
 interface EmailNotification {
-  email: string
-  subject: string
-  body: string
+  email: string;
+  subject: string;
+  body: string;
 }
 
 interface SmsNotification {
-  phone: string
-  message: string
+  phone: string;
+  message: string;
 }
 
-type Notification = EmailNotification | SmsNotification
+type Notification = EmailNotification | SmsNotification;
 
 function send(notification: Notification) {
-  const email = (notification as EmailNotification).email // Unsafe cast
+  const email = (notification as EmailNotification).email; // Unsafe cast
   if (email) {
-    sendEmail(email, (notification as EmailNotification).subject)
+    sendEmail(email, (notification as EmailNotification).subject);
   }
 }
 ```
@@ -37,23 +37,23 @@ function send(notification: Notification) {
 
 ```typescript
 interface EmailNotification {
-  email: string
-  subject: string
-  body: string
+  email: string;
+  subject: string;
+  body: string;
 }
 
 interface SmsNotification {
-  phone: string
-  message: string
+  phone: string;
+  message: string;
 }
 
-type Notification = EmailNotification | SmsNotification
+type Notification = EmailNotification | SmsNotification;
 
 function send(notification: Notification) {
   if ("email" in notification) {
-    sendEmail(notification.email, notification.subject) // Narrowed to EmailNotification
+    sendEmail(notification.email, notification.subject); // Narrowed to EmailNotification
   } else {
-    sendSms(notification.phone, notification.message) // Narrowed to SmsNotification
+    sendSms(notification.phone, notification.message); // Narrowed to SmsNotification
   }
 }
 ```

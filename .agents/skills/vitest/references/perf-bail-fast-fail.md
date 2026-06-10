@@ -33,7 +33,7 @@ export default defineConfig({
   test: {
     bail: process.env.CI ? 1 : 0, // 0 means no bail
   },
-})
+});
 ```
 
 **Higher bail count for flaky detection:**
@@ -45,7 +45,7 @@ export default defineConfig({
     // Stop after 3 failures - catches multiple issues
     bail: 3,
   },
-})
+});
 ```
 
 **CI workflow with bail:**
@@ -60,6 +60,7 @@ jobs:
 ```
 
 **When NOT to use bail:**
+
 - Running full test suite for comprehensive failure report
 - Debugging multiple related failures
 - Generating complete coverage reports
@@ -73,10 +74,11 @@ export default defineConfig({
     bail: 1,
     retry: 2, // Retry flaky tests before bailing
   },
-})
+});
 ```
 
 **Benefits:**
+
 - Faster CI feedback
 - Reduced CI costs (fewer compute minutes)
 - Developers see failures immediately

@@ -1,23 +1,19 @@
 {
   "name": "grove",
   "version": "0.1.0",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "type": "module",
-  "engines": {
-    "node": ">=24"
-  },
-  "packageManager": "pnpm@11.5.3",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
   },
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
   "scripts": {
     "build": "tsgo -p tsconfig.json",
     "test": "vitest run",
@@ -39,5 +35,9 @@
     "oxfmt": "^0.54.0",
     "oxlint": "^1.69.0",
     "vitest": "^4.1.0"
-  }
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@11.5.3"
 }

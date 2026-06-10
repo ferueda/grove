@@ -12,40 +12,41 @@ Plain objects used as dictionaries have string-only keys, prototype pollution ri
 **Incorrect (plain object as dictionary):**
 
 ```typescript
-const userSessions: Record<string, Session> = {}
+const userSessions: Record<string, Session> = {};
 
 function addSession(userId: string, session: Session) {
-  userSessions[userId] = session
+  userSessions[userId] = session;
 }
 
 function getSession(userId: string): Session | undefined {
-  return userSessions[userId] // No distinction between "missing" and "set to undefined"
+  return userSessions[userId]; // No distinction between "missing" and "set to undefined"
 }
 
 function countSessions(): number {
-  return Object.keys(userSessions).length // Creates intermediate array
+  return Object.keys(userSessions).length; // Creates intermediate array
 }
 ```
 
 **Correct (Map for typed key-value collections):**
 
 ```typescript
-const userSessions = new Map<string, Session>()
+const userSessions = new Map<string, Session>();
 
 function addSession(userId: string, session: Session) {
-  userSessions.set(userId, session)
+  userSessions.set(userId, session);
 }
 
 function getSession(userId: string): Session | undefined {
-  return userSessions.get(userId)
+  return userSessions.get(userId);
 }
 
 function countSessions(): number {
-  return userSessions.size // O(1), no intermediate array
+  return userSessions.size; // O(1), no intermediate array
 }
 ```
 
 **Benefits:**
+
 - Any key type (objects, symbols, numbers — not just strings)
 - `.size` is O(1) vs `Object.keys().length` which is O(n)
 - No prototype pollution risk

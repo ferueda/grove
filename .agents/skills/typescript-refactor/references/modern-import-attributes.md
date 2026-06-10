@@ -12,17 +12,17 @@ The import `assert` syntax for typed module imports was renamed to `with` when i
 **Incorrect (deprecated assert syntax):**
 
 ```typescript
-import config from "./config.json" assert { type: "json" }
+import config from "./config.json" assert { type: "json" };
 
-const data = await import("./data.json", { assert: { type: "json" } })
+const data = await import("./data.json", { assert: { type: "json" } });
 ```
 
 **Correct (with import attributes):**
 
 ```typescript
-import config from "./config.json" with { type: "json" }
+import config from "./config.json" with { type: "json" };
 
-const data = await import("./data.json", { with: { type: "json" } })
+const data = await import("./data.json", { with: { type: "json" } });
 ```
 
 Reference: [TypeScript 6.0 release notes](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html)

@@ -10,6 +10,7 @@ metadata:
 ## When to Explore node_modules
 
 Explore node_modules when you need to:
+
 - Find specific packages and their versions
 - Analyze dependencies and dependency trees
 - Examine package contents
@@ -48,6 +49,7 @@ cat node_modules/fastify/package.json | grep '"main"\|"exports"'
 ### Understanding Package Manager Differences
 
 **npm/yarn (node_modules hoisting):**
+
 ```
 node_modules/
   fastify/
@@ -56,6 +58,7 @@ node_modules/
 ```
 
 **pnpm (content-addressable storage):**
+
 ```
 node_modules/
   .pnpm/
@@ -71,17 +74,21 @@ node_modules/
 **CRITICAL: Never use `find`, `grep`, or `rg` for locating READMEs. Follow this sequence:**
 
 1. **Direct Read attempts (try in order):**
+
    ```
    node_modules/[package-name]/README.md
    node_modules/[package-name]/readme.md
    node_modules/[package-name]/README
    ```
+
    For scoped packages: `node_modules/@scope/package-name/README.md`
 
 2. **If not found, list directory contents:**
+
    ```bash
    ls node_modules/[package-name]/
    ```
+
    Look for README files in output, then read the exact filename.
 
 3. **Alternative locations:**

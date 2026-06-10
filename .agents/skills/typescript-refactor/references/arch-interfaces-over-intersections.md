@@ -13,32 +13,32 @@ Intersection types recursively merge properties and can silently produce `never`
 
 ```typescript
 type BaseEntity = {
-  id: string
-  createdAt: Date
-}
+  id: string;
+  createdAt: Date;
+};
 
 type Timestamped = {
-  createdAt: string // Conflict: Date vs string
-  updatedAt: Date
-}
+  createdAt: string; // Conflict: Date vs string
+  updatedAt: Date;
+};
 
-type User = BaseEntity & Timestamped // createdAt becomes never — no error
+type User = BaseEntity & Timestamped; // createdAt becomes never — no error
 ```
 
 **Correct (interface detects conflicts, faster):**
 
 ```typescript
 interface BaseEntity {
-  id: string
-  createdAt: Date
+  id: string;
+  createdAt: Date;
 }
 
 interface Timestamped extends BaseEntity {
-  updatedAt: Date
+  updatedAt: Date;
 }
 
 interface User extends Timestamped {
-  email: string
+  email: string;
 }
 // If createdAt types conflict, compiler reports error immediately
 ```
@@ -46,6 +46,7 @@ interface User extends Timestamped {
 **Performance benefit:** The compiler caches interface types but must recursively flatten intersections on every use. In large codebases with hundreds of type references, this compounds into measurable build time increases.
 
 **When NOT to use this pattern:**
+
 - When you need union types (interfaces cannot represent unions)
 - When composing types dynamically with mapped/conditional types
 

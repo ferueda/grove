@@ -24,13 +24,13 @@ node --env-file=.env --env-file=.env.local app.ts
 Load environment files programmatically with `process.loadEnvFile()`:
 
 ```typescript
-import { loadEnvFile } from 'node:process';
+import { loadEnvFile } from "node:process";
 
 // Load .env from current directory
 loadEnvFile();
 
 // Load specific file
-loadEnvFile('.env.local');
+loadEnvFile(".env.local");
 ```
 
 ## Environment Variables Validation
@@ -40,19 +40,17 @@ loadEnvFile('.env.local');
 Use [env-schema](https://github.com/fastify/env-schema) with [TypeBox](https://github.com/sinclairzx81/typebox) for type-safe environment validation:
 
 ```typescript
-import { envSchema } from 'env-schema';
-import { Type, Static } from '@sinclair/typebox';
+import { envSchema } from "env-schema";
+import { Type, Static } from "@sinclair/typebox";
 
 const schema = Type.Object({
   PORT: Type.Number({ default: 3000 }),
   DATABASE_URL: Type.String(),
   API_KEY: Type.String({ minLength: 1 }),
-  LOG_LEVEL: Type.Union([
-    Type.Literal('debug'),
-    Type.Literal('info'),
-    Type.Literal('warn'),
-    Type.Literal('error'),
-  ], { default: 'info' }),
+  LOG_LEVEL: Type.Union(
+    [Type.Literal("debug"), Type.Literal("info"), Type.Literal("warn"), Type.Literal("error")],
+    { default: "info" },
+  ),
 });
 
 type Env = Static<typeof schema>;
@@ -65,13 +63,13 @@ export const env = envSchema<Env>({ schema });
 Alternatively, use [Zod](https://github.com/colinhacks/zod) for validation:
 
 ```typescript
-import { z } from 'zod';
+import { z } from "zod";
 
 const EnvSchema = z.object({
   PORT: z.coerce.number().default(3000),
   DATABASE_URL: z.string().url(),
   API_KEY: z.string().min(1),
-  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });
 
 type Env = z.infer<typeof EnvSchema>;
@@ -80,7 +78,7 @@ function loadEnv(): Env {
   const result = EnvSchema.safeParse(process.env);
 
   if (!result.success) {
-    console.error('Invalid environment variables:');
+    console.error("Invalid environment variables:");
     console.error(result.error.format());
     process.exit(1);
   }
@@ -104,10 +102,10 @@ This leads to problems:
 
 ```typescript
 // BAD - NODE_ENV conflates concerns
-if (process.env.NODE_ENV === 'development') {
-  enableDebugLogging();    // logging concern
-  disableRateLimiting();   // security concern
-  useMockDatabase();       // infrastructure concern
+if (process.env.NODE_ENV === "development") {
+  enableDebugLogging(); // logging concern
+  disableRateLimiting(); // security concern
+  useMockDatabase(); // infrastructure concern
 }
 ```
 
@@ -117,12 +115,12 @@ Instead, use explicit environment variables for each concern:
 // GOOD - explicit variables for each concern
 const config = {
   logging: {
-    level: process.env.LOG_LEVEL || 'info',
-    pretty: process.env.LOG_PRETTY === 'true',
+    level: process.env.LOG_LEVEL || "info",
+    pretty: process.env.LOG_PRETTY === "true",
   },
   security: {
-    rateLimitEnabled: process.env.RATE_LIMIT_ENABLED !== 'false',
-    httpsOnly: process.env.HTTPS_ONLY === 'true',
+    rateLimitEnabled: process.env.RATE_LIMIT_ENABLED !== "false",
+    httpsOnly: process.env.HTTPS_ONLY === "true",
   },
   database: {
     url: process.env.DATABASE_URL,
@@ -131,6 +129,7 @@ const config = {
 ```
 
 This approach:
+
 - Makes configuration explicit and discoverable
 - Allows fine-grained control per environment
 - Avoids hidden behavior changes
@@ -163,20 +162,20 @@ interface Config {
 function createConfig(): Config {
   return {
     server: {
-      port: parseInt(process.env.PORT || '3000', 10),
-      host: process.env.HOST || '0.0.0.0',
+      port: parseInt(process.env.PORT || "3000", 10),
+      host: process.env.HOST || "0.0.0.0",
     },
     database: {
-      url: requireEnv('DATABASE_URL'),
-      poolSize: parseInt(process.env.DB_POOL_SIZE || '10', 10),
+      url: requireEnv("DATABASE_URL"),
+      poolSize: parseInt(process.env.DB_POOL_SIZE || "10", 10),
     },
     auth: {
-      jwtSecret: requireEnv('JWT_SECRET'),
-      jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1h',
+      jwtSecret: requireEnv("JWT_SECRET"),
+      jwtExpiresIn: process.env.JWT_EXPIRES_IN || "1h",
     },
     features: {
-      enableMetrics: process.env.ENABLE_METRICS === 'true',
-      enableTracing: process.env.ENABLE_TRACING === 'true',
+      enableMetrics: process.env.ENABLE_METRICS === "true",
+      enableTracing: process.env.ENABLE_TRACING === "true",
     },
   };
 }
@@ -216,20 +215,24 @@ DATABASE_URL=postgresql://test:test@localhost:5432/myapp_test
 Never commit secrets to version control. Use a secrets management service appropriate for your infrastructure:
 
 **Cloud Provider Services:**
+
 - [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/)
 - [Google Cloud Secret Manager](https://cloud.google.com/secret-manager)
 - [Azure Key Vault](https://azure.microsoft.com/en-us/products/key-vault)
 
 **Infrastructure Tools:**
+
 - [HashiCorp Vault](https://www.vaultproject.io/)
 - [Doppler](https://www.doppler.com/)
 - [Infisical](https://infisical.com/)
 
 **Container Orchestration:**
+
 - Kubernetes Secrets
 - Docker Swarm Secrets
 
 **CI/CD Platforms:**
+
 - GitHub Actions Secrets
 - GitLab CI/CD Variables
 - CircleCI Contexts
@@ -242,9 +245,9 @@ Implement feature flags via environment:
 
 ```typescript
 const features = {
-  newDashboard: process.env.FEATURE_NEW_DASHBOARD === 'true',
-  betaApi: process.env.FEATURE_BETA_API === 'true',
-  darkMode: process.env.FEATURE_DARK_MODE === 'true',
+  newDashboard: process.env.FEATURE_NEW_DASHBOARD === "true",
+  betaApi: process.env.FEATURE_BETA_API === "true",
+  darkMode: process.env.FEATURE_DARK_MODE === "true",
 };
 
 export function isFeatureEnabled(feature: keyof typeof features): boolean {

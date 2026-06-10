@@ -12,28 +12,28 @@ tags: org, skip, only, debugging, ci
 **During development (acceptable):**
 
 ```typescript
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from "vitest";
 
-describe('FeatureUnderDevelopment', () => {
+describe("FeatureUnderDevelopment", () => {
   // Focus on the test you're writing
-  it.only('should handle the new case', () => {
-    expect(newFeature()).toBe(true)
-  })
+  it.only("should handle the new case", () => {
+    expect(newFeature()).toBe(true);
+  });
 
-  it('other test that would slow you down', () => {
+  it("other test that would slow you down", () => {
     // This won't run while you focus on the above
-  })
-})
+  });
+});
 ```
 
 **In committed code (problematic):**
 
 ```typescript
 // DON'T commit this!
-it.only('should work', () => {}) // Only this test runs, all others skipped
+it.only("should work", () => {}); // Only this test runs, all others skipped
 
 // Also problematic
-it.skip('broken test we ignore', () => {}) // Technical debt accumulating
+it.skip("broken test we ignore", () => {}); // Technical debt accumulating
 ```
 
 **CI protection with eslint:**
@@ -42,10 +42,10 @@ it.skip('broken test we ignore', () => {}) // Technical debt accumulating
 // .eslintrc.js
 module.exports = {
   rules: {
-    'vitest/no-focused-tests': 'error',  // Fails on .only
-    'vitest/no-disabled-tests': 'warn',  // Warns on .skip
+    "vitest/no-focused-tests": "error", // Fails on .only
+    "vitest/no-disabled-tests": "warn", // Warns on .skip
   },
-}
+};
 ```
 
 **Vitest CLI protection:**
@@ -59,15 +59,16 @@ vitest run --allowOnly=false
 
 ```typescript
 // If you must skip, document why
-it.skip('should integrate with legacy API', () => {
+it.skip("should integrate with legacy API", () => {
   // TODO: Re-enable when legacy API migration complete (JIRA-1234)
-})
+});
 
 // Or use todo for planned tests
-it.todo('should handle rate limiting')
+it.todo("should handle rate limiting");
 ```
 
 **Benefits:**
+
 - Full test suite always runs in CI
 - Skipped tests don't accumulate silently
 - Clear tracking of incomplete tests

@@ -37,14 +37,14 @@ Always use `type` keyword for type imports:
 
 ```typescript
 // GOOD - type-only import
-import type { User, Config } from './types.ts';
-import { createUser } from './user.ts';
+import type { User, Config } from "./types.ts";
+import { createUser } from "./user.ts";
 
 // GOOD - inline type imports
-import { createUser, type User } from './user.ts';
+import { createUser, type User } from "./user.ts";
 
 // BAD - may fail with type stripping
-import { User, createUser } from './user.ts';
+import { User, createUser } from "./user.ts";
 ```
 
 ### No Enums
@@ -54,14 +54,14 @@ Enums require code transformation. Use const objects instead:
 ```typescript
 // BAD - enums don't work with type stripping
 enum Status {
-  Active = 'active',
-  Inactive = 'inactive',
+  Active = "active",
+  Inactive = "inactive",
 }
 
 // GOOD - const object with type
 const Status = {
-  Active: 'active',
-  Inactive: 'inactive',
+  Active: "active",
+  Inactive: "inactive",
 } as const;
 
 type Status = (typeof Status)[keyof typeof Status];
@@ -92,7 +92,10 @@ Parameter properties require transformation:
 ```typescript
 // BAD - parameter properties don't work
 class User {
-  constructor(public name: string, private age: number) {}
+  constructor(
+    public name: string,
+    private age: number,
+  ) {}
 }
 
 // GOOD - explicit property declaration
@@ -126,11 +129,11 @@ Use `.ts` extensions in imports. TypeScript will rewrite them to `.js` during bu
 
 ```typescript
 // GOOD - .ts extension (works with type stripping, rewritten during build)
-import { helper } from './helper.ts';
-import type { Config } from './types.ts';
+import { helper } from "./helper.ts";
+import type { Config } from "./types.ts";
 
 // JSON imports
-import config from './config.json' with { type: 'json' };
+import config from "./config.json" with { type: "json" };
 ```
 
 ## tsconfig.json for Development
@@ -160,6 +163,7 @@ Configure TypeScript for development with type stripping:
 ```
 
 Key options:
+
 - `noEmit`: No compilation, Node.js runs TypeScript directly
 - `allowImportingTsExtensions`: Allow `.ts` imports
 - `verbatimModuleSyntax`: Enforces type-only imports
@@ -197,6 +201,7 @@ Create a separate config for building distributable packages:
 ```
 
 Key build options:
+
 - `rewriteRelativeImportExtensions`: Rewrites `.ts` imports to `.js` in output
 - `declaration`: Generates `.d.ts` type declaration files
 - `declarationMap`: Generates source maps for declarations

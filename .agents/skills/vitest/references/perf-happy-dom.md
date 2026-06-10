@@ -15,9 +15,9 @@ happy-dom is significantly faster than jsdom for most DOM testing scenarios. Whi
 // vitest.config.ts
 export default defineConfig({
   test: {
-    environment: 'jsdom',
+    environment: "jsdom",
   },
-})
+});
 ```
 
 **Faster (happy-dom):**
@@ -26,9 +26,9 @@ export default defineConfig({
 // vitest.config.ts
 export default defineConfig({
   test: {
-    environment: 'happy-dom',
+    environment: "happy-dom",
   },
-})
+});
 ```
 
 **Per-file environment override:**
@@ -40,22 +40,24 @@ export default defineConfig({
  */
 
 // This file uses jsdom for better compatibility
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from "vitest";
 
-describe('Complex DOM interactions', () => {
-  it('should handle edge case that happy-dom misses', () => {
+describe("Complex DOM interactions", () => {
+  it("should handle edge case that happy-dom misses", () => {
     // Test code that requires jsdom
-  })
-})
+  });
+});
 ```
 
 **When to prefer jsdom:**
+
 - Tests rely on specific DOM features not implemented in happy-dom
 - Third-party libraries require jsdom
 - You need `MutationObserver` edge cases
 - Legacy code with complex DOM manipulation
 
 **When happy-dom works well:**
+
 - React/Vue/Svelte component testing
 - Basic DOM queries and manipulation
 - Testing Library based tests
@@ -68,18 +70,19 @@ describe('Complex DOM interactions', () => {
 export default defineConfig({
   test: {
     // Default to happy-dom for speed
-    environment: 'happy-dom',
+    environment: "happy-dom",
 
     // Override for specific files
     environmentMatchGlobs: [
-      ['**/jsdom-required/**', 'jsdom'],
-      ['**/node-only/**', 'node'],
+      ["**/jsdom-required/**", "jsdom"],
+      ["**/node-only/**", "node"],
     ],
   },
-})
+});
 ```
 
 **Benefits:**
+
 - Faster test execution
 - Lower memory usage
 - Same API as jsdom for most operations

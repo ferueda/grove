@@ -13,35 +13,35 @@ TypeScript's structural type system means any object with the right properties s
 
 ```typescript
 interface PublicProfile {
-  name: string
-  avatar: string
+  name: string;
+  avatar: string;
 }
 
 function toPublicProfile(user: User): PublicProfile {
-  return user // Compiles — User has name and avatar (plus email, password, etc.)
+  return user; // Compiles — User has name and avatar (plus email, password, etc.)
 }
 
-const profile = toPublicProfile(currentUser)
-JSON.stringify(profile) // Includes email, password — data leak!
+const profile = toPublicProfile(currentUser);
+JSON.stringify(profile); // Includes email, password — data leak!
 ```
 
 **Correct (explicitly pick properties):**
 
 ```typescript
 interface PublicProfile {
-  name: string
-  avatar: string
+  name: string;
+  avatar: string;
 }
 
 function toPublicProfile(user: User): PublicProfile {
   return {
     name: user.name,
     avatar: user.avatar,
-  }
+  };
 }
 
-const profile = toPublicProfile(currentUser)
-JSON.stringify(profile) // Only name and avatar — safe
+const profile = toPublicProfile(currentUser);
+JSON.stringify(profile); // Only name and avatar — safe
 ```
 
 **Note:** This is especially important at API boundaries, logging, and serialization points where extra properties become visible outside the type system.

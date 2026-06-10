@@ -12,20 +12,20 @@ tags: tsx, hooks, usestate, useref
 **Incorrect (inferred null; ref with no argument):**
 
 ```tsx
-const [user, setUser] = useState(null)
-setUser(fetchedUser) // Error: User is not assignable to null
+const [user, setUser] = useState(null);
+setUser(fetchedUser); // Error: User is not assignable to null
 
-const inputRef = useRef<HTMLInputElement>() // Error in React 19: expected 1 argument
+const inputRef = useRef<HTMLInputElement>(); // Error in React 19: expected 1 argument
 ```
 
 **Correct (explicit union; ref initialized):**
 
 ```tsx
-const [user, setUser] = useState<User | null>(null)
-setUser(fetchedUser) // OK
+const [user, setUser] = useState<User | null>(null);
+setUser(fetchedUser); // OK
 
-const inputRef = useRef<HTMLInputElement>(null)
-inputRef.current?.focus()
+const inputRef = useRef<HTMLInputElement>(null);
+inputRef.current?.focus();
 ```
 
 Let component return types infer; when you must annotate one, use `React.JSX.Element` — the global `JSX` namespace was removed from `@types/react` 19.

@@ -12,66 +12,66 @@ Mocks without proper typing can drift from real implementations. When the real f
 **Incorrect (untyped mocks):**
 
 ```typescript
-import { describe, it, expect, vi } from 'vitest'
-import { fetchUser } from './api'
+import { describe, it, expect, vi } from "vitest";
+import { fetchUser } from "./api";
 
-vi.mock('./api')
+vi.mock("./api");
 
-describe('UserService', () => {
-  it('should fetch user', async () => {
+describe("UserService", () => {
+  it("should fetch user", async () => {
     // No type checking - could return anything
-    (fetchUser as any).mockResolvedValue({ name: 'Alice' })
+    (fetchUser as any).mockResolvedValue({ name: "Alice" });
     // Missing 'id' field, but TypeScript doesn't catch it
 
-    const user = await fetchUser(1)
-    expect(user.name).toBe('Alice')
-  })
-})
+    const user = await fetchUser(1);
+    expect(user.name).toBe("Alice");
+  });
+});
 ```
 
 **Correct (properly typed mocks):**
 
 ```typescript
-import { describe, it, expect, vi, type MockedFunction } from 'vitest'
-import { fetchUser, type User } from './api'
+import { describe, it, expect, vi, type MockedFunction } from "vitest";
+import { fetchUser, type User } from "./api";
 
-vi.mock('./api')
+vi.mock("./api");
 
 // Type-safe mock reference
-const mockedFetchUser = fetchUser as MockedFunction<typeof fetchUser>
+const mockedFetchUser = fetchUser as MockedFunction<typeof fetchUser>;
 
-describe('UserService', () => {
-  it('should fetch user', async () => {
+describe("UserService", () => {
+  it("should fetch user", async () => {
     // TypeScript enforces return type matches User
-    mockedFetchUser.mockResolvedValue({ id: 1, name: 'Alice', email: 'a@b.com' })
+    mockedFetchUser.mockResolvedValue({ id: 1, name: "Alice", email: "a@b.com" });
 
-    const user = await mockedFetchUser(1)
-    expect(user).toEqual({ id: 1, name: 'Alice', email: 'a@b.com' })
-  })
-})
+    const user = await mockedFetchUser(1);
+    expect(user).toEqual({ id: 1, name: "Alice", email: "a@b.com" });
+  });
+});
 ```
 
 **Using vi.mocked helper:**
 
 ```typescript
-import { describe, it, expect, vi } from 'vitest'
-import { fetchUser } from './api'
+import { describe, it, expect, vi } from "vitest";
+import { fetchUser } from "./api";
 
-vi.mock('./api')
+vi.mock("./api");
 
-describe('UserService', () => {
-  it('should fetch user', async () => {
+describe("UserService", () => {
+  it("should fetch user", async () => {
     // vi.mocked provides proper typing automatically
     vi.mocked(fetchUser).mockResolvedValue({
       id: 1,
-      name: 'Alice',
-      email: 'alice@example.com',
-    })
+      name: "Alice",
+      email: "alice@example.com",
+    });
 
-    const user = await fetchUser(1)
-    expect(user.name).toBe('Alice')
-  })
-})
+    const user = await fetchUser(1);
+    expect(user.name).toBe("Alice");
+  });
+});
 ```
 
 **Type-safe mock factories:**
@@ -80,16 +80,17 @@ describe('UserService', () => {
 function createMockUser(overrides?: Partial<User>): User {
   return {
     id: 1,
-    name: 'Test User',
-    email: 'test@example.com',
+    name: "Test User",
+    email: "test@example.com",
     ...overrides,
-  }
+  };
 }
 
-vi.mocked(fetchUser).mockResolvedValue(createMockUser({ name: 'Alice' }))
+vi.mocked(fetchUser).mockResolvedValue(createMockUser({ name: "Alice" }));
 ```
 
 **Benefits:**
+
 - Compile-time errors when mock returns wrong type
 - IDE autocomplete for mock methods
 - Mocks stay in sync with real implementations

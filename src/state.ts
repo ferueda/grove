@@ -1,21 +1,21 @@
-import { readFile, writeFile, rename } from 'node:fs/promises';
-import { join } from 'node:path';
-import { GroveStateSchema } from './schemas.js';
-import type { GroveState } from './schemas.js';
-import { InvalidGroveStateError } from './errors.js';
-import { ownerAlive } from './process/detect.js';
-import { existsSync } from 'node:fs';
+import { readFile, writeFile, rename } from "node:fs/promises";
+import { join } from "node:path";
+import { GroveStateSchema } from "./schemas.js";
+import type { GroveState } from "./schemas.js";
+import { InvalidGroveStateError } from "./errors.js";
+import { ownerAlive } from "./process/detect.js";
+import { existsSync } from "node:fs";
 
 export function stateFilePath(groveDir: string): string {
-  return join(groveDir, 'grove-state.json');
+  return join(groveDir, "grove-state.json");
 }
 
 export async function readState(groveDir: string): Promise<GroveState> {
   let data: string;
   try {
-    data = await readFile(stateFilePath(groveDir), 'utf8');
+    data = await readFile(stateFilePath(groveDir), "utf8");
   } catch (error: any) {
-    if (error.code === 'ENOENT') {
+    if (error.code === "ENOENT") {
       return { worktrees: [] };
     }
     throw error;
@@ -25,12 +25,12 @@ export async function readState(groveDir: string): Promise<GroveState> {
   try {
     parsed = JSON.parse(data);
   } catch {
-    throw new InvalidGroveStateError('Invalid JSON format');
+    throw new InvalidGroveStateError("Invalid JSON format");
   }
 
   const result = GroveStateSchema.safeParse(parsed);
   if (!result.success) {
-    throw new InvalidGroveStateError('State validation failed');
+    throw new InvalidGroveStateError("State validation failed");
   }
 
   return result.data;

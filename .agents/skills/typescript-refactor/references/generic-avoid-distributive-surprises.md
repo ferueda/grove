@@ -12,9 +12,9 @@ Conditional types distribute over union members by default when the checked type
 **Incorrect (distributes unexpectedly over union):**
 
 ```typescript
-type IsArray<T> = T extends unknown[] ? true : false
+type IsArray<T> = T extends unknown[] ? true : false;
 
-type Result = IsArray<string | number[]>
+type Result = IsArray<string | number[]>;
 // Distributes: IsArray<string> | IsArray<number[]>
 // Result: false | true = boolean — not what you want
 ```
@@ -22,9 +22,9 @@ type Result = IsArray<string | number[]>
 **Correct (brackets disable distribution):**
 
 ```typescript
-type IsArray<T> = [T] extends [unknown[]] ? true : false
+type IsArray<T> = [T] extends [unknown[]] ? true : false;
 
-type Result = IsArray<string | number[]>
+type Result = IsArray<string | number[]>;
 // Checks (string | number[]) as a whole
 // Result: false — correct
 ```

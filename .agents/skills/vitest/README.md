@@ -8,16 +8,16 @@ This skill contains 44 rules across 8 categories, organized by impact level to h
 
 ## Categories
 
-| Category | Impact | Rules | Description |
-|----------|--------|-------|-------------|
-| Async Patterns | CRITICAL | 7 | Prevent race conditions, false positives, and flaky async tests |
-| Test Setup & Isolation | CRITICAL | 6 | Ensure proper test isolation and cleanup |
-| Mocking Patterns | HIGH | 7 | Effective mocking strategies without over-mocking |
-| Performance | HIGH | 6 | Optimize test execution speed |
-| Snapshot Testing | MEDIUM | 5 | Maintainable snapshot practices |
-| Environment | MEDIUM | 4 | Proper environment configuration |
-| Assertions | LOW-MEDIUM | 5 | Effective assertion patterns |
-| Test Organization | LOW | 4 | File structure and naming conventions |
+| Category               | Impact     | Rules | Description                                                     |
+| ---------------------- | ---------- | ----- | --------------------------------------------------------------- |
+| Async Patterns         | CRITICAL   | 7     | Prevent race conditions, false positives, and flaky async tests |
+| Test Setup & Isolation | CRITICAL   | 6     | Ensure proper test isolation and cleanup                        |
+| Mocking Patterns       | HIGH       | 7     | Effective mocking strategies without over-mocking               |
+| Performance            | HIGH       | 6     | Optimize test execution speed                                   |
+| Snapshot Testing       | MEDIUM     | 5     | Maintainable snapshot practices                                 |
+| Environment            | MEDIUM     | 4     | Proper environment configuration                                |
+| Assertions             | LOW-MEDIUM | 5     | Effective assertion patterns                                    |
+| Test Organization      | LOW        | 4     | File structure and naming conventions                           |
 
 ## File Structure
 
@@ -57,14 +57,14 @@ Browse individual rule files in the `references/` directory for detailed explana
 
 ```typescript
 // Always await async assertions
-await expect(asyncFn()).rejects.toThrow('Error')
+await expect(asyncFn()).rejects.toThrow("Error");
 
 // Use fake timers for time-dependent code
-vi.useFakeTimers()
-vi.advanceTimersByTime(1000)
+vi.useFakeTimers();
+vi.advanceTimersByTime(1000);
 
 // Use vi.waitFor instead of arbitrary timeouts
-await vi.waitFor(() => expect(element).toBeVisible())
+await vi.waitFor(() => expect(element).toBeVisible());
 ```
 
 ### Critical: Test Isolation
@@ -72,27 +72,25 @@ await vi.waitFor(() => expect(element).toBeVisible())
 ```typescript
 // Clean up after each test
 afterEach(() => {
-  vi.restoreAllMocks()
-  vi.useRealTimers()
-})
+  vi.restoreAllMocks();
+  vi.useRealTimers();
+});
 
 // Avoid shared mutable state
-let testData: User[]
+let testData: User[];
 beforeEach(() => {
-  testData = [createTestUser()]  // Fresh for each test
-})
+  testData = [createTestUser()]; // Fresh for each test
+});
 ```
 
 ### High: Effective Mocking
 
 ```typescript
 // Prefer vi.spyOn for targeted mocking
-vi.spyOn(api, 'fetchUser').mockResolvedValue(testUser)
+vi.spyOn(api, "fetchUser").mockResolvedValue(testUser);
 
 // Use MSW for network mocking
-const server = setupServer(
-  http.get('/api/users', () => HttpResponse.json([testUser]))
-)
+const server = setupServer(http.get("/api/users", () => HttpResponse.json([testUser])));
 ```
 
 ### High: Performance
@@ -101,11 +99,11 @@ const server = setupServer(
 // vitest.config.ts
 export default defineConfig({
   test: {
-    pool: 'threads',           // Faster than forks
-    isolate: false,            // If tests are properly isolated
-    environment: 'happy-dom',  // Faster than jsdom
+    pool: "threads", // Faster than forks
+    isolate: false, // If tests are properly isolated
+    environment: "happy-dom", // Faster than jsdom
   },
-})
+});
 ```
 
 ## References

@@ -37,6 +37,7 @@ npm audit --audit-level=high
 ## Dependency Management Best Practices
 
 ### Lock Files
+
 Always commit `package-lock.json` to ensure reproducible builds and prevent supply chain attacks.
 
 ```bash
@@ -48,6 +49,7 @@ npm ci
 ```
 
 ### Minimal Dependencies
+
 Every dependency is an attack surface. Review before adding:
 
 ```bash
@@ -59,6 +61,7 @@ npx npm-check-updates --doctor
 ```
 
 ### Questions Before Adding a Dependency
+
 1. Is this actively maintained? (check last commit date, open issues)
 2. How many transitive dependencies does it add? (`npm ls <package>`)
 3. Can I implement this with the standard library instead?
@@ -86,7 +89,9 @@ updates:
 ```
 
 ### Socket.dev
+
 Detects supply chain attacks that npm audit misses:
+
 - Typosquatting (similar package names)
 - Install scripts that execute code during `npm install`
 - Obfuscated code
@@ -94,6 +99,7 @@ Detects supply chain attacks that npm audit misses:
 - Excessive permissions
 
 ### Snyk
+
 Provides deeper vulnerability analysis and fix PRs:
 
 ```bash
@@ -111,6 +117,7 @@ snyk monitor
 ## Supply Chain Attack Vectors
 
 ### Typosquatting
+
 Attackers publish packages with names similar to popular ones.
 
 ```bash
@@ -123,6 +130,7 @@ npm info express | head -5
 ```
 
 ### Install Script Attacks
+
 Malicious packages run code during `npm install`.
 
 ```bash
@@ -134,12 +142,14 @@ npx can-i-ignore-scripts
 ```
 
 ### Dependency Confusion
+
 Attackers publish public packages with the same name as internal packages.
 When a package name is unclaimed on the public registry, anyone can publish
 malicious code under that name — never reference unclaimed package names in
 documentation or install commands.
 
 **Prevention:**
+
 ```bash
 # Example: configure .npmrc to resolve scoped packages from a private registry
 # (using Microsoft's real public registry as illustration only)
@@ -184,12 +194,12 @@ npx audit-ci --config audit-ci.json
 
 ### Severity Assessment
 
-| Severity | Response Time | Action |
-|----------|--------------|--------|
-| Critical | Immediate | Patch or remove dependency |
-| High | Within 1 week | Upgrade to fixed version |
-| Medium | Within 1 month | Plan upgrade in next sprint |
-| Low | Next quarter | Include in regular maintenance |
+| Severity | Response Time  | Action                         |
+| -------- | -------------- | ------------------------------ |
+| Critical | Immediate      | Patch or remove dependency     |
+| High     | Within 1 week  | Upgrade to fixed version       |
+| Medium   | Within 1 month | Plan upgrade in next sprint    |
+| Low      | Next quarter   | Include in regular maintenance |
 
 ### When a Fix is Not Available
 
@@ -212,10 +222,10 @@ npx audit-ci --config audit-ci.json
 ### Validation at Startup
 
 ```typescript
-import { z } from 'zod';
+import { z } from "zod";
 
 const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'production', 'test']),
+  NODE_ENV: z.enum(["development", "production", "test"]),
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(32),
   API_KEY: z.string().min(16),

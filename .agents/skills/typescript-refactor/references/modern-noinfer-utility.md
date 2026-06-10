@@ -13,10 +13,10 @@ tags: modern, noinfer, generics, inference-control
 
 ```typescript
 function createSignal<T>(initial: T, fallback: T): T {
-  return initial ?? fallback
+  return initial ?? fallback;
 }
 
-const signal = createSignal("active", "unknown")
+const signal = createSignal("active", "unknown");
 // T inferred as "active" | "unknown" — but "unknown" should not widen T
 ```
 
@@ -24,10 +24,10 @@ const signal = createSignal("active", "unknown")
 
 ```typescript
 function createSignal<T>(initial: T, fallback: NoInfer<T>): T {
-  return initial ?? fallback
+  return initial ?? fallback;
 }
 
-const signal = createSignal("active", "unknown")
+const signal = createSignal("active", "unknown");
 // T inferred as "active" — fallback must be assignable to "active"
 // Compile error: "unknown" not assignable to "active"
 ```

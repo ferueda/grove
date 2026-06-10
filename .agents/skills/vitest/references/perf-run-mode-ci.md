@@ -41,7 +41,7 @@ export default defineConfig({
     // But explicit configuration is clearer
     watch: !process.env.CI,
   },
-})
+});
 ```
 
 **Additional CI optimizations:**
@@ -61,11 +61,9 @@ jobs:
 // vitest.config.ts
 export default defineConfig({
   test: {
-    reporters: process.env.CI
-      ? ['default', 'github-actions']
-      : ['default'],
+    reporters: process.env.CI ? ["default", "github-actions"] : ["default"],
   },
-})
+});
 ```
 
 **Package.json scripts:**
@@ -80,6 +78,7 @@ export default defineConfig({
 ```
 
 **Benefits:**
+
 - No hanging processes in CI
 - Faster startup without watch setup
 - Clear exit codes for CI systems

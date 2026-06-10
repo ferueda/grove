@@ -12,14 +12,14 @@ metadata:
 Use [pino](https://github.com/pinojs/pino) for fast, structured JSON logging:
 
 ```typescript
-import pino from 'pino';
+import pino from "pino";
 
 const logger = pino({
-  level: process.env.LOG_LEVEL || 'info',
+  level: process.env.LOG_LEVEL || "info",
 });
 
-logger.info({ userId: user.id }, 'User created');
-logger.error({ err, orderId: order.id }, 'Failed to process payment');
+logger.info({ userId: user.id }, "User created");
+logger.error({ err, orderId: order.id }, "Failed to process payment");
 ```
 
 ## Log Levels
@@ -28,16 +28,16 @@ Use appropriate log levels:
 
 ```typescript
 // DEBUG - detailed information for debugging
-logger.debug({ itemId: item.id, step: 'validation' }, 'Processing item');
+logger.debug({ itemId: item.id, step: "validation" }, "Processing item");
 
 // INFO - general operational information
-logger.info({ userId: user.id }, 'User created');
+logger.info({ userId: user.id }, "User created");
 
 // WARN - unexpected but handled situations
-logger.warn({ currentRate: 95, limit: 100 }, 'Rate limit approaching');
+logger.warn({ currentRate: 95, limit: 100 }, "Rate limit approaching");
 
 // ERROR - errors that need attention
-logger.error({ err, orderId: order.id }, 'Failed to process payment');
+logger.error({ err, orderId: order.id }, "Failed to process payment");
 ```
 
 ## Transports
@@ -55,11 +55,11 @@ node app.ts | pino-pretty
 Or configure programmatically:
 
 ```typescript
-import pino from 'pino';
+import pino from "pino";
 
 const logger = pino({
   transport: {
-    target: 'pino-pretty',
+    target: "pino-pretty",
     options: {
       colorize: true,
     },
@@ -72,20 +72,20 @@ const logger = pino({
 Send logs to multiple destinations:
 
 ```typescript
-import pino from 'pino';
+import pino from "pino";
 
 const logger = pino({
   transport: {
     targets: [
       {
-        target: 'pino-pretty',
+        target: "pino-pretty",
         options: { colorize: true },
-        level: 'info',
+        level: "info",
       },
       {
-        target: 'pino/file',
-        options: { destination: '/var/log/app.log' },
-        level: 'error',
+        target: "pino/file",
+        options: { destination: "/var/log/app.log" },
+        level: "error",
       },
     ],
   },
@@ -109,8 +109,8 @@ const requestLogger = logger.child({
   userId: req.user?.id,
 });
 
-requestLogger.info('Processing request');
-requestLogger.info({ itemId }, 'Item processed');
+requestLogger.info("Processing request");
+requestLogger.info({ itemId }, "Item processed");
 ```
 
 ## Fastify Integration
@@ -118,20 +118,20 @@ requestLogger.info({ itemId }, 'Item processed');
 Fastify has built-in pino integration:
 
 ```typescript
-import Fastify from 'fastify';
+import Fastify from "fastify";
 
 const app = Fastify({
   logger: {
-    level: 'info',
+    level: "info",
     transport: {
-      target: 'pino-pretty',
+      target: "pino-pretty",
     },
   },
 });
 
-app.get('/', async (request) => {
-  request.log.info('Handling request');
-  return { status: 'ok' };
+app.get("/", async (request) => {
+  request.log.info("Handling request");
+  return { status: "ok" };
 });
 ```
 
@@ -141,11 +141,11 @@ Use pino's built-in redaction for sensitive fields:
 
 ```typescript
 const logger = pino({
-  redact: ['password', 'token', 'apiKey', 'req.headers.authorization'],
+  redact: ["password", "token", "apiKey", "req.headers.authorization"],
 });
 
 // Sensitive values are replaced with [Redacted]
-logger.info({ password: 'secret123' }, 'User login');
+logger.info({ password: "secret123" }, "User login");
 // Output: {"password":"[Redacted]","msg":"User login"...}
 ```
 
@@ -154,12 +154,12 @@ logger.info({ password: 'secret123' }, 'User login');
 The [debug](https://github.com/debug-js/debug) module is useful for library and module authors to emit tracing information. It is not meant for application logging:
 
 ```typescript
-import createDebug from 'debug';
+import createDebug from "debug";
 
-const debug = createDebug('mymodule:connection');
+const debug = createDebug("mymodule:connection");
 
-debug('Connecting to %s:%d', host, port);
-debug('Query executed in %dms', duration);
+debug("Connecting to %s:%d", host, port);
+debug("Query executed in %dms", duration);
 ```
 
 Enable debug output with the `DEBUG` environment variable:
@@ -175,12 +175,12 @@ Use debug for internal module diagnostics; use pino for application logs.
 Use `util.debuglog` for module tracing without external dependencies:
 
 ```typescript
-import { debuglog } from 'node:util';
+import { debuglog } from "node:util";
 
-const debug = debuglog('mymodule');
+const debug = debuglog("mymodule");
 
-debug('Starting operation %s', operationId);
-debug('Connection established to %s', host);
+debug("Starting operation %s", operationId);
+debug("Connection established to %s", host);
 ```
 
 Enable with the `NODE_DEBUG` environment variable:
@@ -198,8 +198,8 @@ Never log credentials, tokens, or personal data:
 
 ```typescript
 // BAD - logging sensitive data
-logger.info({ email, password }, 'User login');
+logger.info({ email, password }, "User login");
 
 // GOOD - log only safe identifiers
-logger.info({ email }, 'User login');
+logger.info({ email }, "User login");
 ```

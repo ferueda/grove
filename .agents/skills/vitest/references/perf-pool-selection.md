@@ -16,9 +16,9 @@ Vitest supports different execution pools: `forks` (default), `threads`, and `vm
 export default defineConfig({
   test: {
     // Default - most compatible, but can be slower
-    pool: 'forks',
+    pool: "forks",
   },
-})
+});
 ```
 
 **Optimized (threads pool):**
@@ -28,18 +28,18 @@ export default defineConfig({
 export default defineConfig({
   test: {
     // Generally faster, but some edge cases may not work
-    pool: 'threads',
+    pool: "threads",
   },
-})
+});
 ```
 
 **Pool comparison:**
 
-| Pool | Speed | Isolation | Compatibility | Best For |
-|------|-------|-----------|---------------|----------|
-| `forks` | Slower | Full process | Highest | Default, native modules |
-| `threads` | Faster | Worker threads | High | Most projects |
-| `vmThreads` | Medium | VM contexts | Medium | Memory-constrained |
+| Pool        | Speed  | Isolation      | Compatibility | Best For                |
+| ----------- | ------ | -------------- | ------------- | ----------------------- |
+| `forks`     | Slower | Full process   | Highest       | Default, native modules |
+| `threads`   | Faster | Worker threads | High          | Most projects           |
+| `vmThreads` | Medium | VM contexts    | Medium        | Memory-constrained      |
 
 **Tuning thread count:**
 
@@ -47,7 +47,7 @@ export default defineConfig({
 // vitest.config.ts
 export default defineConfig({
   test: {
-    pool: 'threads',
+    pool: "threads",
     poolOptions: {
       threads: {
         // Match CPU cores for compute-bound tests
@@ -56,7 +56,7 @@ export default defineConfig({
       },
     },
   },
-})
+});
 ```
 
 **CLI usage:**
@@ -70,11 +70,13 @@ vitest --pool=threads --reporter=verbose
 ```
 
 **When to use forks:**
+
 - Tests use native modules that don't work with worker threads
 - Tests have compatibility issues with threads pool
 - You need full process isolation
 
 **Benefits:**
+
 - Significant speedup for large test suites
 - Better resource utilization
 - Faster CI/CD feedback

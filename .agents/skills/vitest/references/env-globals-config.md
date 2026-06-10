@@ -17,18 +17,18 @@ export default defineConfig({
   test: {
     globals: false, // Default
   },
-})
+});
 ```
 
 ```typescript
 // Tests require imports - explicit dependencies
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from "vitest";
 
-describe('Calculator', () => {
-  it('should add numbers', () => {
-    expect(add(1, 2)).toBe(3)
-  })
-})
+describe("Calculator", () => {
+  it("should add numbers", () => {
+    expect(add(1, 2)).toBe(3);
+  });
+});
 ```
 
 **Option 2: Global injection:**
@@ -39,7 +39,7 @@ export default defineConfig({
   test: {
     globals: true,
   },
-})
+});
 ```
 
 ```typescript
@@ -49,19 +49,19 @@ export default defineConfig({
 
 ```typescript
 // Tests use globals - no imports needed
-describe('Calculator', () => {
-  it('should add numbers', () => {
-    expect(add(1, 2)).toBe(3)
-  })
-})
+describe("Calculator", () => {
+  it("should add numbers", () => {
+    expect(add(1, 2)).toBe(3);
+  });
+});
 ```
 
 **Pros and cons:**
 
-| Approach | Pros | Cons |
-|----------|------|------|
-| Explicit imports | Clear dependencies, better IDE support, tree-shakeable | More boilerplate |
-| Globals | Less boilerplate, Jest-like | Implicit dependencies, needs type reference |
+| Approach         | Pros                                                   | Cons                                        |
+| ---------------- | ------------------------------------------------------ | ------------------------------------------- |
+| Explicit imports | Clear dependencies, better IDE support, tree-shakeable | More boilerplate                            |
+| Globals          | Less boilerplate, Jest-like                            | Implicit dependencies, needs type reference |
 
 **ESLint configuration for globals:**
 
@@ -69,13 +69,14 @@ describe('Calculator', () => {
 // .eslintrc.js
 module.exports = {
   env: {
-    'vitest-globals/env': true,
+    "vitest-globals/env": true,
   },
-  plugins: ['vitest-globals'],
-}
+  plugins: ["vitest-globals"],
+};
 ```
 
 **Benefits:**
+
 - Consistent codebase
 - No confusion about where APIs come from
 - Proper TypeScript support either way

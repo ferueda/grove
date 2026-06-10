@@ -12,60 +12,60 @@ Mocks track call history (how many times called, with what arguments). Without c
 **Incorrect (mock state leaks):**
 
 ```typescript
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from "vitest";
 
 const logger = {
   log: vi.fn(),
-}
+};
 
-describe('NotificationService', () => {
-  it('should log on success', () => {
-    notificationService.send('Hello')
-    expect(logger.log).toHaveBeenCalledOnce()
-  })
+describe("NotificationService", () => {
+  it("should log on success", () => {
+    notificationService.send("Hello");
+    expect(logger.log).toHaveBeenCalledOnce();
+  });
 
-  it('should log on failure', () => {
-    notificationService.sendFailing('World')
+  it("should log on failure", () => {
+    notificationService.sendFailing("World");
     // FAILS - logger.log has 2 calls (1 from previous test + 1 from this test)
-    expect(logger.log).toHaveBeenCalledOnce()
-  })
-})
+    expect(logger.log).toHaveBeenCalledOnce();
+  });
+});
 ```
 
 **Correct (clear mock state):**
 
 ```typescript
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const logger = {
   log: vi.fn(),
-}
+};
 
-describe('NotificationService', () => {
+describe("NotificationService", () => {
   beforeEach(() => {
-    vi.clearAllMocks() // Clears call history, keeps implementation
-  })
+    vi.clearAllMocks(); // Clears call history, keeps implementation
+  });
 
-  it('should log on success', () => {
-    notificationService.send('Hello')
-    expect(logger.log).toHaveBeenCalledOnce()
-  })
+  it("should log on success", () => {
+    notificationService.send("Hello");
+    expect(logger.log).toHaveBeenCalledOnce();
+  });
 
-  it('should log on failure', () => {
-    notificationService.sendFailing('World')
+  it("should log on failure", () => {
+    notificationService.sendFailing("World");
     // Works - mock state was cleared
-    expect(logger.log).toHaveBeenCalledOnce()
-  })
-})
+    expect(logger.log).toHaveBeenCalledOnce();
+  });
+});
 ```
 
 **Mock state methods comparison:**
 
-| Method | Clears Calls | Clears Implementation | Restores Original |
-|--------|-------------|----------------------|-------------------|
-| `vi.clearAllMocks()` | Yes | No | No |
-| `vi.resetAllMocks()` | Yes | Yes | No |
-| `vi.restoreAllMocks()` | Yes | Yes | Yes |
+| Method                 | Clears Calls | Clears Implementation | Restores Original |
+| ---------------------- | ------------ | --------------------- | ----------------- |
+| `vi.clearAllMocks()`   | Yes          | No                    | No                |
+| `vi.resetAllMocks()`   | Yes          | Yes                   | No                |
+| `vi.restoreAllMocks()` | Yes          | Yes                   | Yes               |
 
 **Configuration option:**
 
@@ -75,10 +75,11 @@ export default defineConfig({
   test: {
     clearMocks: true, // Automatically clear mock state between tests
   },
-})
+});
 ```
 
 **Benefits:**
+
 - Accurate call count assertions
 - Tests are independent
 - No mysterious test order dependencies

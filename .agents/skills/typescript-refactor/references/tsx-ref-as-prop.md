@@ -12,25 +12,26 @@ React 19 lets function components receive `ref` as an ordinary prop and deprecat
 **Incorrect (forwardRef wrapper, deprecated in React 19):**
 
 ```tsx
-import { forwardRef } from "react"
+import { forwardRef } from "react";
 
-const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
-  function SearchInput({ placeholder }, ref) {
-    return <input ref={ref} placeholder={placeholder} />
-  },
-)
+const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(function SearchInput(
+  { placeholder },
+  ref,
+) {
+  return <input ref={ref} placeholder={placeholder} />;
+});
 ```
 
 **Correct (ref is a normal prop):**
 
 ```tsx
 interface SearchInputProps {
-  placeholder: string
-  ref?: React.Ref<HTMLInputElement>
+  placeholder: string;
+  ref?: React.Ref<HTMLInputElement>;
 }
 
 function SearchInput({ placeholder, ref }: SearchInputProps) {
-  return <input ref={ref} placeholder={placeholder} />
+  return <input ref={ref} placeholder={placeholder} />;
 }
 ```
 

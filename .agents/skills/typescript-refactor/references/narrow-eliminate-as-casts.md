@@ -13,12 +13,12 @@ Every `as` cast is a promise from developer to compiler with zero runtime verifi
 
 ```typescript
 function parseConfig(raw: unknown): AppConfig {
-  const config = raw as Record<string, unknown>
+  const config = raw as Record<string, unknown>;
   return {
     port: config.port as number,
     host: config.host as string,
     debug: config.debug as boolean,
-  }
+  };
 }
 ```
 
@@ -27,35 +27,35 @@ function parseConfig(raw: unknown): AppConfig {
 ```typescript
 function parseConfig(raw: unknown): AppConfig {
   if (typeof raw !== "object" || raw === null) {
-    throw new Error("Config must be an object")
+    throw new Error("Config must be an object");
   }
 
-  const config = raw as Record<string, unknown>
+  const config = raw as Record<string, unknown>;
 
-  if (typeof config.port !== "number") throw new Error("port must be a number")
-  if (typeof config.host !== "string") throw new Error("host must be a string")
+  if (typeof config.port !== "number") throw new Error("port must be a number");
+  if (typeof config.host !== "string") throw new Error("host must be a string");
 
   return {
     port: config.port,
     host: config.host,
     debug: typeof config.debug === "boolean" ? config.debug : false,
-  }
+  };
 }
 ```
 
 **Alternative (use a validation library for complex schemas):**
 
 ```typescript
-import { z } from "zod"
+import { z } from "zod";
 
 const AppConfigSchema = z.object({
   port: z.number(),
   host: z.string(),
   debug: z.boolean().default(false),
-})
+});
 
 function parseConfig(raw: unknown): AppConfig {
-  return AppConfigSchema.parse(raw) // Throws with detailed errors
+  return AppConfigSchema.parse(raw); // Throws with detailed errors
 }
 ```
 

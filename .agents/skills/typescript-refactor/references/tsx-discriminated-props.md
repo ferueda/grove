@@ -13,15 +13,15 @@ When a component renders different shapes for different states, all-optional pro
 
 ```tsx
 interface UserPanelProps {
-  status: "loading" | "error" | "success"
-  data?: User
-  error?: Error
+  status: "loading" | "error" | "success";
+  data?: User;
+  error?: Error;
 }
 
 function UserPanel({ status, data }: UserPanelProps) {
-  if (status === "success") return <Profile user={data!} /> // data could be undefined
+  if (status === "success") return <Profile user={data!} />; // data could be undefined
   // <UserPanel status="error" /> compiles with no error object
-  return null
+  return null;
 }
 ```
 
@@ -31,13 +31,16 @@ function UserPanel({ status, data }: UserPanelProps) {
 type UserPanelProps =
   | { status: "loading" }
   | { status: "error"; error: Error }
-  | { status: "success"; data: User }
+  | { status: "success"; data: User };
 
 function UserPanel(props: UserPanelProps) {
   switch (props.status) {
-    case "loading": return <Spinner />
-    case "error":   return <Alert message={props.error.message} />
-    case "success": return <Profile user={props.data} /> // narrowed, no `!`
+    case "loading":
+      return <Spinner />;
+    case "error":
+      return <Alert message={props.error.message} />;
+    case "success":
+      return <Profile user={props.data} />; // narrowed, no `!`
   }
 }
 ```

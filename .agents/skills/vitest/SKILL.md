@@ -10,6 +10,7 @@ Comprehensive performance optimization and best practices guide for Vitest testi
 ## When to Apply
 
 Reference these guidelines when:
+
 - Writing new Vitest tests
 - Debugging flaky or slow tests
 - Setting up test configuration
@@ -19,16 +20,16 @@ Reference these guidelines when:
 
 ## Rule Categories by Priority
 
-| Priority | Category | Impact | Prefix |
-|----------|----------|--------|--------|
-| 1 | Async Patterns | CRITICAL | `async-` |
-| 2 | Test Setup & Isolation | CRITICAL | `setup-` |
-| 3 | Mocking Patterns | HIGH | `mock-` |
-| 4 | Performance | HIGH | `perf-` |
-| 5 | Snapshot Testing | MEDIUM | `snap-` |
-| 6 | Environment | MEDIUM | `env-` |
-| 7 | Assertions | LOW-MEDIUM | `assert-` |
-| 8 | Test Organization | LOW | `org-` |
+| Priority | Category               | Impact     | Prefix    |
+| -------- | ---------------------- | ---------- | --------- |
+| 1        | Async Patterns         | CRITICAL   | `async-`  |
+| 2        | Test Setup & Isolation | CRITICAL   | `setup-`  |
+| 3        | Mocking Patterns       | HIGH       | `mock-`   |
+| 4        | Performance            | HIGH       | `perf-`   |
+| 5        | Snapshot Testing       | MEDIUM     | `snap-`   |
+| 6        | Environment            | MEDIUM     | `env-`    |
+| 7        | Assertions             | LOW-MEDIUM | `assert-` |
+| 8        | Test Organization      | LOW        | `org-`    |
 
 ## Quick Reference
 

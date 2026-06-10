@@ -12,47 +12,49 @@ When using `test.concurrent`, multiple tests run simultaneously. Using the globa
 **Incorrect (global expect in concurrent tests):**
 
 ```typescript
-import { describe, test, expect } from 'vitest'
+import { describe, test, expect } from "vitest";
 
-describe('Formatters', () => {
-  test.concurrent('formats dates', async () => {
-    const result = formatDate(new Date('2024-01-01'))
+describe("Formatters", () => {
+  test.concurrent("formats dates", async () => {
+    const result = formatDate(new Date("2024-01-01"));
     // Global expect - snapshots may collide with other concurrent tests
-    expect(result).toMatchSnapshot()
-  })
+    expect(result).toMatchSnapshot();
+  });
 
-  test.concurrent('formats currency', async () => {
-    const result = formatCurrency(1234.56)
-    expect(result).toMatchSnapshot()
-  })
-})
+  test.concurrent("formats currency", async () => {
+    const result = formatCurrency(1234.56);
+    expect(result).toMatchSnapshot();
+  });
+});
 ```
 
 **Correct (context expect in concurrent tests):**
 
 ```typescript
-import { describe, test } from 'vitest'
+import { describe, test } from "vitest";
 
-describe('Formatters', () => {
-  test.concurrent('formats dates', async ({ expect }) => {
-    const result = formatDate(new Date('2024-01-01'))
+describe("Formatters", () => {
+  test.concurrent("formats dates", async ({ expect }) => {
+    const result = formatDate(new Date("2024-01-01"));
     // Context expect - properly isolated per test
-    expect(result).toMatchSnapshot()
-  })
+    expect(result).toMatchSnapshot();
+  });
 
-  test.concurrent('formats currency', async ({ expect }) => {
-    const result = formatCurrency(1234.56)
-    expect(result).toMatchSnapshot()
-  })
-})
+  test.concurrent("formats currency", async ({ expect }) => {
+    const result = formatCurrency(1234.56);
+    expect(result).toMatchSnapshot();
+  });
+});
 ```
 
 **When this matters:**
+
 - When using `test.concurrent` with snapshots
 - When concurrent tests share similar assertion patterns
 - In large test suites with parallel execution
 
 **Benefits:**
+
 - Each concurrent test has its own expect instance
 - Snapshots are correctly tracked per test
 - No cross-contamination between parallel tests

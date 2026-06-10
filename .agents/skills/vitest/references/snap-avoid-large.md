@@ -58,17 +58,20 @@ describe('Dashboard', () => {
 ```
 
 **Signs of snapshot abuse:**
+
 - Snapshot files larger than the test files
 - Most PRs include "Update snapshots" commits
 - Reviewers skip snapshot changes in code review
 - Snapshots contain unstable data (dates, IDs)
 
 **Better alternatives:**
+
 - Assert specific properties
 - Use focused inline snapshots
 - Test behavior, not markup
 
 **Benefits:**
+
 - Snapshots get actually reviewed
 - Changes are easier to understand
 - Tests remain maintainable

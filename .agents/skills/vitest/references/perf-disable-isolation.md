@@ -18,7 +18,7 @@ export default defineConfig({
     // Default - each file runs in fresh environment
     isolate: true,
   },
-})
+});
 ```
 
 **Optimized (disabled isolation):**
@@ -30,7 +30,7 @@ export default defineConfig({
     // Faster - files share environment
     isolate: false,
   },
-})
+});
 ```
 
 **Prerequisites for disabling isolation:**
@@ -49,19 +49,19 @@ export default defineConfig({
     projects: [
       {
         // Unit tests - safe to share environment
-        name: 'unit',
-        include: ['src/**/*.test.ts'],
+        name: "unit",
+        include: ["src/**/*.test.ts"],
         isolate: false,
       },
       {
         // Integration tests - need isolation
-        name: 'integration',
-        include: ['tests/integration/**/*.test.ts'],
+        name: "integration",
+        include: ["tests/integration/**/*.test.ts"],
         isolate: true,
       },
     ],
   },
-})
+});
 ```
 
 **CLI usage:**
@@ -75,11 +75,13 @@ vitest --no-isolate --reporter=verbose
 ```
 
 **When NOT to disable isolation:**
+
 - Tests modify global state without cleanup
 - Tests use `vi.mock` at the module level without `vi.resetModules`
 - Tests have known order dependencies
 
 **Benefits:**
+
 - Faster test suite execution
 - Reduced memory usage
 - Quicker feedback loops

@@ -13,23 +13,23 @@ Over-constraining generics couples them to specific implementations and limits r
 
 ```typescript
 function getDisplayName<T extends User>(entity: T): string {
-  return entity.name
+  return entity.name;
 }
 
 // Cannot use with Organization, Team, or any other named entity
-getDisplayName(organization) // Error: Organization not assignable to User
+getDisplayName(organization); // Error: Organization not assignable to User
 ```
 
 **Correct (constrained to minimal interface):**
 
 ```typescript
 function getDisplayName<T extends { name: string }>(entity: T): string {
-  return entity.name
+  return entity.name;
 }
 
-getDisplayName(user)          // OK
-getDisplayName(organization)  // OK
-getDisplayName(team)          // OK — any object with .name works
+getDisplayName(user); // OK
+getDisplayName(organization); // OK
+getDisplayName(team); // OK — any object with .name works
 ```
 
 **Note:** This follows the Interface Segregation Principle — depend on the smallest interface that satisfies your needs.

@@ -12,11 +12,16 @@ TypeScript's runtime-emitting constructs — `enum`, `namespace`/`module`, param
 **Incorrect (enum + namespace — non-erasable, fails type-stripping):**
 
 ```typescript
-export enum LogLevel { Debug, Info, Warn, Error }
+export enum LogLevel {
+  Debug,
+  Info,
+  Warn,
+  Error,
+}
 
 export namespace Logger {
   export function format(level: LogLevel): string {
-    return LogLevel[level]
+    return LogLevel[level];
   }
 }
 ```
@@ -25,12 +30,15 @@ export namespace Logger {
 
 ```typescript
 export const LogLevel = {
-  Debug: 0, Info: 1, Warn: 2, Error: 3,
-} as const
-export type LogLevel = (typeof LogLevel)[keyof typeof LogLevel]
+  Debug: 0,
+  Info: 1,
+  Warn: 2,
+  Error: 3,
+} as const;
+export type LogLevel = (typeof LogLevel)[keyof typeof LogLevel];
 
 export function format(level: LogLevel): string {
-  return Object.keys(LogLevel)[level]
+  return Object.keys(LogLevel)[level];
 }
 ```
 

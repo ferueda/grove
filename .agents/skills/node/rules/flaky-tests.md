@@ -50,16 +50,20 @@ done
 ### 4. Add Diagnostic Logging to Test Hooks
 
 ```typescript
-import { describe, it, before, after, beforeEach, afterEach } from 'node:test';
+import { describe, it, before, after, beforeEach, afterEach } from "node:test";
 
-describe('MyTests', () => {
-  before(() => console.log('[BEFORE] MyTests starting'));
-  after(() => console.log('[AFTER] MyTests complete'));
+describe("MyTests", () => {
+  before(() => console.log("[BEFORE] MyTests starting"));
+  after(() => console.log("[AFTER] MyTests complete"));
   beforeEach((t) => console.log(`[BEFORE EACH] Starting: ${t.name}`));
   afterEach((t) => console.log(`[AFTER EACH] Finished: ${t.name}`));
 
-  it('test 1', () => { /* ... */ });
-  it('test 2', () => { /* ... */ });
+  it("test 1", () => {
+    /* ... */
+  });
+  it("test 2", () => {
+    /* ... */
+  });
 });
 ```
 
@@ -76,16 +80,16 @@ node --inspect --test src/hanging.test.ts
 ### 6. Use wtfnode to Find Open Handles
 
 ```typescript
-import { describe, it, after } from 'node:test';
-import wtfnode from 'wtfnode';
+import { describe, it, after } from "node:test";
+import wtfnode from "wtfnode";
 
-describe('Debug hanging tests', () => {
+describe("Debug hanging tests", () => {
   after(() => {
     // Dump what's keeping Node.js alive
     wtfnode.dump();
   });
 
-  it('might hang', async () => {
+  it("might hang", async () => {
     // Your test
   });
 });
@@ -99,16 +103,18 @@ describe('Debug hanging tests', () => {
 
 ```typescript
 // BAD - Race condition with setTimeout
-it('should process after delay', async (t) => {
+it("should process after delay", async (t) => {
   let processed = false;
-  processAsync(() => { processed = true; });
+  processAsync(() => {
+    processed = true;
+  });
 
-  await new Promise(resolve => setTimeout(resolve, 100));
+  await new Promise((resolve) => setTimeout(resolve, 100));
   t.assert.equal(processed, true); // May fail if processing takes > 100ms
 });
 
 // GOOD - Wait for the actual condition
-it('should process after delay', async (t) => {
+it("should process after delay", async (t) => {
   const result = await processAsync();
   t.assert.equal(result.processed, true);
 });
@@ -120,25 +126,25 @@ it('should process after delay', async (t) => {
 
 ```typescript
 // BAD - Depends on current time
-it('should format today', (t) => {
+it("should format today", (t) => {
   const result = formatDate(new Date());
-  t.assert.equal(result, '2024-01-15'); // Fails tomorrow
+  t.assert.equal(result, "2024-01-15"); // Fails tomorrow
 });
 
 // GOOD - Use fixed dates or mock time
-it('should format date', (t) => {
-  const fixedDate = new Date('2024-01-15T12:00:00Z');
+it("should format date", (t) => {
+  const fixedDate = new Date("2024-01-15T12:00:00Z");
   const result = formatDate(fixedDate);
-  t.assert.equal(result, '2024-01-15');
+  t.assert.equal(result, "2024-01-15");
 });
 
 // GOOD - Mock Date with node:test
-it('should format today', (t) => {
-  t.mock.timers.enable({ apis: ['Date'] });
-  t.mock.timers.setTime(new Date('2024-01-15T12:00:00Z').getTime());
+it("should format today", (t) => {
+  t.mock.timers.enable({ apis: ["Date"] });
+  t.mock.timers.setTime(new Date("2024-01-15T12:00:00Z").getTime());
 
   const result = formatDate(new Date());
-  t.assert.equal(result, '2024-01-15');
+  t.assert.equal(result, "2024-01-15");
 });
 ```
 
@@ -148,13 +154,13 @@ it('should format today', (t) => {
 
 ```typescript
 // BAD - Hardcoded port
-it('should start server', async (t) => {
+it("should start server", async (t) => {
   const server = await startServer({ port: 3000 }); // Conflicts with other tests
   // ...
 });
 
 // GOOD - Use dynamic port (port 0)
-it('should start server', async (t) => {
+it("should start server", async (t) => {
   const server = await startServer({ port: 0 });
   const address = server.address();
   const port = address.port; // OS assigns available port
@@ -170,30 +176,30 @@ it('should start server', async (t) => {
 // BAD - Module-level state persists between tests
 let cache = new Map();
 
-it('test 1', (t) => {
-  cache.set('key', 'value1');
-  t.assert.equal(cache.get('key'), 'value1');
+it("test 1", (t) => {
+  cache.set("key", "value1");
+  t.assert.equal(cache.get("key"), "value1");
 });
 
-it('test 2', (t) => {
-  t.assert.equal(cache.get('key'), undefined); // FAILS - still has 'value1'
+it("test 2", (t) => {
+  t.assert.equal(cache.get("key"), undefined); // FAILS - still has 'value1'
 });
 
 // GOOD - Reset state in beforeEach or use test-scoped state
-describe('cache tests', () => {
+describe("cache tests", () => {
   let cache;
 
   beforeEach(() => {
     cache = new Map();
   });
 
-  it('test 1', (t) => {
-    cache.set('key', 'value1');
-    t.assert.equal(cache.get('key'), 'value1');
+  it("test 1", (t) => {
+    cache.set("key", "value1");
+    t.assert.equal(cache.get("key"), "value1");
   });
 
-  it('test 2', (t) => {
-    t.assert.equal(cache.get('key'), undefined); // PASSES
+  it("test 2", (t) => {
+    t.assert.equal(cache.get("key"), undefined); // PASSES
   });
 });
 ```
@@ -204,21 +210,21 @@ describe('cache tests', () => {
 
 ```typescript
 // BAD - Test 2 depends on side effect from Test 1
-it('test 1: create user', async (t) => {
-  await db.insert({ id: 1, name: 'John' });
+it("test 1: create user", async (t) => {
+  await db.insert({ id: 1, name: "John" });
   t.assert.ok(true);
 });
 
-it('test 2: find user', async (t) => {
+it("test 2: find user", async (t) => {
   const user = await db.findById(1); // Fails if test 1 didn't run first
-  t.assert.equal(user.name, 'John');
+  t.assert.equal(user.name, "John");
 });
 
 // GOOD - Each test sets up its own data
-it('test 2: find user', async (t) => {
-  await db.insert({ id: 1, name: 'John' }); // Setup within test
+it("test 2: find user", async (t) => {
+  await db.insert({ id: 1, name: "John" }); // Setup within test
   const user = await db.findById(1);
-  t.assert.equal(user.name, 'John');
+  t.assert.equal(user.name, "John");
 });
 ```
 
@@ -228,13 +234,13 @@ it('test 2: find user', async (t) => {
 
 ```typescript
 // BAD - Fire-and-forget async operation
-it('should send notification', async (t) => {
+it("should send notification", async (t) => {
   sendNotification(user); // Not awaited - may reject after test ends
   t.assert.ok(true);
 });
 
 // GOOD - Await all async operations
-it('should send notification', async (t) => {
+it("should send notification", async (t) => {
   await sendNotification(user);
   t.assert.ok(true);
 });
@@ -246,16 +252,16 @@ it('should send notification', async (t) => {
 
 ```typescript
 // BAD - Resources not cleaned up
-it('should read file', async (t) => {
-  const handle = await fs.open('test.txt');
+it("should read file", async (t) => {
+  const handle = await fs.open("test.txt");
   const content = await handle.read();
   t.assert.ok(content);
   // handle never closed!
 });
 
 // GOOD - Always clean up resources
-it('should read file', async (t) => {
-  const handle = await fs.open('test.txt');
+it("should read file", async (t) => {
+  const handle = await fs.open("test.txt");
   t.after(() => handle.close()); // Cleanup registered
 
   const content = await handle.read();
@@ -289,7 +295,7 @@ for i in {1..50}; do node --test src/flaky.test.ts || echo "Failed on run $i"; d
 
 ```typescript
 // Temporarily add retry to identify flaky test
-it('potentially flaky test', { retry: 3 }, async (t) => {
+it("potentially flaky test", { retry: 3 }, async (t) => {
   // If this needs retries to pass, it's flaky
 });
 ```
@@ -297,12 +303,12 @@ it('potentially flaky test', { retry: 3 }, async (t) => {
 ### 4. Add Diagnostic Logging
 
 ```typescript
-it('flaky test', async (t) => {
-  console.log('Test started at:', Date.now());
-  console.log('Environment:', process.env.NODE_ENV);
+it("flaky test", async (t) => {
+  console.log("Test started at:", Date.now());
+  console.log("Environment:", process.env.NODE_ENV);
 
   const result = await operation();
-  console.log('Result:', JSON.stringify(result));
+  console.log("Result:", JSON.stringify(result));
 
   t.assert.ok(result);
 });
@@ -311,18 +317,18 @@ it('flaky test', async (t) => {
 ### 5. Check for Async Leaks
 
 ```typescript
-import { describe, it, after } from 'node:test';
+import { describe, it, after } from "node:test";
 
-describe('async leak detection', () => {
+describe("async leak detection", () => {
   const activeHandles = new Set();
 
   after(() => {
     if (activeHandles.size > 0) {
-      console.error('Leaked handles:', [...activeHandles]);
+      console.error("Leaked handles:", [...activeHandles]);
     }
   });
 
-  it('should not leak', async (t) => {
+  it("should not leak", async (t) => {
     const timer = setTimeout(() => {}, 10000);
     activeHandles.add(timer);
 
@@ -349,15 +355,15 @@ const id = `test-user-${t.name}`;
 ### 2. Mock External Services
 
 ```typescript
-it('should fetch user', async (t) => {
+it("should fetch user", async (t) => {
   // Mock fetch to avoid network flakiness
-  t.mock.method(globalThis, 'fetch', async () => ({
+  t.mock.method(globalThis, "fetch", async () => ({
     ok: true,
-    json: async () => ({ id: '1', name: 'John' }),
+    json: async () => ({ id: "1", name: "John" }),
   }));
 
-  const user = await fetchUser('1');
-  t.assert.equal(user.name, 'John');
+  const user = await fetchUser("1");
+  t.assert.equal(user.name, "John");
 });
 ```
 
@@ -365,7 +371,7 @@ it('should fetch user', async (t) => {
 
 ```typescript
 // BAD - Arbitrary timeout
-await new Promise(r => setTimeout(r, 1000));
+await new Promise((r) => setTimeout(r, 1000));
 
 // GOOD - Wait for specific condition
 await waitFor(() => element.isVisible());
@@ -375,26 +381,26 @@ async function waitFor(condition, timeout = 5000) {
   const start = Date.now();
   while (Date.now() - start < timeout) {
     if (await condition()) return;
-    await new Promise(r => setTimeout(r, 50));
+    await new Promise((r) => setTimeout(r, 50));
   }
-  throw new Error('Condition not met within timeout');
+  throw new Error("Condition not met within timeout");
 }
 ```
 
 ### 4. Ensure Test Isolation with Transactions
 
 ```typescript
-describe('database tests', () => {
+describe("database tests", () => {
   beforeEach(async () => {
-    await db.query('BEGIN');
+    await db.query("BEGIN");
   });
 
   afterEach(async () => {
-    await db.query('ROLLBACK');
+    await db.query("ROLLBACK");
   });
 
-  it('should insert record', async (t) => {
-    await db.insert({ name: 'test' });
+  it("should insert record", async (t) => {
+    await db.insert({ name: "test" });
     const records = await db.findAll();
     t.assert.equal(records.length, 1);
   });
@@ -408,7 +414,7 @@ describe('database tests', () => {
 CI environments often have less CPU/memory. Add appropriate timeouts:
 
 ```typescript
-it('heavy computation', { timeout: 30000 }, async (t) => {
+it("heavy computation", { timeout: 30000 }, async (t) => {
   // Longer timeout for CI
   const result = await heavyOperation();
   t.assert.ok(result);
@@ -430,8 +436,8 @@ Mock external APIs in tests to avoid network-related flakiness:
 
 ```typescript
 // Always mock external HTTP calls in unit tests
-t.mock.method(globalThis, 'fetch', async (url) => {
-  if (url.includes('api.external.com')) {
+t.mock.method(globalThis, "fetch", async (url) => {
+  if (url.includes("api.external.com")) {
     return { ok: true, json: async () => mockData };
   }
   throw new Error(`Unmocked URL: ${url}`);

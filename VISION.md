@@ -35,12 +35,15 @@ grove helps by exposing a programmatically controllable worktree allocator.
 ## Problems We Solve
 
 ### Checkout Contention
+
 When a CI job or bot needs to operate on a repository without disrupting a user's current branch or another concurrent job, standard checkouts cause conflicts. `grove` manages a structured pool of isolated worktrees so each job gets a clean, detached-HEAD checkout.
 
 ### Process Safety
+
 Handing out a worktree that is currently being used by another process leads to corruption and failures. `grove` implements a combination of PID owner reservations and filesystem-level `cwd` scanning to prevent checking out worktrees that are in use.
 
 ### Concurrency and State
+
 Managing the pool state concurrently requires strict synchronization. `grove` uses robust, cross-platform file locking (`proper-lockfile`) to ensure `grove-state.json` mutations are entirely serialized.
 
 ## Architecture and Scope
@@ -65,6 +68,7 @@ The core architecture wraps Git operations, Process detection, and State locking
 ## Data And Integration Principles
 
 `grove` state must always match disk reality.
+
 - `grove-state.json` acts as the single source of truth for the pool.
 - Operations that mutate state must acquire an exclusive file lock (`grove-state.lock`).
 - `healState()` runs on read to silently purge stale entries (e.g. tracking a directory that was deleted manually).
@@ -75,11 +79,13 @@ Before making logical changes, refer to the `grove-typescript-port.md` plan.
 The primary directive is **Faithful port first**: The original Go behavior is the specification.
 
 Prefer changes that:
+
 - map cleanly to the established pool semantics;
 - use the exact error shapes defined in `src/errors.ts`;
 - rely on `test-first` porting directly from the Go test cases.
 
 Avoid changes that:
+
 - introduce speculative features before parity is achieved;
 - mock `git` in pool tests (use real git via the provided test helpers);
 - add complex UI or terminal manipulation code inside the SDK boundaries.

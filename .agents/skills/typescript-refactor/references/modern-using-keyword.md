@@ -13,12 +13,12 @@ The `using` keyword (TS 5.2+, Stage 3 Explicit Resource Management) automaticall
 
 ```typescript
 function processFile(path: string) {
-  const handle = openFile(path)
-  const content = handle.read()
-  if (!content) return null // Leak: handle.close() is never called
-  const result = parseContent(content)
-  handle.close()
-  return result
+  const handle = openFile(path);
+  const content = handle.read();
+  if (!content) return null; // Leak: handle.close() is never called
+  const result = parseContent(content);
+  handle.close();
+  return result;
 }
 ```
 
@@ -26,19 +26,21 @@ function processFile(path: string) {
 
 ```typescript
 function processFile(path: string) {
-  using handle = openFile(path) // Disposed automatically at end of scope
-  const content = handle.read()
-  if (!content) return null // handle[Symbol.dispose]() still called
-  return parseContent(content)
+  using handle = openFile(path); // Disposed automatically at end of scope
+  const content = handle.read();
+  if (!content) return null; // handle[Symbol.dispose]() still called
+  return parseContent(content);
 }
 
 function openFile(path: string): Disposable & FileHandle {
-  const handle = fs.openSync(path, "r")
+  const handle = fs.openSync(path, "r");
   return {
     read: () => fs.readFileSync(handle, "utf-8"),
     close: () => fs.closeSync(handle),
-    [Symbol.dispose]() { fs.closeSync(handle) },
-  }
+    [Symbol.dispose]() {
+      fs.closeSync(handle);
+    },
+  };
 }
 ```
 

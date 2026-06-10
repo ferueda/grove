@@ -13,12 +13,12 @@ tags: modern, verbatim-module-syntax, imports, tree-shaking
 
 ```typescript
 // tsconfig.json: no verbatimModuleSyntax
-import { User, createUser } from "./user"
+import { User, createUser } from "./user";
 
 // User is only used as a type, but emitted as runtime import
 // Bundler must figure out it's unused — fragile
 function greet(user: User) {
-  return `Hello, ${user.name}`
+  return `Hello, ${user.name}`;
 }
 ```
 
@@ -26,12 +26,12 @@ function greet(user: User) {
 
 ```typescript
 // tsconfig.json: "verbatimModuleSyntax": true
-import type { User } from "./user"
-import { createUser } from "./user"
+import type { User } from "./user";
+import { createUser } from "./user";
 
 // Clear intent: User is compile-time only, createUser is runtime
 function greet(user: User) {
-  return `Hello, ${user.name}`
+  return `Hello, ${user.name}`;
 }
 ```
 

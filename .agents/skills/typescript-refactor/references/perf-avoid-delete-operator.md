@@ -13,8 +13,8 @@ The `delete` operator triggers V8 hidden class transitions, converting the objec
 
 ```typescript
 function sanitizeUser(user: User & { password?: string }) {
-  delete user.password // V8 transitions object to dictionary mode
-  return user
+  delete user.password; // V8 transitions object to dictionary mode
+  return user;
 }
 ```
 
@@ -22,8 +22,8 @@ function sanitizeUser(user: User & { password?: string }) {
 
 ```typescript
 function sanitizeUser(user: User & { password?: string }) {
-  const { password, ...sanitized } = user
-  return sanitized // New object, original unchanged, V8 stays optimized
+  const { password, ...sanitized } = user;
+  return sanitized; // New object, original unchanged, V8 stays optimized
 }
 ```
 
@@ -31,7 +31,7 @@ function sanitizeUser(user: User & { password?: string }) {
 
 ```typescript
 function sanitizeUser(user: User & { password?: string }) {
-  user.password = undefined // No hidden class change
-  return user
+  user.password = undefined; // No hidden class change
+  return user;
 }
 ```

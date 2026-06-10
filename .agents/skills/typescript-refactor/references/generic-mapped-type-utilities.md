@@ -13,21 +13,21 @@ When you find yourself writing multiple interfaces that are variations of the sa
 
 ```typescript
 interface User {
-  id: string
-  name: string
-  email: string
+  id: string;
+  name: string;
+  email: string;
 }
 
 interface UserUpdate {
-  id?: string
-  name?: string
-  email?: string
+  id?: string;
+  name?: string;
+  email?: string;
 }
 
 interface UserEvents {
-  onIdChange: (value: string) => void
-  onNameChange: (value: string) => void
-  onEmailChange: (value: string) => void
+  onIdChange: (value: string) => void;
+  onNameChange: (value: string) => void;
+  onEmailChange: (value: string) => void;
   // Adding a field to User? Must update here too
 }
 ```
@@ -36,18 +36,18 @@ interface UserEvents {
 
 ```typescript
 interface User {
-  id: string
-  name: string
-  email: string
+  id: string;
+  name: string;
+  email: string;
 }
 
-type UserUpdate = Partial<User>
+type UserUpdate = Partial<User>;
 
 type EventHandlers<T> = {
-  [K in keyof T as `on${Capitalize<string & K>}Change`]: (value: T[K]) => void
-}
+  [K in keyof T as `on${Capitalize<string & K>}Change`]: (value: T[K]) => void;
+};
 
-type UserEvents = EventHandlers<User>
+type UserEvents = EventHandlers<User>;
 // Automatically includes onIdChange, onNameChange, onEmailChange
 // Adding a field to User? UserEvents updates automatically
 ```

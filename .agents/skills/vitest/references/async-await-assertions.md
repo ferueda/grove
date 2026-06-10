@@ -12,32 +12,33 @@ Forgetting to await async assertions causes tests to pass before the assertion e
 **Incorrect (missing await):**
 
 ```typescript
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from "vitest";
 
-describe('UserService', () => {
-  it('should reject invalid users', () => {
-    const service = new UserService()
+describe("UserService", () => {
+  it("should reject invalid users", () => {
+    const service = new UserService();
     // Test passes immediately, assertion runs after test completes
-    expect(service.validate({ name: '' })).rejects.toThrow('Name required')
-  })
-})
+    expect(service.validate({ name: "" })).rejects.toThrow("Name required");
+  });
+});
 ```
 
 **Correct (awaited assertion):**
 
 ```typescript
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from "vitest";
 
-describe('UserService', () => {
-  it('should reject invalid users', async () => {
-    const service = new UserService()
+describe("UserService", () => {
+  it("should reject invalid users", async () => {
+    const service = new UserService();
     // Test waits for assertion to complete
-    await expect(service.validate({ name: '' })).rejects.toThrow('Name required')
-  })
-})
+    await expect(service.validate({ name: "" })).rejects.toThrow("Name required");
+  });
+});
 ```
 
 **Benefits:**
+
 - Tests fail when they should fail
 - No silent assertion failures
 - Accurate test results

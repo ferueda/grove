@@ -19,15 +19,15 @@ enum OrderStatus {
 }
 
 interface Order {
-  id: string
-  status: OrderStatus
-  trackingNumber?: string  // Optional for all statuses — easy to forget
-  deliveredAt?: Date
+  id: string;
+  status: OrderStatus;
+  trackingNumber?: string; // Optional for all statuses — easy to forget
+  deliveredAt?: Date;
 }
 
 function processOrder(order: Order) {
   if (order.status === OrderStatus.Shipped) {
-    console.log(order.trackingNumber) // Could be undefined
+    console.log(order.trackingNumber); // Could be undefined
   }
 }
 ```
@@ -36,33 +36,34 @@ function processOrder(order: Order) {
 
 ```typescript
 interface PendingOrder {
-  id: string
-  status: "pending"
+  id: string;
+  status: "pending";
 }
 
 interface ShippedOrder {
-  id: string
-  status: "shipped"
-  trackingNumber: string  // Required — compiler enforces it
+  id: string;
+  status: "shipped";
+  trackingNumber: string; // Required — compiler enforces it
 }
 
 interface DeliveredOrder {
-  id: string
-  status: "delivered"
-  trackingNumber: string
-  deliveredAt: Date
+  id: string;
+  status: "delivered";
+  trackingNumber: string;
+  deliveredAt: Date;
 }
 
-type Order = PendingOrder | ShippedOrder | DeliveredOrder
+type Order = PendingOrder | ShippedOrder | DeliveredOrder;
 
 function processOrder(order: Order) {
   if (order.status === "shipped") {
-    console.log(order.trackingNumber) // Guaranteed to exist
+    console.log(order.trackingNumber); // Guaranteed to exist
   }
 }
 ```
 
 **When NOT to use this pattern:**
+
 - Simple enumerations with no variant-specific data (e.g., log levels) — use a union literal type
 - When you need runtime iteration over all values — use an erasable `as const` object, not an `enum` (see [`perf-union-literals-over-enums`](perf-union-literals-over-enums.md))
 

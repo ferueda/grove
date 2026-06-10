@@ -72,6 +72,7 @@ describe('Form', () => {
 ```
 
 **Benefits:**
+
 - No act() warnings
 - State updates complete before assertions
 - Deterministic test behavior
