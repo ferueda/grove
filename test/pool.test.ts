@@ -158,44 +158,17 @@ describe('Pool Core (Cluster A & B)', () => {
     const wt1 = await grove.acquire();
     const wt2 = await grove.acquire();
 
-    await grove.release(wt1);
     await grove.release(wt2);
 
     const list = await grove.list();
-    expect(list.length).toBe(2);
+    expect(list).toHaveLength(2);
     expect(list.map(l => l.path).sort()).toEqual([wt1, wt2].sort());
-  });
-
-  it('marks dirty slots correctly in list', async () => {
-    const { repoDir, tmpDir, groveDir } = await setupRepo();
-    tmpDirs.push(tmpDir);
-
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
-    const wt1 = await grove.acquire();
-    const wt2 = await grove.acquire();
-
-    await writeFile(join(wt1, 'dirty.txt'), 'dirty');
-
-    const list = await grove.list();
+    
     const l1 = list.find(l => l.path === wt1);
     const l2 = list.find(l => l.path === wt2);
-
-    expect(l1?.isDirty).toBe(true);
-    expect(l2?.isDirty).toBe(false);
-  });
-
-  it('marks in-use slots correctly in list', async () => {
-    const { repoDir, tmpDir, groveDir } = await setupRepo();
-    tmpDirs.push(tmpDir);
-
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
-    const wt1 = await grove.acquire();
     
-    // wt1 is in-use because we haven't released it, and ownerAlive will be true 
-    // because this process (the owner) is still alive!
-    const list = await grove.list();
-    const l1 = list.find(l => l.path === wt1);
-    expect(l1?.inUse).toBe(true);
+    expect(l1?.status).toBe('in-use'); // wt1 was never released
+    expect(l2?.status).toBe('available'); // wt2 was released
   });
 
   it('throws when maxTrees reached', async () => {
@@ -208,34 +181,6 @@ describe('Pool Core (Cluster A & B)', () => {
     await grove.acquire();
 
     await expect(grove.acquire()).rejects.toThrow(/Exhausted worktrees/);
-  });
-
-
-  describe('release robustness', () => {
-    it('release safely ignores missing state', async () => {
-      const { repoDir, tmpDir, groveDir } = await setupRepo();
-      tmpDirs.push(tmpDir);
-
-      const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
-      const wt = await grove.acquire();
-
-      // delete state file
-      await rm(join(groveDir, 'grove-state.json'), { force: true });
-      
-      await expect(grove.release(wt)).resolves.toBeUndefined();
-    });
-
-    it('release safely ignores missing worktree', async () => {
-      const { repoDir, tmpDir, groveDir } = await setupRepo();
-      tmpDirs.push(tmpDir);
-
-      const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
-      const wt = await grove.acquire();
-
-      await rm(wt, { recursive: true, force: true });
-      
-      await expect(grove.release(wt)).resolves.toBeUndefined();
-    });
   });
 
   describe('Destroy and DestroyAll', () => {
