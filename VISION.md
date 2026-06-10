@@ -1,6 +1,6 @@
-# grove Vision
+# Grove Vision
 
-grove is a standalone TypeScript SDK for managing pools of reusable git worktrees.
+Grove is a standalone TypeScript SDK for managing pools of reusable git worktrees.
 
 It helps applications (like downstream orchestrators or CLI tools) maintain an isolated pool of clean worktrees for any repository. By acquiring an instantly available worktree and returning it to the pool after use, applications avoid the steep overhead of deep cloning or fetching repositories repeatedly, while preserving dependencies and build caches.
 
@@ -20,7 +20,7 @@ The SDK should not be:
 - an interactive shell spawner;
 - an opinionated workflow manager.
 
-## Who grove Helps
+## Who Grove Helps
 
 Primary users are downstream systems, bots, or CLIs built on top of Node.js.
 
@@ -30,21 +30,21 @@ They may have:
 - large repositories where cloning takes too much time;
 - complex caching needs (like `node_modules`) that benefit from reusing an existing directory.
 
-grove helps by exposing a programmatically controllable worktree allocator.
+Grove helps by exposing a programmatically controllable worktree allocator.
 
 ## Problems We Solve
 
 ### Checkout Contention
 
-When a CI job or bot needs to operate on a repository without disrupting a user's current branch or another concurrent job, standard checkouts cause conflicts. `grove` manages a structured pool of isolated worktrees so each job gets a clean, detached-HEAD checkout.
+When a CI job or bot needs to operate on a repository without disrupting a user's current branch or another concurrent job, standard checkouts cause conflicts. `Grove` manages a structured pool of isolated worktrees so each job gets a clean, detached-HEAD checkout.
 
 ### Process Safety
 
-Handing out a worktree that is currently being used by another process leads to corruption and failures. `grove` implements a combination of PID owner reservations and filesystem-level `cwd` scanning to prevent checking out worktrees that are in use.
+Handing out a worktree that is currently being used by another process leads to corruption and failures. `Grove` implements a combination of PID owner reservations and filesystem-level `cwd` scanning to prevent checking out worktrees that are in use.
 
 ### Concurrency and State
 
-Managing the pool state concurrently requires strict synchronization. `grove` uses robust, cross-platform file locking (`proper-lockfile`) to ensure `grove-state.json` mutations are entirely serialized.
+Managing the pool state concurrently requires strict synchronization. `Grove` uses robust, cross-platform file locking (`proper-lockfile`) to ensure `grove-state.json` mutations are entirely serialized.
 
 ## Architecture and Scope
 
@@ -67,7 +67,7 @@ The core architecture wraps Git operations, Process detection, and State locking
 
 ## Data And Integration Principles
 
-`grove` state must always match disk reality.
+`Grove` state must always match disk reality.
 
 - `grove-state.json` acts as the single source of truth for the pool.
 - Operations that mutate state must acquire an exclusive file lock (`grove-state.lock`).
