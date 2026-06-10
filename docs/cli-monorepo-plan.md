@@ -1,6 +1,6 @@
 # Grove CLI & Monorepo Transition Plan
 
-This document outlines the architecture and execution plan for separating the `grove` core SDK and the command-line interface (CLI) into separate packages within a monorepo workspace.
+This document outlines the architecture and execution plan for separating the `Grove` core SDK and the command-line interface (CLI) into separate packages within a monorepo workspace.
 
 ---
 
