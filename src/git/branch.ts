@@ -10,30 +10,39 @@ export async function findRepoRootFrom(cwd: string): Promise<string> {
 }
 
 export async function getDefaultBranch(repoRoot: string): Promise<string> {
+  let mainRoot = repoRoot;
   try {
-    const out = await runGit(repoRoot, ['symbolic-ref', 'refs/remotes/origin/HEAD']);
+    let commonDir = await runGit(repoRoot, ['rev-parse', '--git-common-dir']);
+    try {
+      commonDir = await runGit(repoRoot, ['rev-parse', '--path-format=absolute', '--git-common-dir']);
+    } catch {}
+    if (commonDir.endsWith('.git')) {
+      mainRoot = commonDir.slice(0, -4);
+    }
+  } catch {}
+
+  try {
+    const out = await runGit(mainRoot, ['symbolic-ref', 'refs/remotes/origin/HEAD']);
     return out.replace('refs/remotes/origin/', '');
   } catch {
     // ignore
   }
 
   try {
-    // Need to query the common dir's HEAD if we are in a worktree
-    const commonDir = await runGit(repoRoot, ['rev-parse', '--git-common-dir']);
-    const out = await runGit(repoRoot, ['--git-dir=' + commonDir, 'symbolic-ref', 'HEAD']);
+    const out = await runGit(mainRoot, ['symbolic-ref', 'HEAD']);
     return out.replace('refs/heads/', '');
   } catch {
     // ignore
   }
 
   try {
-    const out = await runGit(repoRoot, ['config', 'init.defaultBranch']);
+    const out = await runGit(mainRoot, ['config', 'init.defaultBranch']);
     if (out) return out;
   } catch {
     // ignore
   }
 
-  return 'main';
+  throw new Error('cannot determine default branch');
 }
 
 export async function hasRemote(repoRoot: string, name: string): Promise<boolean> {
@@ -63,11 +72,12 @@ export async function isAncestor(repoRoot: string, a: string, b: string): Promis
 }
 
 export async function branchRef(repoRoot: string, branch: string): Promise<string> {
+  const local = `refs/heads/${branch}`;
   const remote = `origin/${branch}`;
   
   let localExists = false;
   try {
-    await runGit(repoRoot, ['rev-parse', '--verify', branch]);
+    await runGit(repoRoot, ['rev-parse', '--verify', local]);
     localExists = true;
   } catch {}
 
