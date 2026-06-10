@@ -5,6 +5,7 @@ import { existsSync } from "node:fs";
 import { rm, writeFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { execa } from "execa";
+import { startedAt } from "../src/process/detect.js";
 
 describe("Pool Core (Cluster A & B)", () => {
   let tmpDirs: string[] = [];
@@ -24,7 +25,7 @@ describe("Pool Core (Cluster A & B)", () => {
     tmpDirs.push(tmpDir);
 
     const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
-    const wtPath = await grove.acquire();
+    const { path: wtPath } = await grove.acquire();
 
     expect(existsSync(wtPath)).toBe(true);
 
@@ -37,12 +38,12 @@ describe("Pool Core (Cluster A & B)", () => {
     tmpDirs.push(tmpDir);
 
     const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
-    const wt1 = await grove.acquire();
+    const { path: wt1 } = await grove.acquire();
 
     await writeFile(join(wt1, "dirty.txt"), "dirty contents");
     await grove.release(wt1);
 
-    const wt2 = await grove.acquire();
+    const { path: wt2 } = await grove.acquire();
 
     expect(wt2).toBe(wt1);
     expect(existsSync(join(wt2, "dirty.txt"))).toBe(false);
@@ -53,7 +54,7 @@ describe("Pool Core (Cluster A & B)", () => {
     tmpDirs.push(tmpDir);
 
     const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
-    const wt = await grove.acquire();
+    const { path: wt } = await grove.acquire();
 
     const originalCwd = process.cwd();
     process.chdir(tmpDir);
@@ -81,7 +82,7 @@ describe("Pool Core (Cluster A & B)", () => {
       },
     });
 
-    const wt = await grove.acquire();
+    const { path: wt } = await grove.acquire();
     expect(existsSync(join(wt, "sentinel.txt"))).toBe(true);
     const content = await readFile(join(wt, "sentinel.txt"), "utf8");
     expect(content.trim()).toBe("hello");
@@ -99,7 +100,7 @@ describe("Pool Core (Cluster A & B)", () => {
       },
     });
 
-    const wt = await grove.acquire();
+    const { path: wt } = await grove.acquire();
     expect(existsSync(wt)).toBe(true);
   });
 
@@ -146,15 +147,15 @@ describe("Pool Core (Cluster A & B)", () => {
     const p2 = grove.acquire();
 
     const [wt1, wt2] = await Promise.all([p1, p2]);
-    expect(wt1).not.toBe(wt2);
+    expect(wt1.path).not.toBe(wt2.path);
   });
   it("lists all pools correctly", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
     const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
-    const wt1 = await grove.acquire();
-    const wt2 = await grove.acquire();
+    const { path: wt1 } = await grove.acquire();
+    const { path: wt2 } = await grove.acquire();
 
     await grove.release(wt2);
 
@@ -181,6 +182,138 @@ describe("Pool Core (Cluster A & B)", () => {
     await expect(grove.acquire()).rejects.toThrow(/Exhausted worktrees/);
   });
 
+  it("recovers destroying worktree when owner is gone", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const { path: wtPath } = await grove.acquire();
+    await grove.release(wtPath);
+
+    const stateFile = join(grove.poolDir, "grove-state.json");
+    const data = await readFile(stateFile, "utf8");
+    const state = JSON.parse(data);
+    state.worktrees[0].destroying = true;
+    state.worktrees[0].owner_pid = 999999;
+    await writeFile(stateFile, JSON.stringify(state, null, 2));
+
+    const list = await grove.list();
+    expect(list).toHaveLength(1);
+    expect(list[0]?.path).toBe(wtPath);
+
+    const dataHealed = await readFile(stateFile, "utf8");
+    const stateHealed = JSON.parse(dataHealed);
+    expect(stateHealed.worktrees[0].destroying).toBeUndefined();
+    expect(stateHealed.worktrees[0].owner_pid).toBeUndefined();
+  });
+
+  it("recovers destroying worktree when owner identity does not match", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const { path: wtPath } = await grove.acquire();
+    await grove.release(wtPath);
+
+    const stateFile = join(grove.poolDir, "grove-state.json");
+    const data = await readFile(stateFile, "utf8");
+    const state = JSON.parse(data);
+    state.worktrees[0].destroying = true;
+    state.worktrees[0].owner_pid = process.pid;
+    state.worktrees[0].owner_started_at = 1;
+    await writeFile(stateFile, JSON.stringify(state, null, 2));
+
+    const list = await grove.list();
+    expect(list).toHaveLength(1);
+    expect(list[0]?.path).toBe(wtPath);
+
+    const dataHealed = await readFile(stateFile, "utf8");
+    const stateHealed = JSON.parse(dataHealed);
+    expect(stateHealed.worktrees[0].destroying).toBeUndefined();
+    expect(stateHealed.worktrees[0].owner_pid).toBeUndefined();
+    expect(stateHealed.worktrees[0].owner_started_at).toBeUndefined();
+  });
+
+  it("release rejects destroying worktree", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const { path: wtPath } = await grove.acquire();
+    await grove.release(wtPath);
+
+    const stateFile = join(grove.poolDir, "grove-state.json");
+    const data = await readFile(stateFile, "utf8");
+    const state = JSON.parse(data);
+    state.worktrees[0].destroying = true;
+    state.worktrees[0].owner_pid = process.pid;
+    const start = await startedAt(process.pid);
+    if (start) state.worktrees[0].owner_started_at = start;
+    await writeFile(stateFile, JSON.stringify(state, null, 2));
+
+    await expect(grove.release(wtPath)).rejects.toThrow(/is being destroyed/);
+  });
+
+  it("skips dirty worktree during acquire", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const { path: wt1 } = await grove.acquire();
+    await grove.release(wt1);
+
+    await writeFile(join(wt1, "dirty.txt"), "dirty stuff");
+
+    const { path: wt2 } = await grove.acquire();
+    expect(wt2).not.toBe(wt1);
+    expect(existsSync(wt2)).toBe(true);
+  });
+
+  it("skips in-use worktree during acquire", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const { path: wt1 } = await grove.acquire();
+    await grove.release(wt1);
+
+    const sub = execa("node", ["-e", "setInterval(() => {}, 1000)"], { cwd: wt1 });
+    sub.catch(() => {});
+    tmpDirs.push(wt1);
+
+    try {
+      await new Promise((r) => setTimeout(r, 200));
+
+      const { path: wt2 } = await grove.acquire();
+      expect(wt2).not.toBe(wt1);
+    } finally {
+      sub.kill();
+    }
+  });
+
+  it("acquire recovers and heals destroying worktree when owner is gone", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const { path: wtPath } = await grove.acquire();
+    await grove.release(wtPath);
+
+    const stateFile = join(grove.poolDir, "grove-state.json");
+    const data = await readFile(stateFile, "utf8");
+    const state = JSON.parse(data);
+    state.worktrees[0].destroying = true;
+    state.worktrees[0].owner_pid = 999999;
+    await writeFile(stateFile, JSON.stringify(state, null, 2));
+
+    const { path: wtAcquired } = await grove.acquire();
+    expect(wtAcquired).toBe(wtPath);
+
+    const stateAfter = JSON.parse(await readFile(stateFile, "utf8"));
+    expect(stateAfter.worktrees[0].destroying).toBeUndefined();
+    expect(stateAfter.worktrees[0].owner_pid).toBe(process.pid);
+  });
+
   describe("Destroy and DestroyAll", () => {
     it("runs preDestroy hook", async () => {
       const { repoDir, tmpDir, groveDir } = await setupRepo();
@@ -197,7 +330,7 @@ describe("Pool Core (Cluster A & B)", () => {
         },
       });
       process.env["GROVE_OUT_DIR"] = tmpDir;
-      const wt = await grove.acquire();
+      const { path: wt } = await grove.acquire();
       await grove.destroy(wt, { force: true });
 
       const content = await readFile(join(tmpDir, "sentinel.txt"), "utf8");
@@ -209,7 +342,7 @@ describe("Pool Core (Cluster A & B)", () => {
       const { repoDir, tmpDir, groveDir } = await setupRepo();
       tmpDirs.push(tmpDir);
       const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
-      const wt = await grove.acquire();
+      const { path: wt } = await grove.acquire();
 
       await expect(grove.destroy(wt)).rejects.toThrow(/in use by an agent/);
       expect(existsSync(wt)).toBe(true);
@@ -219,7 +352,7 @@ describe("Pool Core (Cluster A & B)", () => {
       const { repoDir, tmpDir, groveDir } = await setupRepo();
       tmpDirs.push(tmpDir);
       const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
-      const wt = await grove.acquire();
+      const { path: wt } = await grove.acquire();
 
       await grove.destroy(wt, { force: true });
       expect(existsSync(wt)).toBe(false);
@@ -229,7 +362,7 @@ describe("Pool Core (Cluster A & B)", () => {
       const { repoDir, tmpDir, groveDir } = await setupRepo();
       tmpDirs.push(tmpDir);
       const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
-      const wt = await grove.acquire();
+      const { path: wt } = await grove.acquire();
 
       await expect(grove.destroyAll()).rejects.toThrow(/in use by an agent/);
       expect(existsSync(wt)).toBe(true);
@@ -239,13 +372,153 @@ describe("Pool Core (Cluster A & B)", () => {
       const { repoDir, tmpDir, groveDir } = await setupRepo();
       tmpDirs.push(tmpDir);
       const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
-      const wt = await grove.acquire();
+      const { path: wt } = await grove.acquire();
 
       await grove.destroyAll({ force: true });
       expect(existsSync(wt)).toBe(false);
 
       const list = await grove.list();
       expect(list.length).toBe(0);
+    });
+
+    it("destroy does not allow hook acquire to reuse pending destroy worktree", async () => {
+      const { repoDir, tmpDir, groveDir } = await setupRepo();
+      tmpDirs.push(tmpDir);
+
+      const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+      const { path: wtPath } = await grove.acquire();
+
+      const sentinel = join(tmpDir, "acquired.txt");
+      const scriptPath = join(process.cwd(), "test", "helpers", "hook-probe.mjs");
+      const hookCmd = `node ${scriptPath} acquire-during-hook "${repoDir}" "${grove.poolDir}" "${sentinel}"`;
+
+      const groveWithHook = await createGrove({
+        repoRoot: repoDir,
+        groveRoot: groveDir,
+        hooks: {
+          preDestroy: [hookCmd],
+        },
+      });
+
+      await groveWithHook.destroy(wtPath, { force: true });
+
+      const hookAcquired = (await readFile(sentinel, "utf8")).trim();
+      expect(hookAcquired).not.toBe(wtPath);
+      expect(existsSync(hookAcquired)).toBe(true);
+    });
+
+    it("destroy preserves superseded reservation after hook", async () => {
+      const { repoDir, tmpDir, groveDir } = await setupRepo();
+      tmpDirs.push(tmpDir);
+
+      const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+      const { path: wtPath } = await grove.acquire();
+      await grove.release(wtPath);
+
+      const sentinel = join(tmpDir, "superseded-ran.txt");
+      const scriptPath = join(process.cwd(), "test", "helpers", "hook-probe.mjs");
+      const hookCmd = `node ${scriptPath} supersede-destroy "${grove.poolDir}" "${wtPath}" "${sentinel}"`;
+
+      const groveWithHook = await createGrove({
+        repoRoot: repoDir,
+        groveRoot: groveDir,
+        hooks: {
+          preDestroy: [hookCmd],
+        },
+      });
+
+      await groveWithHook.destroy(wtPath, { force: true });
+
+      const content = await readFile(sentinel, "utf8");
+      expect(content.trim()).toBe("superseded");
+      expect(existsSync(wtPath)).toBe(true);
+
+      const list = await groveWithHook.list();
+      expect(list).toHaveLength(1);
+      expect(list[0]?.path).toBe(wtPath);
+      expect(list[0]?.status).toBe("available");
+    });
+
+    it("destroyAll preserves worktree acquired by hook", async () => {
+      const { repoDir, tmpDir, groveDir } = await setupRepo();
+      tmpDirs.push(tmpDir);
+
+      const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+      await grove.acquire();
+      await grove.acquire();
+
+      const sentinel = join(tmpDir, "acquired.txt");
+      const scriptPath = join(process.cwd(), "test", "helpers", "hook-probe.mjs");
+      const hookCmd = `node ${scriptPath} acquire-during-hook "${repoDir}" "${grove.poolDir}" "${sentinel}"`;
+
+      const groveWithHook = await createGrove({
+        repoRoot: repoDir,
+        groveRoot: groveDir,
+        hooks: {
+          preDestroy: [hookCmd],
+        },
+      });
+
+      await groveWithHook.destroyAll({ force: true });
+
+      const hookAcquired = (await readFile(sentinel, "utf8")).trim();
+      expect(existsSync(hookAcquired)).toBe(true);
+
+      const list = await groveWithHook.list();
+      expect(list).toHaveLength(1);
+      expect(list[0]?.path).toBe(hookAcquired);
+    });
+
+    it("destroyAll preserves superseded reservation after hook", async () => {
+      const { repoDir, tmpDir, groveDir } = await setupRepo();
+      tmpDirs.push(tmpDir);
+
+      const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+      const { path: wtPath } = await grove.acquire();
+      await grove.release(wtPath);
+
+      const sentinel = join(tmpDir, "superseded-ran.txt");
+      const scriptPath = join(process.cwd(), "test", "helpers", "hook-probe.mjs");
+      const hookCmd = `node ${scriptPath} supersede-destroy "${grove.poolDir}" "${wtPath}" "${sentinel}"`;
+
+      const groveWithHook = await createGrove({
+        repoRoot: repoDir,
+        groveRoot: groveDir,
+        hooks: {
+          preDestroy: [hookCmd],
+        },
+      });
+
+      await groveWithHook.destroyAll({ force: true });
+
+      const content = await readFile(sentinel, "utf8");
+      expect(content.trim()).toBe("superseded");
+      expect(existsSync(wtPath)).toBe(true);
+
+      const list = await groveWithHook.list();
+      expect(list).toHaveLength(1);
+      expect(list[0]?.path).toBe(wtPath);
+    });
+
+    it("destroyAll non-force rejects live destroying worktree", async () => {
+      const { repoDir, tmpDir, groveDir } = await setupRepo();
+      tmpDirs.push(tmpDir);
+
+      const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+      const { path: wtPath } = await grove.acquire();
+      await grove.release(wtPath);
+
+      const stateFile = join(grove.poolDir, "grove-state.json");
+      const data = await readFile(stateFile, "utf8");
+      const state = JSON.parse(data);
+      state.worktrees[0].destroying = true;
+      state.worktrees[0].owner_pid = process.pid;
+      const start = await startedAt(process.pid);
+      if (start) state.worktrees[0].owner_started_at = start;
+      await writeFile(stateFile, JSON.stringify(state, null, 2));
+
+      await expect(grove.destroyAll()).rejects.toThrow(/is in use by an agent/);
+      expect(existsSync(wtPath)).toBe(true);
     });
   });
 });
