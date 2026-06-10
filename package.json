@@ -1,0 +1,42 @@
+{
+  "name": "grove",
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@11.5.3",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsgo -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "oxlint . --deny-warnings",
+    "format": "oxfmt --write .",
+    "check": "pnpm lint && pnpm build && pnpm test",
+    "prepublishOnly": "pnpm check"
+  },
+  "dependencies": {
+    "execa": "^9.6.0",
+    "proper-lockfile": "^4.0.0",
+    "zod": "^4.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@typescript/native-preview": "^7.0.0-dev",
+    "oxfmt": "^0.54.0",
+    "oxlint": "^1.69.0",
+    "vitest": "^4.1.0"
+  }
+}
