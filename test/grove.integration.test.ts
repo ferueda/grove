@@ -25,12 +25,12 @@ describe("Grove Vertical Smoke", () => {
     const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
 
     const wt1 = await grove.acquire();
-    expect(existsSync(wt1)).toBe(true);
+    expect(existsSync(wt1.path)).toBe(true);
 
-    await grove.release(wt1);
+    await grove.release(wt1.path);
 
     const wt2 = await grove.acquire();
-    expect(wt2).toBe(wt1);
+    expect(wt2.path).toBe(wt1.path);
   });
 
   it("surfaces INVALID_GROVE_STATE on invalid state file during acquire", async () => {
@@ -82,12 +82,12 @@ describe("Grove Vertical Smoke", () => {
     tmpDirs.push(tmpDir);
 
     const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
-    const wt = await grove.acquire();
+    const { path: wt } = await grove.acquire();
 
     await writeFile(join(wt, "dirty.txt"), "dirty content");
 
     await grove.release(wt);
-    const wt2 = await grove.acquire();
+    const { path: wt2 } = await grove.acquire();
     expect(wt2).toBe(wt);
     expect(existsSync(join(wt2, "dirty.txt"))).toBe(false);
   });
@@ -97,7 +97,7 @@ describe("Grove Vertical Smoke", () => {
     tmpDirs.push(tmpDir);
 
     const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
-    const wt = await grove.acquire();
+    const { path: wt } = await grove.acquire();
     await grove.release(wt);
 
     await rm(wt, { recursive: true, force: true });
