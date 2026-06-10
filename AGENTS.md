@@ -4,7 +4,7 @@ Felipe owns this. Work style: telegraph; noun-phrases ok; drop grammar; min toke
 
 ## Project Overview
 
-`grove` is a standalone TypeScript SDK for managing git worktree pools programmatically.
+`Grove` is a standalone TypeScript SDK for managing git worktree pools programmatically.
 
 **Core Mission:** Provide a robust and reliable git worktree pool implementation.
 
