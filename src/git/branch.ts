@@ -46,7 +46,9 @@ export async function getDefaultBranch(repoRoot: string): Promise<string> {
     // ignore
   }
 
-  throw new Error("cannot determine default branch: try running 'git fetch' or ensure you are on a branch");
+  throw new Error(
+    "cannot determine default branch: try running 'git fetch' or ensure you are on a branch",
+  );
 }
 
 export async function hasRemote(repoRoot: string, name: string): Promise<boolean> {
