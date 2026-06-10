@@ -1,10 +1,10 @@
-# grove
+# Grove
 
 > a pool of reusable git worktrees
 
-`grove` is a standalone TypeScript SDK that allows any application to manage a pool of Git worktrees programmatically.
+`Grove` is a standalone TypeScript SDK that allows any application to manage a pool of Git worktrees programmatically.
 
-Instead of re-cloning repositories or suffering through long `git fetch` operations for concurrent jobs, `grove` maintains a pool of fast, clean, and isolated worktrees. When your application or agent needs a clean workspace, it instantly acquires a detached-HEAD worktree from the pool. When the job is finished, the worktree is reset and released back to the pool—keeping dependencies, node_modules, and build caches intact for the next run.
+Instead of re-cloning repositories or suffering through long `git fetch` operations for concurrent jobs, `Grove` maintains a pool of fast, clean, and isolated worktrees. When your application or agent needs a clean workspace, it instantly acquires a detached-HEAD worktree from the pool. When the job is finished, the worktree is reset and released back to the pool—keeping dependencies, node_modules, and build caches intact for the next run.
 
 ### Features
 
@@ -24,7 +24,7 @@ pnpm add grove
 ```typescript
 import { createGrove } from "grove";
 
-// Initialize the grove pool manager for your repository
+// Initialize the Grove pool manager for your repository
 const grove = await createGrove({
   repoRoot: "/absolute/path/to/my-repo",
   maxTrees: 8,
