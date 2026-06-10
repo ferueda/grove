@@ -1181,9 +1181,9 @@ Cover:
 
 ### Step 8.4 — Publish checklist
 
-- [ ] `files` field in package.json (`dist`, README, LICENSE).
-- [ ] `prepublishOnly`: build + test.
-- [ ] Engine: `"node": ">=24"`.
+- [x] `files` field in package.json (`dist`, README, LICENSE).
+- [x] `prepublishOnly`: build + test.
+- [x] Engine: `"node": ">=24"`.
 
 **Phase 8 exit criteria:** README quick start works copy-paste; package builds clean tarball.
 
