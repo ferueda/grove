@@ -62,5 +62,4 @@ Felipe owns this. Work style: telegraph; noun-phrases ok; drop grammar; min toke
 
 ## Source of Truth Docs
 
-- Project Plan & Port Strategy: `grove-typescript-port.md`
 - Product Vision: `VISION.md`
