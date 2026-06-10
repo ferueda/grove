@@ -61,11 +61,3 @@ Validates the configuration with Zod and initializes a `Grove` pool manager inst
 - **`destroy(path, options)`**: Returns `Promise<void>`. Force or non-force removes the worktree slot from disk and pool state.
 - **`destroyAll(options)`**: Returns `Promise<void>`. Force or non-force removes all worktree slots from disk and pool state.
 
-## Parity with Go Treehouse
-
-`grove` is a faithful TypeScript port of the Go `treehouse` pool manager. 
-A complete mapping of Go test behaviors to TypeScript vitest assertions can be found in the [Parity Matrix](docs/parity-matrix.md).
-
-## Attribution
-
-This SDK is inspired by and ported from the Go pool allocator in [kunchenguid/treehouse](https://github.com/kunchenguid/treehouse).
