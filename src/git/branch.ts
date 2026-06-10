@@ -102,3 +102,4 @@ export async function branchRef(repoRoot: string, branch: string): Promise<strin
   
   return branch; // fallback
 }
+
