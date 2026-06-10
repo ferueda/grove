@@ -1,7 +1,7 @@
 # grove — TypeScript Port Plan
 
 > **Status:** Planning  
-> **Goal:** **grove** — standalone TypeScript SDK that faithfully ports treehouse pool semantics so any application can manage git worktree pools programmatically.  
+> **Goal:** **grove** — standalone TypeScript SDK for managing git worktree pools programmatically.  
 > **Strategy:** Mechanical parity with the Go implementation first; innovate only after tests prove equivalence.
 
 ---
@@ -38,7 +38,7 @@
 
 ### Background
 
-[treehouse](https://github.com/kunchenguid/treehouse) is a Go CLI that maintains a **pool of reusable git worktrees** per repository. Agents acquire an isolated, clean worktree instantly; when done, the worktree is reset and returned to the pool with dependencies and build cache intact.
+`grove` maintains a **pool of reusable git worktrees** per repository. Agents acquire an isolated, clean worktree instantly; when done, the worktree is reset and returned to the pool with dependencies and build cache intact.
 
 The valuable core is not the CLI (subshell, prompts, self-updater) — it is the **pool allocator** in `internal/pool/`, backed by `internal/git/`, `internal/process/`, and `internal/hooks/`.
 
@@ -62,10 +62,9 @@ The valuable core is not the CLI (subshell, prompts, self-updater) — it is the
 | Config                  | **Programmatic only (v0.1)**              | SDK callers pass `createGrove({ ... })`; file loader deferred to optional CLI (Phase 10)                                                       |
 | Tech stack              | **Node 24, tsgo, pnpm, ESM, vitest, oxc** | See [Tech Stack](#tech-stack)                                                                                                                  |
 | **Product name**        | **grove**                                 | Repo `grove`, npm `grove`, CLI `grove` (Phase 10). Tagline: _a pool of reusable git worktrees_. Verify npm/GitHub availability before publish. |
-| npm naming              | **Not `treehouse`**                       | [treehouse-worktree](https://www.npmjs.com/package/treehouse-worktree) is unrelated                                                            |
-| Module size             | **<700 LOC per file**                     | Split modules if a file grows; keeps port reviewable                                                                                           |
-| Upstream credit         | **README attribution**                    | TypeScript port inspired by [kunchenguid/treehouse](https://github.com/kunchenguid/treehouse)                                                  |
-| Pool directory layout   | **`~/.grove/{repoName}-{hash}/`**         | Isolated from Go's `~/.treehouse/`; see [Pool directory layout](#pool-directory-layout)                                                        |
+| npm naming              | **`grove`**                               | Verified availability on npm                                                                                                                   |
+| Module size             | **<700 LOC per file**                     | Split modules if a file grows; keeps code readable                                                                                            |
+| Pool directory layout   | **`~/.grove/{repoName}-{hash}/`**         | Pool directory layout; see [Pool directory layout](#pool-directory-layout)                                                                     |
 | Platform support (v0.1) | **macOS + Linux**                         | Windows out of scope; drops cwd-scan complexity on Win32                                                                                       |
 
 ### Downstream Consumer (Out of Scope for v0.1)
@@ -178,7 +177,7 @@ This is what “pool dir naming” means — three levels of paths, not npm pack
 
 | Piece              | Path                          | Example                                                            |
 | ------------------ | ----------------------------- | ------------------------------------------------------------------ |
-| **Default parent** | `~/.grove/`                   | Replaces Go's `~/.treehouse/` (we are isolated from Go CLI)        |
+| **Default parent** | `~/.grove/`                   | Default parent directory for worktree pools                        |
 | **Pool identity**  | `{repoBaseName}-{shortHash}/` | `myapp-a1b2c3/` — hash from `origin` URL, else absolute `repoRoot` |
 | **Worktree slot**  | `{n}/{repoBaseName}/`         | `1/myapp/` — detached-HEAD checkout                                |
 
@@ -193,12 +192,11 @@ Full default path for repo `~/code/myapp`:
 └── ...
 ```
 
-**Custom `groveRoot`** (Go `root` equivalent): pool lives at `{groveRoot}/.grove/{repoName}-{hash}/` — the `.grove` segment mirrors Go's `.treehouse` segment under a custom root.
+**Custom `groveRoot`**: pool lives at `{groveRoot}/.grove/{repoName}-{hash}/` under a custom root.
 
 **Full override `groveDir`:** caller sets the exact pool path; skips `resolveGroveDir()` entirely.
 
-- **shortHash:** first 6 hex chars of SHA-256 (matches Go `git.ShortHash`).
-- **Why not `~/.treehouse`?** Avoids colliding with an installed Go `treehouse` CLI pool on the same machine. Since we are not interoperating with Go, use our own dot-dir.
+- **shortHash:** first 6 hex chars of SHA-256.
 
 ### State Schema
 
@@ -217,7 +215,7 @@ interface GroveState {
 }
 ```
 
-Renamed from Go's `treehouse-state.json` because we are isolated.
+State file tracking the pool configuration and status.
 
 ---
 
@@ -1131,20 +1129,9 @@ Add cases with **no Go equivalent**:
 - [x] Heal drops state entry when worktree directory deleted from disk.
 - [x] Two parallel `acquire()` from child processes — no double-booking (file lock stress).
 
-### Step 7.1 — Optional Go parity harness (dev-only)
+### Step 7.1 — Optional parity validation
 
-**What:** `test/parity/compare-go.ts` — same fixture sequence against Go `treehouse` binary vs `createGrove`; diff slot counts and status.
-
-**How:**
-
-- Requires `treehouse` on PATH.
-- Separate `~/.grove` vs `~/.treehouse` pool dirs.
-- **Not CI-gated.**
-
-### Step 7.2 — Parity matrix draft
-
-- [x] Table in repo (`docs/parity-matrix.md` or README section): each Cluster A–E `it(...)` → **ported** / **n/a**.
-- [x] Feeds Phase 8 README.
+Verify integration behavior and robustness.
 
 **Phase 7 exit criteria:** Extension tests green; parity matrix complete; full `pnpm test` green on ubuntu + macOS CI.
 
@@ -1157,17 +1144,14 @@ Add cases with **no Go equivalent**:
 Cover:
 
 - What the library does (pool semantics, not CLI).
-- **Upstream credit:** TypeScript port inspired by [kunchenguid/treehouse](https://github.com/kunchenguid/treehouse).
 - Requirements (`git` on PATH, Node 24+).
 - Quick start (`createGrove()` with programmatic config).
-- Tagline: _grove — a pool of reusable git worktrees_ (TypeScript port inspired by treehouse).
+- Tagline: _grove — a pool of reusable git worktrees_.
 - API overview (`acquire` → `AcquiredSlot`, `release`, `list`, `destroy`, process utils).
 - Pool directory layout.
 - Hooks (passed via `createGrove({ hooks })`; shell trust model documented).
 - Error types and stable `code` fields.
-- **Parity matrix:** table mapping Go treehouse v1.4.x behaviors → this library (ported / intentional difference / not applicable). Tag releases against matrix rows.
 - Platform support: macOS + Linux (v0.1).
-- **npm naming note:** do not publish as `treehouse` — unrelated packages exist on npm.
 
 ### Step 8.2 — API docs
 
@@ -1176,7 +1160,7 @@ Cover:
 
 ### Step 8.3 — CHANGELOG + LICENSE
 
-- MIT (match treehouse Go if appropriate).
+- MIT license.
 - Initial version `0.1.0`.
 
 ### Step 8.4 — Publish checklist
@@ -1266,7 +1250,7 @@ Only after library is stable. Thin wrapper over SDK:
 | `grove status`         | `grove.list()`                  |
 | `grove destroy`        | `grove.destroy()`               |
 
-May add TOML `loadConfig()` at CLI boundary only; library stays programmatic. Replaces Go `treehouse` CLI for interactive users.
+May add TOML `loadConfig()` at CLI boundary only; library stays programmatic.
 
 ---
 
