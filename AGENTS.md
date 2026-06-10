@@ -9,11 +9,13 @@ Felipe owns this. Work style: telegraph; noun-phrases ok; drop grammar; min toke
 **Core Mission:** Provide a robust and reliable git worktree pool implementation.
 
 **What it does:**
+
 - **Acquire:** Instantly allocate clean, detached-HEAD git worktrees.
 - **Release:** Reset and return worktrees to the pool without destroying dependencies.
 - **Protect:** Serialize state updates with file locks and prevent allocating in-use directories by scanning active process PIDs and CWDs.
 
 **Architecture:**
+
 - Node.js (`>=24`), ESM-only (`type: "module"`).
 - `zod` for boundary validation.
 - `execa` for Git subprocesses.
@@ -29,6 +31,7 @@ Felipe owns this. Work style: telegraph; noun-phrases ok; drop grammar; min toke
 - **Errors:** Throw explicit subclassed errors from `src/errors.ts` using stable `code` properties (e.g. `GROVE_EXHAUSTED`).
 
 ### Naming Conventions
+
 - Variables, functions, methods: `camelCase`
 - Types, Interfaces, Classes: `PascalCase`
 - Files/Folders: `kebab-case`

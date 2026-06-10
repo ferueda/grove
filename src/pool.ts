@@ -1,14 +1,25 @@
-import { join, basename, dirname, isAbsolute, relative } from 'node:path';
-import { mkdir, rm } from 'node:fs/promises';
-import { getDefaultBranch, addWorktree, resetWorktree, removeWorktree, isDirty } from './git/index.js';
-import { withStateLock } from './lock.js';
-import { readState, writeState, healState } from './state.js';
-import { reserveOwner, ownerAlive, isWorktreeInUse, findInWorktree } from './process/detect.js';
-import { runHooks } from './hooks.js';
-import type { GroveConfig } from './index.js';
-import { GroveExhaustedError, WorktreeDestroyingError, WorktreeInUseError, WorktreeNotManagedError } from './errors.js';
+import { join, basename, dirname, isAbsolute, relative } from "node:path";
+import { mkdir, rm } from "node:fs/promises";
+import {
+  getDefaultBranch,
+  addWorktree,
+  resetWorktree,
+  removeWorktree,
+  isDirty,
+} from "./git/index.js";
+import { withStateLock } from "./lock.js";
+import { readState, writeState, healState } from "./state.js";
+import { reserveOwner, ownerAlive, isWorktreeInUse, findInWorktree } from "./process/detect.js";
+import { runHooks } from "./hooks.js";
+import type { GroveConfig } from "./index.js";
+import {
+  GroveExhaustedError,
+  WorktreeDestroyingError,
+  WorktreeInUseError,
+  WorktreeNotManagedError,
+} from "./errors.js";
 
-export type WorktreeStatusInfo = 'available' | 'dirty' | 'in-use' | 'you\'re here';
+export type WorktreeStatusInfo = "available" | "dirty" | "in-use" | "you're here";
 
 export interface WorktreeStatus {
   name: string;
@@ -18,20 +29,23 @@ export interface WorktreeStatus {
 }
 
 export class Grove {
-  constructor(public readonly poolDir: string, private config: GroveConfig) {}
+  constructor(
+    public readonly poolDir: string,
+    private config: GroveConfig,
+  ) {}
 
   async acquire(): Promise<string> {
     const branch = await getDefaultBranch(this.config.repoRoot);
-    
-    let acquiredPath = '';
+
+    let acquiredPath = "";
     let runPostCreate = false;
 
     await withStateLock(this.poolDir, async () => {
       const state = await readState(this.poolDir);
-      
+
       for (const wt of state.worktrees) {
         if (wt.destroying) continue;
-        const inUse = await ownerAlive(wt) || await isWorktreeInUse(wt.path);
+        const inUse = (await ownerAlive(wt)) || (await isWorktreeInUse(wt.path));
         if (inUse) continue;
 
         const dirty = await isDirty(wt.path);
@@ -68,7 +82,7 @@ export class Grove {
         created_at: new Date().toISOString(),
       };
       await reserveOwner(entry);
-      
+
       state.worktrees.push(entry);
       await writeState(this.poolDir, state);
 
@@ -78,7 +92,10 @@ export class Grove {
 
     if (runPostCreate && this.config.hooks?.postCreate) {
       try {
-        await runHooks(this.config.hooks.postCreate, acquiredPath, { stdout: process.stdout, stderr: process.stderr });
+        await runHooks(this.config.hooks.postCreate, acquiredPath, {
+          stdout: process.stdout,
+          stderr: process.stderr,
+        });
       } catch {
         // hook failure does not fail acquire
       }
@@ -89,7 +106,7 @@ export class Grove {
 
   async release(worktreePath: string): Promise<void> {
     const branch = await getDefaultBranch(this.config.repoRoot);
-    
+
     await withStateLock(this.poolDir, async () => {
       const state = await readState(this.poolDir);
       for (const wt of state.worktrees) {
@@ -140,28 +157,28 @@ export class Grove {
 
       for (const wt of state.worktrees) {
         if (wt.destroying) continue;
-        
-        let status: WorktreeStatusInfo = 'available';
+
+        let status: WorktreeStatusInfo = "available";
         const processes = await findInWorktree(wt.path);
 
         const alive = await ownerAlive(wt);
 
         if (alive) {
-          status = 'in-use';
+          status = "in-use";
         } else if (processes.length > 0) {
-          status = 'in-use';
+          status = "in-use";
           if (cwdInWorktree(cwd, wt.path)) {
-            status = 'you\'re here';
+            status = "you're here";
           }
         } else if (await isDirty(wt.path)) {
-          status = 'dirty';
+          status = "dirty";
         }
 
         result.push({
           name: wt.name,
           path: wt.path,
           status,
-          processes
+          processes,
         });
       }
     });
@@ -174,17 +191,19 @@ export class Grove {
 
     await withStateLock(this.poolDir, async () => {
       const state = await readState(this.poolDir);
-      
-      const idx = state.worktrees.findIndex(wt => wt.path === worktreePath);
+
+      const idx = state.worktrees.findIndex((wt) => wt.path === worktreePath);
       const targetWt = state.worktrees[idx];
       if (!targetWt) {
         throw new WorktreeNotManagedError(`worktree ${worktreePath} is not managed by treehouse`);
       }
 
       if (!options?.force) {
-        const inUse = await ownerAlive(targetWt) || await isWorktreeInUse(targetWt.path);
+        const inUse = (await ownerAlive(targetWt)) || (await isWorktreeInUse(targetWt.path));
         if (inUse) {
-          throw new WorktreeInUseError(`worktree ${worktreePath} is in use by an agent. Use --force to override`);
+          throw new WorktreeInUseError(
+            `worktree ${worktreePath} is in use by an agent. Use --force to override`,
+          );
         }
       }
 
@@ -196,13 +215,16 @@ export class Grove {
 
     if (this.config.hooks?.preDestroy) {
       try {
-        await runHooks(this.config.hooks.preDestroy, worktreePath, { stdout: process.stdout, stderr: process.stderr });
+        await runHooks(this.config.hooks.preDestroy, worktreePath, {
+          stdout: process.stdout,
+          stderr: process.stderr,
+        });
       } catch {}
     }
 
     await withStateLock(this.poolDir, async () => {
       const state = await readState(this.poolDir);
-      const idx = state.worktrees.findIndex(wt => wt.path === worktreePath);
+      const idx = state.worktrees.findIndex((wt) => wt.path === worktreePath);
       if (idx === -1) return;
 
       if (!sameDestroyReservation(state.worktrees[idx], reserved)) {
@@ -212,7 +234,7 @@ export class Grove {
       try {
         await removeWorktree(this.config.repoRoot, worktreePath);
       } catch {}
-      
+
       try {
         await rm(dirname(worktreePath), { recursive: true, force: true });
       } catch {}
@@ -224,15 +246,17 @@ export class Grove {
 
   async destroyAll(options?: { force?: boolean }): Promise<void> {
     let worktrees: any[] = [];
-    
+
     await withStateLock(this.poolDir, async () => {
       const state = await readState(this.poolDir);
 
       if (!options?.force) {
         for (const wt of state.worktrees) {
-          const inUse = await ownerAlive(wt) || await isWorktreeInUse(wt.path);
+          const inUse = (await ownerAlive(wt)) || (await isWorktreeInUse(wt.path));
           if (inUse) {
-            throw new WorktreeInUseError(`worktree ${wt.path} is in use by an agent. Use --force to override`);
+            throw new WorktreeInUseError(
+              `worktree ${wt.path} is in use by an agent. Use --force to override`,
+            );
           }
         }
       }
@@ -241,15 +265,18 @@ export class Grove {
         wt.destroying = true;
         await reserveOwner(wt);
       }
-      
-      worktrees = state.worktrees.map(wt => ({ ...wt }));
+
+      worktrees = state.worktrees.map((wt) => ({ ...wt }));
       await writeState(this.poolDir, state);
     });
 
     for (const wt of worktrees) {
       if (this.config.hooks?.preDestroy) {
         try {
-          await runHooks(this.config.hooks.preDestroy, wt.path, { stdout: process.stdout, stderr: process.stderr });
+          await runHooks(this.config.hooks.preDestroy, wt.path, {
+            stdout: process.stdout,
+            stderr: process.stderr,
+          });
         } catch {}
       }
     }
@@ -259,12 +286,12 @@ export class Grove {
       const remove = new Set<string>();
 
       for (const wt of worktrees) {
-        const idx = state.worktrees.findIndex(s => s.path === wt.path);
+        const idx = state.worktrees.findIndex((s) => s.path === wt.path);
         if (idx === -1 || !sameDestroyReservation(state.worktrees[idx], wt)) {
           continue;
         }
         remove.add(wt.path);
-        
+
         try {
           await removeWorktree(this.config.repoRoot, wt.path);
         } catch {}
@@ -273,7 +300,7 @@ export class Grove {
         } catch {}
       }
 
-      state.worktrees = state.worktrees.filter(wt => !remove.has(wt.path));
+      state.worktrees = state.worktrees.filter((wt) => !remove.has(wt.path));
       await writeState(this.poolDir, state);
     });
   }
@@ -290,13 +317,15 @@ export class Grove {
 }
 
 function sameDestroyReservation(current: any, reserved: any): boolean {
-  return current.path === reserved.path &&
+  return (
+    current.path === reserved.path &&
     current.destroying &&
     current.owner_pid === reserved.owner_pid &&
-    current.owner_started_at === reserved.owner_started_at;
+    current.owner_started_at === reserved.owner_started_at
+  );
 }
 
 function cwdInWorktree(cwd: string, worktreePath: string): boolean {
   const rel = relative(worktreePath, cwd);
-  return !rel.startsWith('..') && !isAbsolute(rel);
+  return !rel.startsWith("..") && !isAbsolute(rel);
 }

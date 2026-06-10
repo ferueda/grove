@@ -50,23 +50,23 @@ The valuable core is not the CLI (subshell, prompts, self-updater) — it is the
 
 ### Decisions (Locked)
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Repository | **New standalone repo** | Clean package boundary; publishable npm module |
-| Go interop | **Isolated** | Replacing Go CLI long-term; no shared state files |
-| Port strategy | **Faithful first** | Go behavior is the spec; parallel testing validates correctness |
-| Dev methodology | **Test-first port** | Port Go tests per layer, then implement until green — not strict TDD, not implement-first |
-| Consumer model | **Generic library** | Expose tools; consumers decide terminate-on-release, fetch policy, etc. |
-| Process detection | **Owner-PID + cwd scan** | Matches Go; both are required for correct in-use semantics |
-| Termination | **Separate API** | `release()` does not kill processes; callers compose |
-| Config | **Programmatic only (v0.1)** | SDK callers pass `createGrove({ ... })`; file loader deferred to optional CLI (Phase 10) |
-| Tech stack | **Node 24, tsgo, pnpm, ESM, vitest, oxc** | See [Tech Stack](#tech-stack) |
-| **Product name** | **grove** | Repo `grove`, npm `grove`, CLI `grove` (Phase 10). Tagline: *a pool of reusable git worktrees*. Verify npm/GitHub availability before publish. |
-| npm naming | **Not `treehouse`** | [treehouse-worktree](https://www.npmjs.com/package/treehouse-worktree) is unrelated |
-| Module size | **<700 LOC per file** | Split modules if a file grows; keeps port reviewable |
-| Upstream credit | **README attribution** | TypeScript port inspired by [kunchenguid/treehouse](https://github.com/kunchenguid/treehouse) |
-| Pool directory layout | **`~/.grove/{repoName}-{hash}/`** | Isolated from Go's `~/.treehouse/`; see [Pool directory layout](#pool-directory-layout) |
-| Platform support (v0.1) | **macOS + Linux** | Windows out of scope; drops cwd-scan complexity on Win32 |
+| Decision                | Choice                                    | Rationale                                                                                                                                      |
+| ----------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repository              | **New standalone repo**                   | Clean package boundary; publishable npm module                                                                                                 |
+| Go interop              | **Isolated**                              | Replacing Go CLI long-term; no shared state files                                                                                              |
+| Port strategy           | **Faithful first**                        | Go behavior is the spec; parallel testing validates correctness                                                                                |
+| Dev methodology         | **Test-first port**                       | Port Go tests per layer, then implement until green — not strict TDD, not implement-first                                                      |
+| Consumer model          | **Generic library**                       | Expose tools; consumers decide terminate-on-release, fetch policy, etc.                                                                        |
+| Process detection       | **Owner-PID + cwd scan**                  | Matches Go; both are required for correct in-use semantics                                                                                     |
+| Termination             | **Separate API**                          | `release()` does not kill processes; callers compose                                                                                           |
+| Config                  | **Programmatic only (v0.1)**              | SDK callers pass `createGrove({ ... })`; file loader deferred to optional CLI (Phase 10)                                                       |
+| Tech stack              | **Node 24, tsgo, pnpm, ESM, vitest, oxc** | See [Tech Stack](#tech-stack)                                                                                                                  |
+| **Product name**        | **grove**                                 | Repo `grove`, npm `grove`, CLI `grove` (Phase 10). Tagline: _a pool of reusable git worktrees_. Verify npm/GitHub availability before publish. |
+| npm naming              | **Not `treehouse`**                       | [treehouse-worktree](https://www.npmjs.com/package/treehouse-worktree) is unrelated                                                            |
+| Module size             | **<700 LOC per file**                     | Split modules if a file grows; keeps port reviewable                                                                                           |
+| Upstream credit         | **README attribution**                    | TypeScript port inspired by [kunchenguid/treehouse](https://github.com/kunchenguid/treehouse)                                                  |
+| Pool directory layout   | **`~/.grove/{repoName}-{hash}/`**         | Isolated from Go's `~/.treehouse/`; see [Pool directory layout](#pool-directory-layout)                                                        |
+| Platform support (v0.1) | **macOS + Linux**                         | Windows out of scope; drops cwd-scan complexity on Win32                                                                                       |
 
 ### Downstream Consumer (Out of Scope for v0.1)
 
@@ -86,32 +86,32 @@ DaddyBot integration is **Phase 9** — only after the library passes its own pa
 
 The **grove** npm package provides:
 
-| Capability | Go source | Purpose |
-|------------|-----------|---------|
-| **Acquire** | `pool.Acquire` | Get a clean, detached-HEAD worktree from pool or create new |
-| **Release** | `pool.Release` | Reset worktree to default branch; clear owner reservation |
-| **List** | `pool.List` | Status of all pool worktrees (available / in-use / dirty) |
-| **Destroy** | `pool.Destroy`, `pool.DestroyAll` | Remove worktree from pool and disk |
-| **Git ops** | `internal/git` | Subprocess wrapper for worktree add/remove/reset/fetch |
-| **State** | `internal/pool/state` | JSON persistence + cross-platform file lock |
-| **Process detect** | `internal/process/detect` | cwd scan + owner-alive checks |
-| **Process terminate** | `internal/process/terminate` | SIGTERM → SIGKILL on macOS + Linux (separate API) |
-| **Hooks** | `internal/hooks` | Shell commands at post-create / pre-destroy |
-| **Config** | `internal/config` | `resolveGroveDir()` only; hooks/maxTrees via `createGrove()` options |
+| Capability            | Go source                         | Purpose                                                              |
+| --------------------- | --------------------------------- | -------------------------------------------------------------------- |
+| **Acquire**           | `pool.Acquire`                    | Get a clean, detached-HEAD worktree from pool or create new          |
+| **Release**           | `pool.Release`                    | Reset worktree to default branch; clear owner reservation            |
+| **List**              | `pool.List`                       | Status of all pool worktrees (available / in-use / dirty)            |
+| **Destroy**           | `pool.Destroy`, `pool.DestroyAll` | Remove worktree from pool and disk                                   |
+| **Git ops**           | `internal/git`                    | Subprocess wrapper for worktree add/remove/reset/fetch               |
+| **State**             | `internal/pool/state`             | JSON persistence + cross-platform file lock                          |
+| **Process detect**    | `internal/process/detect`         | cwd scan + owner-alive checks                                        |
+| **Process terminate** | `internal/process/terminate`      | SIGTERM → SIGKILL on macOS + Linux (separate API)                    |
+| **Hooks**             | `internal/hooks`                  | Shell commands at post-create / pre-destroy                          |
+| **Config**            | `internal/config`                 | `resolveGroveDir()` only; hooks/maxTrees via `createGrove()` options |
 
 ---
 
 ## What We Are Not Building (v0.1)
 
-| Excluded | Go source | Why |
-|----------|-----------|-----|
-| Subshell spawning | `cmd/get.go`, `internal/shell` | CLI concern |
-| Interactive prompts | `internal/ui` | Callers handle dirty-worktree UX |
-| Self-updater | `internal/updater` | CLI concern |
-| `EnsureGitignore` | `internal/config/gitignore.go` | App-level concern |
-| Library CLI | `cmd/*` | Phase 10 (optional) |
-| Config files (TOML/YAML) | `internal/config` TOML loader | Programmatic `createGrove()` only; file loader at CLI boundary only (Phase 10) |
-| npm git libraries | — | Shell out to `git` on PATH via execa, same as Go |
+| Excluded                 | Go source                      | Why                                                                            |
+| ------------------------ | ------------------------------ | ------------------------------------------------------------------------------ |
+| Subshell spawning        | `cmd/get.go`, `internal/shell` | CLI concern                                                                    |
+| Interactive prompts      | `internal/ui`                  | Callers handle dirty-worktree UX                                               |
+| Self-updater             | `internal/updater`             | CLI concern                                                                    |
+| `EnsureGitignore`        | `internal/config/gitignore.go` | App-level concern                                                              |
+| Library CLI              | `cmd/*`                        | Phase 10 (optional)                                                            |
+| Config files (TOML/YAML) | `internal/config` TOML loader  | Programmatic `createGrove()` only; file loader at CLI boundary only (Phase 10) |
+| npm git libraries        | —                              | Shell out to `git` on PATH via execa, same as Go                               |
 
 ---
 
@@ -176,11 +176,11 @@ await pool.release(path);
 
 This is what “pool dir naming” means — three levels of paths, not npm package naming:
 
-| Piece | Path | Example |
-|-------|------|---------|
-| **Default parent** | `~/.grove/` | Replaces Go's `~/.treehouse/` (we are isolated from Go CLI) |
-| **Pool identity** | `{repoBaseName}-{shortHash}/` | `myapp-a1b2c3/` — hash from `origin` URL, else absolute `repoRoot` |
-| **Worktree slot** | `{n}/{repoBaseName}/` | `1/myapp/` — detached-HEAD checkout |
+| Piece              | Path                          | Example                                                            |
+| ------------------ | ----------------------------- | ------------------------------------------------------------------ |
+| **Default parent** | `~/.grove/`                   | Replaces Go's `~/.treehouse/` (we are isolated from Go CLI)        |
+| **Pool identity**  | `{repoBaseName}-{shortHash}/` | `myapp-a1b2c3/` — hash from `origin` URL, else absolute `repoRoot` |
+| **Worktree slot**  | `{n}/{repoBaseName}/`         | `1/myapp/` — detached-HEAD checkout                                |
 
 Full default path for repo `~/code/myapp`:
 
@@ -204,12 +204,12 @@ Full default path for repo `~/code/myapp`:
 
 ```typescript
 interface WorktreeEntry {
-  name: string;              // "1", "2", ...
-  path: string;              // absolute path to worktree checkout
-  created_at: string;      // ISO 8601
+  name: string; // "1", "2", ...
+  path: string; // absolute path to worktree checkout
+  created_at: string; // ISO 8601
   destroying?: boolean;
   owner_pid?: number;
-  owner_started_at?: number;  // Unix ms — matches gopsutil CreateTime
+  owner_started_at?: number; // Unix ms — matches gopsutil CreateTime
 }
 
 interface GroveState {
@@ -269,16 +269,17 @@ grove/                                 # new standalone repo (github.com/…/gro
 
 **Naming conventions:**
 
-| Kind | Convention | Example |
-|------|------------|---------|
-| **Public API** | TypeScript-native | `createGrove`, `Grove`, `GroveConfig` |
-| **Internal `src/`** | Map to Go modules; split when >~200 LOC | `pool.ts` ← `pool.go`, `git/branch.ts` ← `git.go` |
-| **Tests** | `test/<module>.test.ts` mirrors Go `*_test.go` | `pool.test.ts` ← `pool_test.go` |
-| **Test names** | Keep Go test intent in `it(...)` labels | `it('runs post_create hook in worktree', ...)` ← `TestAcquire_RunsPostCreateHookInWorktree` |
-| **Platform** | Suffix only where needed | `detect-unix.ts`; no `lock_unix.ts` (proper-lockfile) |
+| Kind                | Convention                                     | Example                                                                                     |
+| ------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| **Public API**      | TypeScript-native                              | `createGrove`, `Grove`, `GroveConfig`                                                       |
+| **Internal `src/`** | Map to Go modules; split when >~200 LOC        | `pool.ts` ← `pool.go`, `git/branch.ts` ← `git.go`                                           |
+| **Tests**           | `test/<module>.test.ts` mirrors Go `*_test.go` | `pool.test.ts` ← `pool_test.go`                                                             |
+| **Test names**      | Keep Go test intent in `it(...)` labels        | `it('runs post_create hook in worktree', ...)` ← `TestAcquire_RunsPostCreateHookInWorktree` |
+| **Platform**        | Suffix only where needed                       | `detect-unix.ts`; no `lock_unix.ts` (proper-lockfile)                                       |
 
 Do **not** co-locate `*.test.ts` under `src/`. Do **not** mock `git` in pool/grove tests — use real git via `test/helpers/git-repo.ts`.
-```
+
+````
 
 ## Tech Stack
 
@@ -312,7 +313,7 @@ createGrove({
   groveRoot: '~/.my-app/groves',
   hooks: { postCreate: ['pnpm install'] },
 });
-```
+````
 
 `resolveGroveDir()` is exported for debugging; `groveRoot` maps to Go's `root` setting. A file loader belongs at the **CLI boundary only** (Phase 10), not in the library.
 
@@ -320,21 +321,21 @@ createGrove({
 
 **Runtime (`dependencies`):**
 
-| Package | Purpose |
-|---------|---------|
-| `zod` | Config + state validation |
-| `execa` | Git and hook subprocesses |
+| Package           | Purpose                        |
+| ----------------- | ------------------------------ |
+| `zod`             | Config + state validation      |
+| `execa`           | Git and hook subprocesses      |
 | `proper-lockfile` | Pool state file exclusive lock |
 
 **Dev (`devDependencies`):**
 
-| Package | Purpose |
-|---------|---------|
-| `@typescript/native-preview` | tsgo compiler |
-| `@types/node` | Node 24 typings |
-| `vitest` | Test runner |
-| `oxlint` | Lint |
-| `oxfmt` | Format |
+| Package                      | Purpose         |
+| ---------------------------- | --------------- |
+| `@typescript/native-preview` | tsgo compiler   |
+| `@types/node`                | Node 24 typings |
+| `vitest`                     | Test runner     |
+| `oxlint`                     | Lint            |
+| `oxfmt`                      | Format          |
 
 **Explicitly excluded:** `@iarna/toml`, `simple-git`, `nodegit`, `isomorphic-git`, and any process-list npm package until hand-rolled detection fails in CI.
 
@@ -423,11 +424,11 @@ Align with DaddyBot (`daddybot/tsconfig.json`):
 ### `vitest.config.ts`
 
 ```typescript
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    include: ['test/**/*.test.ts'],
+    include: ["test/**/*.test.ts"],
     testTimeout: 30_000, // git subprocess tests can be slow
   },
 });
@@ -506,7 +507,7 @@ function createGrove(config: GroveConfig): Grove;
 ### Status types
 
 ```typescript
-type WorktreeStatusLabel = 'available' | 'in-use' | 'dirty' | "you're here";
+type WorktreeStatusLabel = "available" | "in-use" | "dirty" | "you're here";
 
 interface WorktreeStatus {
   name: string;
@@ -538,7 +539,7 @@ namespace process {
    */
   function terminateInWorktree(
     worktreePath: string,
-    options?: { gracePeriodMs?: number }
+    options?: { gracePeriodMs?: number },
   ): Promise<ProcessInfo[]>;
 }
 ```
@@ -585,18 +586,18 @@ class GitCommandError extends GroveError { stderr: string; }
 
 ## Go → TypeScript Module Map
 
-| Go file | TS file | Notes |
-|---------|---------|-------|
-| `internal/git/git.go` | `src/git/*` | 1:1 function mapping |
-| `internal/pool/state.go` | `src/state.ts`, `src/lock.ts` | Rename state file |
-| `internal/pool/lock_*.go` | `src/lock.ts` | proper-lockfile (no custom lock files) |
-| `internal/pool/pool.go` | `src/pool.ts` | Core logic |
-| `internal/process/detect.go` | `src/process/detect-unix.ts` | macOS + Linux cwd scan |
-| `internal/process/terminate*.go` | `src/process/terminate.ts` | Unix only v0.1 |
-| `internal/hooks/hooks.go` | `src/hooks.ts` | `/bin/sh -c` (v0.1 targets Unix) |
-| `internal/hooks/command_*.go` | inline in hooks.ts | |
-| `internal/config/config.go` | `src/config.ts` | `resolveGroveDir` only (skip TOML loader) |
-| `internal/pool/pool_test.go` | `test/pool.test.ts` | Behavioral port |
+| Go file                          | TS file                       | Notes                                     |
+| -------------------------------- | ----------------------------- | ----------------------------------------- |
+| `internal/git/git.go`            | `src/git/*`                   | 1:1 function mapping                      |
+| `internal/pool/state.go`         | `src/state.ts`, `src/lock.ts` | Rename state file                         |
+| `internal/pool/lock_*.go`        | `src/lock.ts`                 | proper-lockfile (no custom lock files)    |
+| `internal/pool/pool.go`          | `src/pool.ts`                 | Core logic                                |
+| `internal/process/detect.go`     | `src/process/detect-unix.ts`  | macOS + Linux cwd scan                    |
+| `internal/process/terminate*.go` | `src/process/terminate.ts`    | Unix only v0.1                            |
+| `internal/hooks/hooks.go`        | `src/hooks.ts`                | `/bin/sh -c` (v0.1 targets Unix)          |
+| `internal/hooks/command_*.go`    | inline in hooks.ts            |                                           |
+| `internal/config/config.go`      | `src/config.ts`               | `resolveGroveDir` only (skip TOML loader) |
+| `internal/pool/pool_test.go`     | `test/pool.test.ts`           | Behavioral port                           |
 
 ---
 
@@ -631,14 +632,14 @@ Phases 1–5 can overlap slightly (e.g. git + state), but **do not start Phase 6
 
 ### What to port / skip
 
-| Go tests | grove | Notes |
-|----------|-------|-------|
-| `internal/pool/pool_test.go` | `test/pool.test.ts` | **Primary parity gate** — port in clusters (Phase 6) |
-| `internal/config/resolve_test.go` | `test/config.test.ts` | Phase 5 |
-| `internal/config/hooks_test.go` | Skip | No file loader in v0.1 |
-| `internal/hooks/hooks_test.go` | Partial → `hooks.test.ts` | Unit hook runner; rest covered by pool tests |
-| `cmd/e2e_test.go` | **Skip** | Subshell CLI — not the SDK |
-| `internal/process/*_test.go` | `test/process.test.ts` | Port behaviors |
+| Go tests                          | grove                     | Notes                                                |
+| --------------------------------- | ------------------------- | ---------------------------------------------------- |
+| `internal/pool/pool_test.go`      | `test/pool.test.ts`       | **Primary parity gate** — port in clusters (Phase 6) |
+| `internal/config/resolve_test.go` | `test/config.test.ts`     | Phase 5                                              |
+| `internal/config/hooks_test.go`   | Skip                      | No file loader in v0.1                               |
+| `internal/hooks/hooks_test.go`    | Partial → `hooks.test.ts` | Unit hook runner; rest covered by pool tests         |
+| `cmd/e2e_test.go`                 | **Skip**                  | Subshell CLI — not the SDK                           |
+| `internal/process/*_test.go`      | `test/process.test.ts`    | Port behaviors                                       |
 
 ### What not to do
 
@@ -735,10 +736,11 @@ Each row = one ported `it(...)` or cluster from `pool.test.ts` / other test file
 **What:** `src/git/run.ts`
 
 ```typescript
-async function runGit(cwd: string | undefined, args: string[]): Promise<string>
+async function runGit(cwd: string | undefined, args: string[]): Promise<string>;
 ```
 
 **How:**
+
 - `execa('git', args, { cwd })`.
 - Trim stdout; on failure, map stderr into `GitCommandError`.
 - Verify `git` exists on first call; throw `GitNotFoundError` if missing.
@@ -751,14 +753,14 @@ async function runGit(cwd: string | undefined, args: string[]): Promise<string>
 
 **What:** Port these functions:
 
-| Function | Go |
-|----------|-----|
-| `findRepoRoot()` | `FindRepoRoot` |
-| `findRepoRootFrom(dir)` | `FindRepoRootFrom` |
+| Function                     | Go                 |
+| ---------------------------- | ------------------ |
+| `findRepoRoot()`             | `FindRepoRoot`     |
+| `findRepoRootFrom(dir)`      | `FindRepoRootFrom` |
 | `getDefaultBranch(repoRoot)` | `GetDefaultBranch` |
-| `hasRemote(repoRoot, name)` | `HasRemote` |
-| `getRemoteUrl(repoRoot)` | `GetRemoteURL` |
-| `shortHash(input)` | `ShortHash` |
+| `hasRemote(repoRoot, name)`  | `HasRemote`        |
+| `getRemoteUrl(repoRoot)`     | `GetRemoteURL`     |
+| `shortHash(input)`           | `ShortHash`        |
 
 **How — `getDefaultBranch`:** Resolve main repo via `--git-common-dir` when inside worktree (same logic as Go lines 19–32). Try `symbolic-ref refs/remotes/origin/HEAD` → local `HEAD` → `config init.defaultBranch`.
 
@@ -771,6 +773,7 @@ async function runGit(cwd: string | undefined, args: string[]): Promise<string>
 **What:** Port `branchRef(repoRoot, branch)` and `isAncestor(repoRoot, a, b)`.
 
 **How:**
+
 - If both local and `origin/<branch>` exist, compare ancestry via `git merge-base --is-ancestor`.
 - Prefer remote when local is ancestor of remote.
 - Prefer local when remote is ancestor of local.
@@ -784,18 +787,19 @@ async function runGit(cwd: string | undefined, args: string[]): Promise<string>
 
 **What:** Port:
 
-| Function | Go command |
-|----------|------------|
-| `addWorktree(repoRoot, path, branch)` | `worktree add --detach <path> <ref>` |
-| `removeWorktree(repoRoot, path)` | `worktree remove --force <path>` |
-| `resetWorktree(path, branch)` | `checkout --detach --force` → `reset --hard` → `clean -fd` |
-| `detachWorktree(path)` | `checkout --detach` |
-| `isDirty(path)` | `status --porcelain` (non-empty = dirty) |
-| `fetch(repoRoot)` | `fetch origin` (no-op if no origin) |
+| Function                              | Go command                                                 |
+| ------------------------------------- | ---------------------------------------------------------- |
+| `addWorktree(repoRoot, path, branch)` | `worktree add --detach <path> <ref>`                       |
+| `removeWorktree(repoRoot, path)`      | `worktree remove --force <path>`                           |
+| `resetWorktree(path, branch)`         | `checkout --detach --force` → `reset --hard` → `clean -fd` |
+| `detachWorktree(path)`                | `checkout --detach`                                        |
+| `isDirty(path)`                       | `status --porcelain` (non-empty = dirty)                   |
+| `fetch(repoRoot)`                     | `fetch origin` (no-op if no origin)                        |
 
 **Why:** `resetWorktree` is called on every acquire (reuse) and release — must be exact.
 
 **Test:**
+
 - Add worktree → verify detached HEAD at correct commit.
 - Modify file → `isDirty` true → `resetWorktree` → `isDirty` false.
 - Remove worktree → directory gone.
@@ -819,11 +823,11 @@ async function runGit(cwd: string | undefined, args: string[]): Promise<string>
 
 **What:** `src/state.ts`
 
-| Function | Behavior |
-|----------|----------|
-| `readState(groveDir)` | Read `grove-state.json`; return `{ worktrees: [] }` if missing |
-| `writeState(groveDir, state)` | `JSON.stringify` indented, mode `0644` |
-| `stateFilePath(groveDir)` | `join(groveDir, 'grove-state.json')` |
+| Function                      | Behavior                                                       |
+| ----------------------------- | -------------------------------------------------------------- |
+| `readState(groveDir)`         | Read `grove-state.json`; return `{ worktrees: [] }` if missing |
+| `writeState(groveDir, state)` | `JSON.stringify` indented, mode `0644`                         |
+| `stateFilePath(groveDir)`     | `join(groveDir, 'grove-state.json')`                           |
 
 **How (read path):** Parse JSON → validate with Zod `GroveStateSchema` → return typed state. Invalid shape throws `INVALID_GROVE_STATE`.
 
@@ -836,6 +840,7 @@ async function runGit(cwd: string | undefined, args: string[]): Promise<string>
 **What:** `src/lock.ts` with `withStateLock(groveDir, fn)`.
 
 **How:**
+
 1. `mkdir(groveDir, { recursive: true })`.
 2. Lock file path: `join(groveDir, 'grove-state.lock')`.
 3. Use **proper-lockfile** `lockSync` / `unlockSync` (or async variants) around `fn()`.
@@ -877,12 +882,13 @@ async function runGit(cwd: string | undefined, args: string[]): Promise<string>
 **What:** In `src/process/detect.ts`:
 
 ```typescript
-function ownerAlive(entry: WorktreeEntry): Promise<boolean>
-function reserveOwner(entry: WorktreeEntry): Promise<void>  // sets pid + startedAt
-function startedAt(pid: number): Promise<number | null>     // process create time ms
+function ownerAlive(entry: WorktreeEntry): Promise<boolean>;
+function reserveOwner(entry: WorktreeEntry): Promise<void>; // sets pid + startedAt
+function startedAt(pid: number): Promise<number | null>; // process create time ms
 ```
 
 **How:**
+
 - `reserveOwner`: set `owner_pid = process.pid`, `owner_started_at = startedAt(pid)`.
 - `ownerAlive`: PID exists AND `startedAt(pid) === entry.owner_started_at`.
 
@@ -901,6 +907,7 @@ function startedAt(pid: number): Promise<number | null>     // process create ti
 **How (macOS):** `ps -eo pid` + `lsof -a -d cwd -p {pid}`; resolve symlinks before compare (`/private/var` vs `/var`).
 
 **Comparison logic:**
+
 - `resolvePath()` both worktree and cwd (symlink-expand).
 - `relative(worktree, cwd)` does not start with `..` → process is inside worktree.
 
@@ -913,6 +920,7 @@ function startedAt(pid: number): Promise<number | null>     // process create ti
 **What:** Port `TerminateWorktreeProcesses`.
 
 **How:**
+
 1. `findInWorktree(path)`.
 2. Filter out current PID and ancestor chain (matches Go `filterProtectedProcesses`).
 3. Unix: SIGTERM → wait `gracePeriod` → SIGKILL survivors.
@@ -943,6 +951,7 @@ function startedAt(pid: number): Promise<number | null>     // process create ti
 **What:** Run shell commands sequentially in `workDir`.
 
 **How:**
+
 - Unix: `/bin/sh -c <command>`.
 - Windows: `%COMSPEC% /d /s /c <command>`.
 - On failure: log to stderr, **continue** with next command.
@@ -974,6 +983,7 @@ function startedAt(pid: number): Promise<number | null>     // process create ti
 **What:** Port `config.ResolvePoolDir` (renamed for grove branding).
 
 **How:**
+
 1. `hashInput = getRemoteUrl(repoRoot)` or `repoRoot` on failure.
 2. `poolName = basename(repoRoot) + '-' + shortHash(hashInput)`.
 3. If `groveRootOverride` empty → `~/.grove/{poolName}`.
@@ -1012,11 +1022,11 @@ Wire `createGrove()` early in Cluster A — validates config → `resolveGroveDi
 
 **Port tests first** (`test/pool.test.ts`):
 
-| Go test | `it(...)` intent |
-|---------|------------------|
-| — (integration) | acquire returns `AcquiredSlot` with detached HEAD |
-| — | acquire → modify → release → re-acquire is clean |
-| `TestRelease_DoesNotDependOnCurrentWorkingDirectory` | release works when parent cwd is elsewhere |
+| Go test                                              | `it(...)` intent                                  |
+| ---------------------------------------------------- | ------------------------------------------------- |
+| — (integration)                                      | acquire returns `AcquiredSlot` with detached HEAD |
+| —                                                    | acquire → modify → release → re-acquire is clean  |
+| `TestRelease_DoesNotDependOnCurrentWorkingDirectory` | release works when parent cwd is elsewhere        |
 
 **Then implement:** `acquire` (scan + create path), `release`, `findByPath`; `fetch` on acquire; owner reservation; basic state append. [x]
 
@@ -1028,11 +1038,11 @@ Wire `createGrove()` early in Cluster A — validates config → `resolveGroveDi
 
 **Port tests first:**
 
-| Go test | `it(...)` intent |
-|---------|------------------|
-| `TestAcquire_RunsPostCreateHookInWorktree` | hook creates sentinel in worktree |
-| `TestAcquire_HookFailureDoesNotFailAcquire` | failed hook does not fail acquire |
-| `TestAcquire_RunsPostCreateHookAfterReleasingStateLock` | `hook-probe.mjs lock-probe` during post_create |
+| Go test                                                    | `it(...)` intent                                         |
+| ---------------------------------------------------------- | -------------------------------------------------------- |
+| `TestAcquire_RunsPostCreateHookInWorktree`                 | hook creates sentinel in worktree                        |
+| `TestAcquire_HookFailureDoesNotFailAcquire`                | failed hook does not fail acquire                        |
+| `TestAcquire_RunsPostCreateHookAfterReleasingStateLock`    | `hook-probe.mjs lock-probe` during post_create           |
 | `TestAcquire_DoesNotReuseWorktreeReservedByPostCreateHook` | `hook-probe.mjs acquire-during-hook` gets different path |
 
 **Then implement:** post_create outside lock; hook invocation via `runHooks`. [x]
@@ -1045,11 +1055,11 @@ Wire `createGrove()` early in Cluster A — validates config → `resolveGroveDi
 
 **Port tests first:**
 
-| Go test | `it(...)` intent |
-|---------|------------------|
-| `TestList_ShowsReservedWorktreeAsInUse` | reserved slot → `in-use` |
-| `TestList_RecoversDestroyingWorktreeWhenOwnerIsGone` | stale destroy cleared on list |
-| `TestList_RecoversDestroyingWorktreeWhenOwnerIdentityDoesNotMatch` | PID mismatch cleared on list |
+| Go test                                                            | `it(...)` intent              |
+| ------------------------------------------------------------------ | ----------------------------- |
+| `TestList_ShowsReservedWorktreeAsInUse`                            | reserved slot → `in-use`      |
+| `TestList_RecoversDestroyingWorktreeWhenOwnerIsGone`               | stale destroy cleared on list |
+| `TestList_RecoversDestroyingWorktreeWhenOwnerIdentityDoesNotMatch` | PID mismatch cleared on list  |
 
 **Then implement:** `list()`, `healState` on list, status labels.
 
@@ -1061,17 +1071,17 @@ Wire `createGrove()` early in Cluster A — validates config → `resolveGroveDi
 
 **Port tests first:**
 
-| Go test | `it(...)` intent |
-|---------|------------------|
-| `TestDestroy_RunsPreDestroyHook` | pre_destroy runs before removal |
-| `TestDestroy_NonForceRejectsReservedWorktree` | non-force rejects in-use |
+| Go test                                                            | `it(...)` intent                                       |
+| ------------------------------------------------------------------ | ------------------------------------------------------ |
+| `TestDestroy_RunsPreDestroyHook`                                   | pre_destroy runs before removal                        |
+| `TestDestroy_NonForceRejectsReservedWorktree`                      | non-force rejects in-use                               |
 | `TestDestroy_DoesNotAllowHookAcquireToReusePendingDestroyWorktree` | acquire during pre_destroy cannot take destroying slot |
-| `TestDestroy_PreservesSupersededReservationAfterHook` | `hook-probe.mjs supersede-destroy` |
-| `TestDestroyAll_PreservesWorktreeAcquiredByHook` | destroyAll + hook acquire race |
-| `TestDestroyAll_PreservesSupersededReservationAfterHook` | same supersede for destroyAll |
-| `TestDestroyAll_NonForceRejectsReservedWorktree` | in-use guard |
-| `TestDestroyAll_NonForceRejectsLiveDestroyingWorktree` | live destroying guard |
-| `TestRelease_RejectsDestroyingWorktree` | release on destroying slot fails |
+| `TestDestroy_PreservesSupersededReservationAfterHook`              | `hook-probe.mjs supersede-destroy`                     |
+| `TestDestroyAll_PreservesWorktreeAcquiredByHook`                   | destroyAll + hook acquire race                         |
+| `TestDestroyAll_PreservesSupersededReservationAfterHook`           | same supersede for destroyAll                          |
+| `TestDestroyAll_NonForceRejectsReservedWorktree`                   | in-use guard                                           |
+| `TestDestroyAll_NonForceRejectsLiveDestroyingWorktree`             | live destroying guard                                  |
+| `TestRelease_RejectsDestroyingWorktree`                            | release on destroying slot fails                       |
 
 **Then implement:** `destroy`, `destroyAll`, `sameDestroyReservation`, pre_destroy outside lock.
 
@@ -1083,11 +1093,11 @@ Wire `createGrove()` early in Cluster A — validates config → `resolveGroveDi
 
 **Port tests first:**
 
-| Go test | `it(...)` intent |
-|---------|------------------|
-| — | fill `maxTrees` → `GroveExhaustedError` / `GROVE_EXHAUSTED` |
-| — | dirty worktree skipped; clean reused slot reset on acquire |
-| — | `ownerAlive` + cwd scan skip in-use slots |
+| Go test | `it(...)` intent                                            |
+| ------- | ----------------------------------------------------------- |
+| —       | fill `maxTrees` → `GroveExhaustedError` / `GROVE_EXHAUSTED` |
+| —       | dirty worktree skipped; clean reused slot reset on acquire  |
+| —       | `ownerAlive` + cwd scan skip in-use slots                   |
 
 **Then implement:** pool exhaustion error, acquire scan loop (dirty, in-use, destroying, owner), reuse + `resetWorktree`.
 
@@ -1126,6 +1136,7 @@ Add cases with **no Go equivalent**:
 **What:** `test/parity/compare-go.ts` — same fixture sequence against Go `treehouse` binary vs `createGrove`; diff slot counts and status.
 
 **How:**
+
 - Requires `treehouse` on PATH.
 - Separate `~/.grove` vs `~/.treehouse` pool dirs.
 - **Not CI-gated.**
@@ -1144,11 +1155,12 @@ Add cases with **no Go equivalent**:
 ### Step 8.1 — README
 
 Cover:
+
 - What the library does (pool semantics, not CLI).
 - **Upstream credit:** TypeScript port inspired by [kunchenguid/treehouse](https://github.com/kunchenguid/treehouse).
 - Requirements (`git` on PATH, Node 24+).
 - Quick start (`createGrove()` with programmatic config).
-- Tagline: *grove — a pool of reusable git worktrees* (TypeScript port inspired by treehouse).
+- Tagline: _grove — a pool of reusable git worktrees_ (TypeScript port inspired by treehouse).
 - API overview (`acquire` → `AcquiredSlot`, `release`, `list`, `destroy`, process utils).
 - Pool directory layout.
 - Hooks (passed via `createGrove({ hooks })`; shell trust model documented).
@@ -1218,18 +1230,18 @@ Map library `error.code` → orchestrator errors at the adapter boundary (e.g. `
 
 ### Step 9.3 — Wire into DaddyBot
 
-| File | Change |
-|------|--------|
-| `src/config.ts` | `checkout_mode: 'worktree'` + `worktree` block (`backend: grove`, max_trees, grove_root, post_create) |
-| `src/work-units.ts` | `createWorkUnit()` calls `provision()`; expose `checkout_path` on status |
-| `src/worktree/effective-checkout.ts` | `effectiveCheckoutPath(status) = checkout_path ?? repo_path` |
-| `src/lifecycle/build-invocation.ts` | worker `cwd` via effective checkout |
-| `src/lifecycle/run-worker-stage.ts` | snapshots, diffs, checkpoints on effective path |
-| `src/lifecycle/run-validation-stage.ts` | validation `cwd` on effective path |
-| `src/lifecycle/run-decision-stage.ts` | head SHA from effective path |
-| `src/lifecycle/worker-guards.ts` | worktree-aware clean rules |
-| `src/preflight.ts` | light pool availability check when worktree mode enabled |
-| `src/db.ts` | persist `checkout_path` at insert (v1: insert-only) |
+| File                                    | Change                                                                                                |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `src/config.ts`                         | `checkout_mode: 'worktree'` + `worktree` block (`backend: grove`, max_trees, grove_root, post_create) |
+| `src/work-units.ts`                     | `createWorkUnit()` calls `provision()`; expose `checkout_path` on status                              |
+| `src/worktree/effective-checkout.ts`    | `effectiveCheckoutPath(status) = checkout_path ?? repo_path`                                          |
+| `src/lifecycle/build-invocation.ts`     | worker `cwd` via effective checkout                                                                   |
+| `src/lifecycle/run-worker-stage.ts`     | snapshots, diffs, checkpoints on effective path                                                       |
+| `src/lifecycle/run-validation-stage.ts` | validation `cwd` on effective path                                                                    |
+| `src/lifecycle/run-decision-stage.ts`   | head SHA from effective path                                                                          |
+| `src/lifecycle/worker-guards.ts`        | worktree-aware clean rules                                                                            |
+| `src/preflight.ts`                      | light pool availability check when worktree mode enabled                                              |
+| `src/db.ts`                             | persist `checkout_path` at insert (v1: insert-only)                                                   |
 
 ### Step 9.4 — DaddyBot tests
 
@@ -1247,12 +1259,12 @@ Map library `error.code` → orchestrator errors at the adapter boundary (e.g. `
 
 Only after library is stable. Thin wrapper over SDK:
 
-| Command | Maps to |
-|---------|---------|
-| `grove acquire` | `grove.acquire()` + print path |
+| Command                | Maps to                         |
+| ---------------------- | ------------------------------- |
+| `grove acquire`        | `grove.acquire()` + print path  |
 | `grove release [path]` | `terminate` + `grove.release()` |
-| `grove status` | `grove.list()` |
-| `grove destroy` | `grove.destroy()` |
+| `grove status`         | `grove.list()`                  |
+| `grove destroy`        | `grove.destroy()`               |
 
 May add TOML `loadConfig()` at CLI boundary only; library stays programmatic. Replaces Go `treehouse` CLI for interactive users.
 
@@ -1260,16 +1272,16 @@ May add TOML `loadConfig()` at CLI boundary only; library stays programmatic. Re
 
 ## Risks & Mitigations
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Windows unsupported (v0.1) | No cwd scan on Win32 | Document macOS + Linux only; owner-PID still works cross-platform |
-| File lock differences | Pool corruption | Test `withStateLock` on all platforms; port Go lock probe test |
-| Git not on PATH | Runtime failure | `GitNotFoundError` on first use; document requirement |
-| Hook command injection | Security | Hooks are user-configured (same as Go); document trust model |
-| Grove exhaustion | Consumer blocked | `GroveExhaustedError` with actionable message |
-| Crash leaves owner reservation | Slot appears in-use | `healState` on every list/acquire |
-| Parallel acquire race | Double booking | File lock serializes all mutations |
-| macOS symlink paths | cwd mismatch | `resolvePath` before comparison (port Go) |
+| Risk                           | Impact               | Mitigation                                                        |
+| ------------------------------ | -------------------- | ----------------------------------------------------------------- |
+| Windows unsupported (v0.1)     | No cwd scan on Win32 | Document macOS + Linux only; owner-PID still works cross-platform |
+| File lock differences          | Pool corruption      | Test `withStateLock` on all platforms; port Go lock probe test    |
+| Git not on PATH                | Runtime failure      | `GitNotFoundError` on first use; document requirement             |
+| Hook command injection         | Security             | Hooks are user-configured (same as Go); document trust model      |
+| Grove exhaustion               | Consumer blocked     | `GroveExhaustedError` with actionable message                     |
+| Crash leaves owner reservation | Slot appears in-use  | `healState` on every list/acquire                                 |
+| Parallel acquire race          | Double booking       | File lock serializes all mutations                                |
+| macOS symlink paths            | cwd mismatch         | `resolvePath` before comparison (port Go)                         |
 
 ---
 
@@ -1302,14 +1314,14 @@ May add TOML `loadConfig()` at CLI boundary only; library stays programmatic. Re
 
 ## Open Items (Deferred)
 
-| Item | Notes |
-|------|-------|
+| Item                          | Notes                                                               |
+| ----------------------------- | ------------------------------------------------------------------- |
 | npm name `grove` availability | Verify on npmjs.com + GitHub before publish; fallback: `@org/grove` |
-| Config files | Phase 10 CLI only (if ever); library stays programmatic |
-| Windows support | Out of scope v0.1; add later if needed |
-| Go parity harness in CI | Dev-only initially |
-| `EnsureGitignore` utility | Add if CLI phase needs it |
-| Branch-out experiments | After parity proven: custom fetch policies, lease tokens, metrics |
+| Config files                  | Phase 10 CLI only (if ever); library stays programmatic             |
+| Windows support               | Out of scope v0.1; add later if needed                              |
+| Go parity harness in CI       | Dev-only initially                                                  |
+| `EnsureGitignore` utility     | Add if CLI phase needs it                                           |
+| Branch-out experiments        | After parity proven: custom fetch policies, lease tokens, metrics   |
 
 ---
 
@@ -1341,32 +1353,32 @@ Estimated scope: ~800 LOC source + ~600 LOC tests — comparable to Go SDK-relev
 
 Reviewed `daddybot/dev/plans/worktree-library-handoff.md` for ideas that strengthen **this** plan without changing its core decisions. Items **incorporated** above:
 
-| Idea | Where added |
-|------|-------------|
-| `AcquiredSlot { path, name }` | Public API, Phase 6 |
-| `createGrove()` factory | Public API |
-| `execa` for subprocesses | Tooling, Phase 1 |
-| Zod validation at boundaries | Phase 0, Phase 2, schemas |
-| Stable error `code` fields | Errors section, tests, Phase 9 adapter note |
-| Parity matrix in README | Phase 8 |
-| Upstream credit + npm naming warning | Decisions, Phase 8 |
-| <700 LOC per file | Decisions |
-| Test-first port methodology | Development & Testing Strategy; all phases |
-| Pool test clusters A–E | Phase 6 |
-| Grove-specific extension tests | Phase 7 |
-| hook-probe.mjs subprocess helpers | Phase 0, Phase 6 |
-| Richer DaddyBot file list for Phase 9 | Phase 9 (reference only — lives in DaddyBot repo) |
-| `effectiveCheckoutPath()` helper location | Phase 9 |
-| Hold slot on blocked; terminal release | Phase 9 (orchestrator policy) |
+| Idea                                      | Where added                                       |
+| ----------------------------------------- | ------------------------------------------------- |
+| `AcquiredSlot { path, name }`             | Public API, Phase 6                               |
+| `createGrove()` factory                   | Public API                                        |
+| `execa` for subprocesses                  | Tooling, Phase 1                                  |
+| Zod validation at boundaries              | Phase 0, Phase 2, schemas                         |
+| Stable error `code` fields                | Errors section, tests, Phase 9 adapter note       |
+| Parity matrix in README                   | Phase 8                                           |
+| Upstream credit + npm naming warning      | Decisions, Phase 8                                |
+| <700 LOC per file                         | Decisions                                         |
+| Test-first port methodology               | Development & Testing Strategy; all phases        |
+| Pool test clusters A–E                    | Phase 6                                           |
+| Grove-specific extension tests            | Phase 7                                           |
+| hook-probe.mjs subprocess helpers         | Phase 0, Phase 6                                  |
+| Richer DaddyBot file list for Phase 9     | Phase 9 (reference only — lives in DaddyBot repo) |
+| `effectiveCheckoutPath()` helper location | Phase 9                                           |
+| Hold slot on blocked; terminal release    | Phase 9 (orchestrator policy)                     |
 
 Items **not adopted** (handoff differs; our plan unchanged):
 
-| Handoff suggestion | Our plan keeps |
-|--------------------|----------------|
-| Owner-PID only v1; skip Windows cwd scan | Unix cwd scan (macOS + Linux); Windows out of scope v0.1 |
-| Defer `terminate` to v2 | `terminateInWorktree()` in v0.1 as separate API |
-| TOML config loader | Programmatic `createGrove()` only in v0.1 |
-| `release({ force })` on pool API | `release()` always resets (Go `pool.Release` has no force) |
-| `pool-state.json` filename | `grove-state.json` |
-| Node >=24, tsgo, oxlint | Locked — see Tech Stack |
-| Flatter single-file modules (`git.ts`) | Split `git/`, `process/` dirs until size requires merge |
+| Handoff suggestion                       | Our plan keeps                                             |
+| ---------------------------------------- | ---------------------------------------------------------- |
+| Owner-PID only v1; skip Windows cwd scan | Unix cwd scan (macOS + Linux); Windows out of scope v0.1   |
+| Defer `terminate` to v2                  | `terminateInWorktree()` in v0.1 as separate API            |
+| TOML config loader                       | Programmatic `createGrove()` only in v0.1                  |
+| `release({ force })` on pool API         | `release()` always resets (Go `pool.Release` has no force) |
+| `pool-state.json` filename               | `grove-state.json`                                         |
+| Node >=24, tsgo, oxlint                  | Locked — see Tech Stack                                    |
+| Flatter single-file modules (`git.ts`)   | Split `git/`, `process/` dirs until size requires merge    |

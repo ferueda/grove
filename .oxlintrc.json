@@ -1,14 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "unicorn",
-    "typescript",
-    "oxc",
-    "import",
-    "node",
-    "promise",
-    "vitest"
-  ],
+  "plugins": ["unicorn", "typescript", "oxc", "import", "node", "promise", "vitest"],
   "jsPlugins": [
     {
       "name": "grove-zod",

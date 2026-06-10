@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export const WorktreeEntrySchema = z.object({
   name: z.string(),
@@ -22,10 +22,12 @@ export const GroveConfigSchema = z.object({
   groveDir: z.string().optional(),
   groveRoot: z.string().optional(),
   maxTrees: z.number().optional(),
-  hooks: z.object({
-    postCreate: z.array(z.string()).optional(),
-    preDestroy: z.array(z.string()).optional(),
-  }).optional(),
+  hooks: z
+    .object({
+      postCreate: z.array(z.string()).optional(),
+      preDestroy: z.array(z.string()).optional(),
+    })
+    .optional(),
   fetchOnAcquire: z.boolean().optional(),
 });
 
