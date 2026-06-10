@@ -18,8 +18,8 @@
     "build": "tsgo -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "oxlint . --deny-warnings",
-    "format": "oxfmt --write .",
+    "lint": "oxlint src test scripts --deny-warnings",
+    "format": "oxfmt --write src test scripts",
     "check": "pnpm lint && pnpm build && pnpm test",
     "prepublishOnly": "pnpm check"
   },
