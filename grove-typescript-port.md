@@ -1107,8 +1107,8 @@ Wire `createGrove()` early in Cluster A — validates config → `resolveGroveDi
 
 ### Step 6.6 — `createGrove` facade
 
-- [ ] `createGrove(config)` — Zod-validate `GroveConfig`, resolve `groveDir`, return `Grove` instance.
-- [ ] Export from `src/index.ts` only public API.
+- [x] `createGrove(config)` — Zod-validate `GroveConfig`, resolve `groveDir`, return `Grove` instance.
+- [x] Export from `src/index.ts` only public API.
 
 **Phase 6 exit criteria:** `pnpm test test/pool.test.ts test/grove.integration.test.ts` green on ubuntu + macOS. All `pool_test.go` behaviors covered across clusters A–E.
 
@@ -1124,12 +1124,12 @@ Wire `createGrove()` early in Cluster A — validates config → `resolveGroveDi
 
 Add cases with **no Go equivalent**:
 
-- [ ] Invalid `grove-state.json` on disk → `readState` / acquire surfaces `INVALID_GROVE_STATE`.
-- [ ] `GroveExhaustedError.code === 'GROVE_EXHAUSTED'`.
-- [ ] `createGrove({ repoRoot, maxTrees, hooks, groveRoot })` — no config files on disk.
-- [ ] Acquire → modify (dirty) → `release()` still hard-resets (no force flag).
-- [ ] Heal drops state entry when worktree directory deleted from disk.
-- [ ] Two parallel `acquire()` from child processes — no double-booking (file lock stress).
+- [x] Invalid `grove-state.json` on disk → `readState` / acquire surfaces `INVALID_GROVE_STATE`.
+- [x] `GroveExhaustedError.code === 'GROVE_EXHAUSTED'`.
+- [x] `createGrove({ repoRoot, maxTrees, hooks, groveRoot })` — no config files on disk.
+- [x] Acquire → modify (dirty) → `release()` still hard-resets (no force flag).
+- [x] Heal drops state entry when worktree directory deleted from disk.
+- [x] Two parallel `acquire()` from child processes — no double-booking (file lock stress).
 
 ### Step 7.1 — Optional Go parity harness (dev-only)
 
@@ -1143,8 +1143,8 @@ Add cases with **no Go equivalent**:
 
 ### Step 7.2 — Parity matrix draft
 
-- [ ] Table in repo (`docs/parity-matrix.md` or README section): each Cluster A–E `it(...)` → **ported** / **n/a**.
-- [ ] Feeds Phase 8 README.
+- [x] Table in repo (`docs/parity-matrix.md` or README section): each Cluster A–E `it(...)` → **ported** / **n/a**.
+- [x] Feeds Phase 8 README.
 
 **Phase 7 exit criteria:** Extension tests green; parity matrix complete; full `pnpm test` green on ubuntu + macOS CI.
 
@@ -1289,19 +1289,19 @@ May add TOML `loadConfig()` at CLI boundary only; library stays programmatic. Re
 
 ### Library (v0.1)
 
-- [ ] All `pool_test.go` behaviors ported in Phase 6 clusters A–E and passing.
-- [ ] Phase 7 extension tests passing.
-- [ ] CI green: ubuntu + macOS (`pnpm check`).
-- [ ] `acquire` returns `AcquiredSlot`; `release` / `list` / `destroy` / `destroyAll` match Go semantics.
-- [ ] `post_create` runs outside state lock.
-- [ ] `release()` does not terminate processes.
-- [ ] `terminateInWorktree()` available as separate API.
-- [ ] Errors expose stable `code` fields.
-- [ ] State file validated with Zod on read.
-- [ ] Programmatic `createGrove()` works without any files.
-- [ ] No config-file dependency in v0.1.
-- [ ] Tech stack as documented: Node 24, ESM, tsgo, pnpm, vitest, oxc, execa, proper-lockfile, zod.
-- [ ] README quick start is copy-pasteable; parity matrix documents Go equivalence.
+- [x] All `pool_test.go` behaviors ported in Phase 6 clusters A–E and passing.
+- [x] Phase 7 extension tests passing.
+- [x] CI green: ubuntu + macOS (`pnpm check`).
+- [x] `acquire` returns `AcquiredSlot`; `release` / `list` / `destroy` / `destroyAll` match Go semantics.
+- [x] `post_create` runs outside state lock.
+- [x] `release()` does not terminate processes.
+- [x] `terminateInWorktree()` available as separate API.
+- [x] Errors expose stable `code` fields.
+- [x] State file validated with Zod on read.
+- [x] Programmatic `createGrove()` works without any files.
+- [x] No config-file dependency in v0.1.
+- [x] Tech stack as documented: Node 24, ESM, tsgo, pnpm, vitest, oxc, execa, proper-lockfile, zod.
+- [x] README quick start is copy-pasteable; parity matrix documents Go equivalence.
 
 ### DaddyBot (Phase 9)
 
