@@ -1,4 +1,4 @@
-import { realpath, readdir, readlink, stat } from "node:fs/promises";
+import { realpath, readdir, readlink, stat, readFile } from "node:fs/promises";
 import { relative } from "node:path";
 import { execa } from "execa";
 import type { WorktreeEntry } from "../schemas.js";
@@ -8,11 +8,41 @@ export interface ProcessInfo {
   Name?: string;
 }
 
+let cachedBtime: number | null = null;
+const cachedClkTck = 100;
+
+async function getLinuxBootTime(): Promise<number> {
+  if (cachedBtime !== null) return cachedBtime;
+  try {
+    const content = await readFile("/proc/stat", "utf8");
+    const match = content.match(/^btime\s+(\d+)/m);
+    if (match && match[1]) {
+      cachedBtime = parseInt(match[1], 10) * 1000;
+      return cachedBtime;
+    }
+  } catch {}
+  return Date.now() - process.uptime() * 1000;
+}
+
 export async function startedAt(pid: number): Promise<number | null> {
   try {
     if (process.platform === "linux") {
-      const s = await stat(`/proc/${pid}`);
-      return s.mtimeMs;
+      try {
+        const statContent = await readFile(`/proc/${pid}/stat`, "utf8");
+        const lastParen = statContent.lastIndexOf(")");
+        if (lastParen !== -1) {
+          const rest = statContent.slice(lastParen + 2).trim().split(/\s+/);
+          const starttimeTicks = parseInt(rest[19]!, 10);
+          if (!isNaN(starttimeTicks)) {
+            const btime = await getLinuxBootTime();
+            const msSinceBoot = (starttimeTicks / cachedClkTck) * 1000;
+            return btime + msSinceBoot;
+          }
+        }
+      } catch {
+        const s = await stat(`/proc/${pid}`);
+        return s.mtimeMs;
+      }
     } else if (process.platform === "darwin") {
       const { stdout } = await execa("ps", ["-p", String(pid), "-o", "lstart="]);
       const parsed = Date.parse(stdout.trim());
