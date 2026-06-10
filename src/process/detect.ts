@@ -31,7 +31,10 @@ export async function startedAt(pid: number): Promise<number | null> {
         const statContent = await readFile(`/proc/${pid}/stat`, "utf8");
         const lastParen = statContent.lastIndexOf(")");
         if (lastParen !== -1) {
-          const rest = statContent.slice(lastParen + 2).trim().split(/\s+/);
+          const rest = statContent
+            .slice(lastParen + 2)
+            .trim()
+            .split(/\s+/);
           const starttimeTicks = parseInt(rest[19]!, 10);
           if (!isNaN(starttimeTicks)) {
             const btime = await getLinuxBootTime();
