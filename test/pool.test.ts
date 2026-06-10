@@ -210,43 +210,6 @@ describe('Pool Core (Cluster A & B)', () => {
     await expect(grove.acquire()).rejects.toThrow(/Exhausted worktrees/);
   });
 
-  it('destroy kills owners, removes worktrees, deletes pool dir', async () => {
-    const { repoDir, tmpDir, groveDir } = await setupRepo();
-    tmpDirs.push(tmpDir);
-
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
-    const wt = await grove.acquire();
-    
-    expect(existsSync(wt)).toBe(true);
-
-    await grove.destroy();
-    expect(existsSync(grove.poolDir)).toBe(false);
-  });
-
-  it('runs preDestroy hook before deletion', async () => {
-    const { repoDir, tmpDir, groveDir } = await setupRepo();
-    tmpDirs.push(tmpDir);
-
-    const grove = await createGrove({ 
-      repoRoot: repoDir, 
-      groveRoot: groveDir,
-      hooks: {
-        preDestroy: [
-          process.platform === 'win32' ? 'echo hello > %GROVE_OUT_DIR%/sentinel.txt' : 'echo "hello" > $GROVE_OUT_DIR/sentinel.txt'
-        ]
-      }
-    });
-    
-    process.env['GROVE_OUT_DIR'] = tmpDir;
-
-    await grove.acquire();
-    await grove.destroy();
-
-    const content = await readFile(join(tmpDir, 'sentinel.txt'), 'utf8');
-    expect(content.trim()).toBe('hello');
-
-    delete process.env['GROVE_OUT_DIR'];
-  });
 
   describe('release robustness', () => {
     it('release safely ignores missing state', async () => {
@@ -272,6 +235,72 @@ describe('Pool Core (Cluster A & B)', () => {
       await rm(wt, { recursive: true, force: true });
       
       await expect(grove.release(wt)).resolves.toBeUndefined();
+    });
+  });
+
+  describe('Destroy and DestroyAll', () => {
+    it('runs preDestroy hook', async () => {
+      const { repoDir, tmpDir, groveDir } = await setupRepo();
+      tmpDirs.push(tmpDir);
+      const grove = await createGrove({ 
+        repoRoot: repoDir, 
+        groveRoot: groveDir,
+        hooks: {
+          preDestroy: [
+            process.platform === 'win32' ? 'echo hook-run > %GROVE_OUT_DIR%/sentinel.txt' : 'echo "hook-run" > $GROVE_OUT_DIR/sentinel.txt'
+          ]
+        }
+      });
+      process.env['GROVE_OUT_DIR'] = tmpDir;
+      const wt = await grove.acquire();
+      await grove.destroy(wt, { force: true });
+      
+      const content = await readFile(join(tmpDir, 'sentinel.txt'), 'utf8');
+      expect(content.trim()).toBe('hook-run');
+      delete process.env['GROVE_OUT_DIR'];
+    });
+
+    it('non-force rejects reserved worktree', async () => {
+      const { repoDir, tmpDir, groveDir } = await setupRepo();
+      tmpDirs.push(tmpDir);
+      const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+      const wt = await grove.acquire();
+
+      await expect(grove.destroy(wt)).rejects.toThrow(/in use by an agent/);
+      expect(existsSync(wt)).toBe(true);
+    });
+
+    it('force destroys reserved worktree', async () => {
+      const { repoDir, tmpDir, groveDir } = await setupRepo();
+      tmpDirs.push(tmpDir);
+      const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+      const wt = await grove.acquire();
+
+      await grove.destroy(wt, { force: true });
+      expect(existsSync(wt)).toBe(false);
+    });
+
+    it('destroyAll non-force rejects reserved worktree', async () => {
+      const { repoDir, tmpDir, groveDir } = await setupRepo();
+      tmpDirs.push(tmpDir);
+      const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+      const wt = await grove.acquire();
+
+      await expect(grove.destroyAll()).rejects.toThrow(/in use by an agent/);
+      expect(existsSync(wt)).toBe(true);
+    });
+
+    it('destroyAll force destroys reserved worktrees', async () => {
+      const { repoDir, tmpDir, groveDir } = await setupRepo();
+      tmpDirs.push(tmpDir);
+      const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+      const wt = await grove.acquire();
+
+      await grove.destroyAll({ force: true });
+      expect(existsSync(wt)).toBe(false);
+      
+      const list = await grove.list();
+      expect(list.length).toBe(0);
     });
   });
 });
