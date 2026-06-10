@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { setupRepo } from "./helpers/git-repo.js";
 import { readState, writeState, healState } from "../src/state.js";
 import { withStateLock } from "../src/lock.js";
-import { GroveState } from "../src/schemas.js";
+import type { GroveState } from "../src/schemas.js";
 import { InvalidGroveStateError, LockFailedError } from "../src/errors.js";
 import { rm, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -39,7 +39,7 @@ describe("State & Locking", () => {
       await writeState(groveDir, s);
       const read = await readState(groveDir);
       expect(read.worktrees).toHaveLength(1);
-      expect(read.worktrees[0].name).toBe("1");
+      expect(read.worktrees[0]?.name).toBe("1");
     });
 
     it("throws INVALID_GROVE_STATE on corrupt JSON", async () => {
@@ -113,9 +113,9 @@ describe("State & Locking", () => {
       };
       const healed = await healState(state);
       expect(healed.worktrees).toHaveLength(1);
-      expect(healed.worktrees[0].owner_pid).toBeUndefined();
-      expect(healed.worktrees[0].owner_started_at).toBeUndefined();
-      expect(healed.worktrees[0].destroying).toBeUndefined();
+      expect(healed.worktrees[0]?.owner_pid).toBeUndefined();
+      expect(healed.worktrees[0]?.owner_started_at).toBeUndefined();
+      expect(healed.worktrees[0]?.destroying).toBeUndefined();
     });
   });
 });
