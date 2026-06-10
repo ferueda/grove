@@ -13,7 +13,7 @@ async function main() {
     const grove = await createGrove({ repoRoot: repoDir, groveDir: groveDir });
 
     // TS acquire
-    const tsWt1 = await grove.acquire();
+    const { path: tsWt1 } = await grove.acquire();
     console.log('[TS] Acquired:', tsWt1);
 
     // Go acquire
