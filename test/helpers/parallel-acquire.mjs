@@ -7,7 +7,7 @@ async function main() {
   try {
     const grove = await createGrove({ repoRoot, groveDir });
     const wt = await grove.acquire();
-    console.log(wt);
+    console.log(wt.path);
     setInterval(() => {}, 1000000);
   } catch (err) {
     console.error(err);

@@ -1,22 +1,25 @@
-import { z } from "zod";
 import { resolveGroveDir } from "./config.js";
 import { Grove } from "./pool.js";
+import { GroveConfigSchema } from "./schemas.js";
+import type { GroveConfig } from "./schemas.js";
 
-export const GroveConfigSchema = z.object({
-  repoRoot: z.string(),
-  groveRoot: z.string().optional(),
-  groveDir: z.string().optional(),
-  maxTrees: z.number().optional().default(16),
-  fetchOnAcquire: z.boolean().optional().default(true),
-  hooks: z
-    .object({
-      postCreate: z.array(z.string()).optional(),
-      preDestroy: z.array(z.string()).optional(),
-    })
-    .optional(),
-});
+export { Grove } from "./pool.js";
+export type { AcquiredSlot, WorktreeStatus, WorktreeStatusInfo } from "./pool.js";
+export { GroveConfigSchema } from "./schemas.js";
+export type { GroveConfig, WorktreeEntry, GroveState } from "./schemas.js";
 
-export type GroveConfig = z.infer<typeof GroveConfigSchema>;
+export {
+  GroveError,
+  GroveExhaustedError,
+  WorktreeDestroyingError,
+  WorktreeNotManagedError,
+  WorktreeInUseError,
+  GitNotFoundError,
+  GitCommandError,
+  InvalidGroveStateError,
+  LockFailedError,
+} from "./errors.js";
+export type { GroveErrorCode } from "./errors.js";
 
 export async function createGrove(configInput: GroveConfig): Promise<Grove> {
   const config = GroveConfigSchema.parse(configInput);

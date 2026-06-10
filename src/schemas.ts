@@ -21,14 +21,14 @@ export const GroveConfigSchema = z.object({
   repoRoot: z.string(),
   groveDir: z.string().optional(),
   groveRoot: z.string().optional(),
-  maxTrees: z.number().optional(),
+  maxTrees: z.number().optional().default(16),
   hooks: z
     .object({
       postCreate: z.array(z.string()).optional(),
       preDestroy: z.array(z.string()).optional(),
     })
     .optional(),
-  fetchOnAcquire: z.boolean().optional(),
+  fetchOnAcquire: z.boolean().optional().default(true),
 });
 
-export type GroveConfig = z.infer<typeof GroveConfigSchema>;
+export type GroveConfig = z.input<typeof GroveConfigSchema>;

@@ -57,7 +57,8 @@ Felipe owns this. Work style: telegraph; noun-phrases ok; drop grammar; min toke
 - **Format:** `pnpm format`
 - **Test:** `pnpm test` (runs vitest)
 - **Build:** `pnpm build`
-- **All Checks:** `pnpm check` (runs lint, build, test)
+- **Typecheck:** `pnpm typecheck`
+- **All Checks:** `pnpm check` (runs lint, typecheck, build, test)
 
 ## Source of Truth Docs
 
