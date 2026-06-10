@@ -15,8 +15,8 @@ export async function runHooks(commands: string[], workDir: string, opts: RunHoo
       
       const child = execa(shell, args, { 
         cwd: workDir, 
-        stdout: 'pipe',
-        stderr: 'pipe',
+        stdout: opts.stdout ? 'pipe' : 'ignore',
+        stderr: opts.stderr ? 'pipe' : 'ignore',
         windowsVerbatimArguments: isWin
       });
       
