@@ -1,9 +1,10 @@
 import { join, basename, dirname } from 'node:path';
-import { mkdir } from 'node:fs/promises';
-import { getDefaultBranch, fetchOrigin, addWorktree, resetWorktree, hasRemote, isDirty } from './git/index.js';
+import { mkdir, rm } from 'node:fs/promises';
+import { getDefaultBranch, fetchOrigin, addWorktree, resetWorktree, removeWorktree, hasRemote, isDirty } from './git/index.js';
 import { withStateLock } from './lock.js';
 import { readState, writeState, healState } from './state.js';
 import { reserveOwner, ownerAlive, isWorktreeInUse } from './process/detect.js';
+import { terminateWorktreeOwner } from './process/terminate.js';
 import { runHooks } from './hooks.js';
 import type { GroveConfig } from './index.js';
 
@@ -85,8 +86,9 @@ export class Grove {
 
   async release(worktreePath: string): Promise<void> {
     const branch = await getDefaultBranch(this.config.repoRoot);
-    
-    await resetWorktree(worktreePath, branch);
+    try {
+      await resetWorktree(worktreePath, branch);
+    } catch {}
 
     await withStateLock(this.poolDir, async () => {
       const state = await readState(this.poolDir);
@@ -111,6 +113,59 @@ export class Grove {
     }
     return (max + 1).toString();
   }
+  async list(): Promise<{ name: string, path: string, inUse: boolean, isDirty: boolean }[]> {
+    let state = await readState(this.poolDir);
+    state = await healState(state);
+
+    const result = [];
+    for (const wt of state.worktrees) {
+      if (wt.destroying) continue;
+      
+      const inUse = await isWorktreeInUse(wt.path) || await ownerAlive(wt);
+      const dirty = await isDirty(wt.path);
+      
+      result.push({
+        name: wt.name,
+        path: wt.path,
+        inUse,
+        isDirty: dirty
+      });
+    }
+    return result;
+  }
+
+  async destroy(): Promise<void> {
+    let state = await readState(this.poolDir);
+    
+    await withStateLock(this.poolDir, async () => {
+      state = await readState(this.poolDir);
+      for (const wt of state.worktrees) {
+        wt.destroying = true;
+      }
+      await writeState(this.poolDir, state);
+    });
+
+    for (const wt of state.worktrees) {
+      try {
+        await terminateWorktreeOwner(wt);
+      } catch {}
+
+      if (this.config.hooks?.preDestroy) {
+        try {
+          await runHooks(this.config.hooks.preDestroy, wt.path);
+        } catch {}
+      }
+
+      try {
+        await removeWorktree(this.config.repoRoot, wt.path);
+      } catch {}
+    }
+
+    try {
+      await rm(this.poolDir, { recursive: true, force: true });
+    } catch {}
+  }
+
   async findByPath(worktreePath: string): Promise<any | null> {
     const state = await readState(this.poolDir);
     for (const wt of state.worktrees) {
