@@ -14,7 +14,7 @@ async function main() {
 
     // TS acquire
     const tsWt1 = await grove.acquire();
-    console.log("[TS] Acquired:", tsWt1.path);
+    console.log('[TS] Acquired:', tsWt1);
 
     // Go acquire
     const { stdout: goWt1 } = await execa(TREEHOUSE_BIN, [
@@ -26,7 +26,7 @@ async function main() {
     ]);
     console.log("[Go] Acquired:", goWt1.trim());
 
-    if (tsWt1.path === goWt1.trim()) {
+    if (tsWt1 === goWt1.trim()) {
       console.error("FAIL: Go acquire returned the same path as TS acquire, double-booking?");
       process.exit(1);
     }
@@ -51,8 +51,8 @@ async function main() {
     }
 
     // Release TS
-    await grove.release(tsWt1.path);
-    console.log("[TS] Released:", tsWt1.path);
+    await grove.release(tsWt1);
+    console.log('[TS] Released:', tsWt1);
 
     // Re-acquire Go (should reuse TS slot)
     const { stdout: goWt2 } = await execa(TREEHOUSE_BIN, [
@@ -64,9 +64,9 @@ async function main() {
     ]);
     console.log("[Go] Acquired again:", goWt2.trim());
 
-    if (goWt2.trim() !== tsWt1.path) {
+    if (goWt2.trim() !== tsWt1) {
       console.error(
-        `FAIL: Go should have reused the released TS slot. Got ${goWt2.trim()} instead of ${tsWt1.path}`,
+        `FAIL: Go should have reused the released TS slot. Got ${goWt2.trim()} instead of ${tsWt1}`,
       );
       process.exit(1);
     }
