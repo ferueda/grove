@@ -13,6 +13,7 @@ import { readState, writeState, healState } from "./state.js";
 import { reserveOwner, ownerAlive, isWorktreeInUse, findInWorktree } from "./process/detect.js";
 import { runHooks } from "./hooks.js";
 import type { GroveConfig } from "./index.js";
+import type { WorktreeEntry } from "./schemas.js";
 import {
   GroveExhaustedError,
   WorktreeDestroyingError,
@@ -21,6 +22,11 @@ import {
 } from "./errors.js";
 
 export type WorktreeStatusInfo = "available" | "dirty" | "in-use" | "you're here";
+
+export interface AcquiredSlot {
+  readonly path: string;
+  readonly name: string;
+}
 
 export interface WorktreeStatus {
   name: string;
@@ -35,7 +41,7 @@ export class Grove {
     private config: GroveConfig,
   ) {}
 
-  async acquire(): Promise<string> {
+  async acquire(): Promise<AcquiredSlot> {
     const branch = await getDefaultBranch(this.config.repoRoot);
 
     if (this.config.fetchOnAcquire !== false) {
@@ -43,10 +49,12 @@ export class Grove {
     }
 
     let acquiredPath = "";
+    let acquiredName = "";
     let runPostCreate = false;
 
     await withStateLock(this.poolDir, async () => {
-      const state = await readState(this.poolDir);
+      let state = await readState(this.poolDir);
+      state = await healState(state);
 
       for (const wt of state.worktrees) {
         if (wt.destroying) continue;
@@ -65,6 +73,7 @@ export class Grove {
         await reserveOwner(wt);
         await writeState(this.poolDir, state);
         acquiredPath = wt.path;
+        acquiredName = wt.name;
         runPostCreate = true;
         return;
       }
@@ -92,6 +101,7 @@ export class Grove {
       await writeState(this.poolDir, state);
 
       acquiredPath = wtPath;
+      acquiredName = nextId;
       runPostCreate = true;
     });
 
@@ -106,7 +116,7 @@ export class Grove {
       }
     }
 
-    return acquiredPath;
+    return { path: acquiredPath, name: acquiredName };
   }
 
   async release(worktreePath: string): Promise<void> {
@@ -200,7 +210,7 @@ export class Grove {
       const idx = state.worktrees.findIndex((wt) => wt.path === worktreePath);
       const targetWt = state.worktrees[idx];
       if (!targetWt) {
-        throw new WorktreeNotManagedError(`worktree ${worktreePath} is not managed by treehouse`);
+        throw new WorktreeNotManagedError(`worktree ${worktreePath} is not managed by grove`);
       }
 
       if (!options?.force) {
@@ -310,7 +320,7 @@ export class Grove {
     });
   }
 
-  async findByPath(worktreePath: string): Promise<any | null> {
+  async findByPath(worktreePath: string): Promise<WorktreeEntry | null> {
     const state = await readState(this.poolDir);
     for (const wt of state.worktrees) {
       if (wt.path === worktreePath) {
