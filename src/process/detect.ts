@@ -91,7 +91,7 @@ export async function findInWorktree(worktreePath: string): Promise<ProcessInfo[
     }
   } else if (process.platform === 'darwin') {
     try {
-      const { stdout } = await execa('lsof', ['-F', 'pn', '-d', 'cwd']);
+      const { stdout } = await execa('lsof', ['-F', 'pn', '-d', 'cwd'], { reject: false });
       const lines = stdout.split('\n');
       let currentPid = -1;
       for (const line of lines) {
