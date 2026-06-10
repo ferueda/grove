@@ -20,7 +20,8 @@
     "test:watch": "vitest",
     "lint": "oxlint src test scripts --deny-warnings",
     "format": "oxfmt --write src test scripts",
-    "check": "pnpm lint && pnpm build && pnpm test",
+    "typecheck": "tsgo -p tsconfig.test.json",
+    "check": "pnpm lint && pnpm typecheck && pnpm build && pnpm test",
     "prepublishOnly": "pnpm check"
   },
   "dependencies": {
