@@ -36,11 +36,12 @@ export class Grove {
 
         const dirty = await isDirty(wt.path);
         if (dirty) {
-          try {
-            await resetWorktree(wt.path, branch);
-          } catch {
-            continue;
-          }
+          continue; // Do not destructively reset dirty worktrees
+        }
+        try {
+          await resetWorktree(wt.path, branch); // Always reset clean worktrees to default branch
+        } catch {
+          continue;
         }
         await reserveOwner(wt);
         await writeState(this.poolDir, state);
