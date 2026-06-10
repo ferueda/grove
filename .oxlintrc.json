@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "unicorn",
+    "typescript",
+    "oxc",
+    "import",
+    "node",
+    "promise",
+    "vitest"
+  ],
+  "jsPlugins": [
+    {
+      "name": "grove-zod",
+      "specifier": "./scripts/oxlint-zod-deprecations-plugin.mjs"
+    }
+  ],
+  "rules": {
+    "grove-zod/no-deprecated-zod-string-formats": "error",
+    "import/no-cycle": "error",
+    "import/no-duplicates": "error",
+    "promise/no-callback-in-promise": "error",
+    "promise/no-multiple-resolved": "error",
+    "promise/no-return-wrap": "error"
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/*.test.{ts,tsx,js,jsx}",
+        "**/*.spec.{ts,tsx,js,jsx}",
+        "test/**/*.{ts,tsx,js,jsx}"
+      ],
+      "rules": {
+        "vitest/no-conditional-tests": "error",
+        "vitest/require-mock-type-parameters": "off"
+      }
+    }
+  ]
+}
