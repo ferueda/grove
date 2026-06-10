@@ -6,13 +6,13 @@ export async function parentPID(pid: number): Promise<number> {
     try {
       const { readFile } = await import('node:fs/promises');
       const stat = await readFile(`/proc/${pid}/stat`, 'utf8');
-      const parts = stat.split(/\)\s+/);
-      const part = parts[1];
-      if (part) {
-        const fields = part.split(' ');
-        const field = fields[1];
-        if (field) {
-          return parseInt(field, 10);
+      const lastCloseParen = stat.lastIndexOf(')');
+      if (lastCloseParen !== -1) {
+        const postParen = stat.substring(lastCloseParen + 2);
+        const fields = postParen.split(' ');
+        const ppid = parseInt(fields[1] || '', 10);
+        if (!Number.isNaN(ppid)) {
+          return ppid;
         }
       }
     } catch {
