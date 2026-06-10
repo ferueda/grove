@@ -31,4 +31,4 @@ export const GroveConfigSchema = z.object({
   fetchOnAcquire: z.boolean().optional().default(true),
 });
 
-export type GroveConfig = z.infer<typeof GroveConfigSchema>;
+export type GroveConfig = z.input<typeof GroveConfigSchema>;
