@@ -1,7 +1,9 @@
 import { runGit } from './run.js';
+import { branchRef } from './branch.js';
 
 export async function addWorktree(repoRoot: string, path: string, branch: string): Promise<void> {
-  await runGit(repoRoot, ['worktree', 'add', '--detach', path, branch]);
+  const ref = await branchRef(repoRoot, branch);
+  await runGit(repoRoot, ['worktree', 'add', '--detach', path, ref]);
 }
 
 export async function removeWorktree(repoRoot: string, path: string): Promise<void> {
@@ -9,8 +11,13 @@ export async function removeWorktree(repoRoot: string, path: string): Promise<vo
 }
 
 export async function resetWorktree(path: string, branch: string): Promise<void> {
-  await runGit(path, ['checkout', '--detach', '--force', branch]);
-  await runGit(path, ['reset', '--hard']);
+  let repoRoot = path;
+  try {
+    repoRoot = await runGit(path, ['rev-parse', '--show-toplevel']);
+  } catch {}
+  const ref = await branchRef(repoRoot, branch);
+  await runGit(path, ['checkout', '--detach', '--force', ref]);
+  await runGit(path, ['reset', '--hard', ref]);
   await runGit(path, ['clean', '-fd']);
 }
 
