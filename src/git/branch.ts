@@ -102,3 +102,4 @@ export async function branchRef(repoRoot: string, branch: string): Promise<strin
   
   return branch; // fallback
 }
+export async function remoteUrl(repoRoot: string): Promise<string> { return await runGit(repoRoot, ['remote', 'get-url', 'origin']); }
