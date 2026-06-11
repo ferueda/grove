@@ -6,6 +6,7 @@ export interface RunHooksOptions {
   stderr?: Writable;
   timeoutMs?: number | undefined;
   env?: Record<string, string> | undefined;
+  onFailure?: "ignore" | "fail" | undefined;
 }
 
 export async function runHooks(
@@ -45,6 +46,10 @@ export async function runHooks(
         opts.stderr.write(msg);
       } else {
         process.stderr.write(msg);
+      }
+      if (opts.onFailure === "fail") {
+        const { HookFailedError } = await import("./errors.js");
+        throw new HookFailedError(`Hook failed: ${command}`);
       }
     }
   }
