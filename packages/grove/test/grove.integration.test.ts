@@ -130,7 +130,7 @@ describe("Grove Vertical Smoke", () => {
     await Promise.all(
       children.map((child) => {
         return new Promise<void>((resolve) => {
-          child.stdout!.on("data", (data) => {
+          child.stdout!.on("data", (data: Buffer) => {
             paths.push(data.toString().trim());
             resolve();
           });

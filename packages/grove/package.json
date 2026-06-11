@@ -17,6 +17,7 @@
     "typecheck": "tsgo -p ../../tsconfig.test.json"
   },
   "dependencies": {
+    "execa": "^9.6.0",
     "proper-lockfile": "^4.0.0",
     "zod": "^4.4.0"
   }
