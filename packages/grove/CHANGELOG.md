@@ -1,5 +1,11 @@
 # @ferueda/grove
 
+## 0.1.3
+
+### Patch Changes
+
+- [#23](https://github.com/ferueda/grove/pull/23) [`194d40c`](https://github.com/ferueda/grove/commit/194d40c1480800a09c48fc9c252ece429dbf8b71) Thanks [@ferueda](https://github.com/ferueda)! - fix: harden CLI error handling and align CI to Node 24
+
 ## 0.1.2
 
 ### Patch Changes
