@@ -61,6 +61,7 @@ export const GroveConfigSchema = z.object({
       preDestroy: z.array(z.string()).optional(),
     })
     .optional(),
+  onHookFailure: z.enum(["ignore", "fail"]).optional().default("ignore"),
   fetchOnAcquire: z.boolean().optional().default(true),
 });
 
