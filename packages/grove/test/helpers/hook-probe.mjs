@@ -62,6 +62,7 @@ if (command === "lock-probe") {
         for (const wt of state.worktrees) {
           if (wt.path === wtPath) {
             wt.destroying = false;
+            delete wt.state;
             delete wt.owner_pid;
             delete wt.owner_started_at;
           }
