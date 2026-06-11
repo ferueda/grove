@@ -12,9 +12,10 @@ export async function findRepoRoot(cwd: string = process.cwd()): Promise<string>
 }
 
 export async function loadGrove(options: { repo?: string; dir?: string }): Promise<Grove> {
-  let repoRoot = options.repo;
+  let repoRoot = options.repo || process.env.GROVE_REPO_ROOT;
   if (!repoRoot) {
     repoRoot = await findRepoRoot();
   }
-  return createGrove({ repoRoot, groveDir: options.dir });
+  const groveDir = options.dir || process.env.GROVE_DIR;
+  return createGrove({ repoRoot, groveDir });
 }
