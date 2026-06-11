@@ -30,6 +30,7 @@ import {
   LeaseQuarantinedError,
   UnsafeCleanupError,
   PathOutsidePoolError,
+  BranchDeleteFailedError,
 } from "./errors.js";
 
 export type WorktreeStatusInfo = "available" | "dirty" | "in-use" | "you're here";
@@ -113,8 +114,13 @@ export class Grove {
         stderr: process.stderr,
         timeoutMs: this.config.hookTimeoutMs,
         env,
+        onFailure: this.config.onHookFailure,
       });
-    } catch {}
+    } catch (err: any) {
+      if (err.code === "HOOK_FAILED") {
+        throw err;
+      }
+    }
   }
 
   private async findOrAllocateSlot(state: GroveState, defaultBranch: string): Promise<{ entry: WorktreeEntry, isNew: boolean }> {
@@ -225,12 +231,17 @@ export class Grove {
         }
 
         // Check compatibility
-        if (options.mode === "branch" && existing.branch !== options.branch) {
-          throw new LeaseConflictError(`Lease conflict: requested branch ${options.branch}, existing has ${existing.branch}`);
+        if (options.mode === "branch") {
+          if (existing.branch !== options.branch) {
+            throw new LeaseConflictError(`Lease conflict: requested branch ${options.branch}, existing has ${existing.branch}`);
+          }
+        } else if (options.mode === "detached") {
+          if (existing.baseRef !== options.ref && existing.baseSha !== options.ref && existing.acquiredHeadSha !== options.ref) {
+            throw new LeaseConflictError(`Lease conflict: requested ref ${options.ref} does not match existing detached base or SHA`);
+          }
         }
 
-        existing.owner_pid = process.pid;
-        existing.owner_started_at = Date.now();
+        await reserveOwner(existing);
         await writeState(this.poolDir, state);
 
         targetWtPath = existing.path;
@@ -390,6 +401,7 @@ export class Grove {
       throw new UnsafeCleanupError(`Cleanup failed: ${(err as any).message}`);
     }
 
+    let finalLease: GroveLease | null = null;
     await withStateLock(this.poolDir, async () => {
       const state = await readState(this.poolDir);
       const wt = state.worktrees.find(w => w.path === targetWtPath);
@@ -403,7 +415,9 @@ export class Grove {
         wt.state = "quarantined";
       } else if (options.cleanup === "reset") {
         wt.state = "available";
+        const tempId = wt.leaseId; // capture to return lease metadata
         wt.leaseId = undefined;
+        finalLease = this.entryToLease({ ...wt, leaseId: tempId }, "verified");
       } else if (options.cleanup === "preserve") {
         wt.state = "leased";
       }
@@ -413,7 +427,7 @@ export class Grove {
 
     await this.runHook(this.config.hooks?.postRelease, targetWtPath, leaseEnvVars);
 
-    return this.inspect(leaseIdOrPath) as Promise<GroveLease>;
+    return finalLease || this.inspect(leaseIdOrPath) as Promise<GroveLease>;
   }
 
   async destroy(leaseIdOrPath: string, options?: DestroyLeaseOptions): Promise<void> {
@@ -477,22 +491,70 @@ export class Grove {
         await rm(dirname(targetWtPath), { recursive: true, force: true });
       } catch {}
 
+      let branchDeleteError: any;
       if (branchToDelete) {
         try {
            await deleteBranch(this.config.repoRoot, branchToDelete, options?.force);
-        } catch {} // best effort delete
+        } catch (err) {
+           branchDeleteError = err;
+        }
       }
 
       state.worktrees.splice(idx, 1);
       await writeState(this.poolDir, state);
+      
+      if (branchDeleteError) {
+        throw new BranchDeleteFailedError(`Branch deletion failed: ${branchDeleteError.message}`);
+      }
     });
   }
 
   async destroyAll(options?: { force?: boolean }): Promise<void> {
-    const state = await readState(this.poolDir);
+    const targets: string[] = [];
+
+    await withStateLock(this.poolDir, async () => {
+      const state = await readState(this.poolDir);
+      
+      // Phase 1: validate all
+      for (const wt of state.worktrees) {
+        const { inUse, unverified } = await isWorktreeInUse(wt.path);
+        const alive = await ownerAlive(wt);
+
+        if (!options?.force) {
+          if (inUse || alive || unverified) {
+            throw new UnsafeCleanupError(
+              `worktree ${wt.path} is in use or unverified. Use --force to override`
+            );
+          }
+        }
+      }
+
+      // Phase 2: reserve all
+      for (const wt of state.worktrees) {
+        wt.destroying = true;
+        wt.state = "destroying";
+        await reserveOwner(wt);
+        targets.push(wt.leaseId || wt.path);
+      }
+      
+      await writeState(this.poolDir, state);
+    });
+
+    // Phase 3: execute destructs outside the shared lock
+    const errors: Error[] = [];
     await Promise.all(
-      state.worktrees.map(wt => this.destroy(wt.leaseId || wt.path, options))
+      targets.map(async (target) => {
+        try {
+          await this.destroy(target, options);
+        } catch (err: any) {
+          errors.push(err);
+        }
+      })
     );
+
+    if (errors.length > 0) {
+      throw errors[0]; // Propagate the first failure (e.g. BranchDeleteFailedError)
+    }
   }
 
   async repair(options: RepairLeaseOptions): Promise<GroveLease | void> {
