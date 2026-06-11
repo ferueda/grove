@@ -9,7 +9,7 @@
     "lint": "oxlint packages/*/src packages/*/test scripts --deny-warnings",
     "format": "oxfmt --write packages/*/src packages/*/test scripts",
     "typecheck": "tsgo -p tsconfig.test.json",
-    "check": "pnpm lint && pnpm typecheck && pnpm build && pnpm test"
+    "check": "pnpm lint && pnpm build && pnpm typecheck && pnpm test"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
