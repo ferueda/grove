@@ -18,6 +18,10 @@ export const acquireCmd = new Command("acquire")
         const shell = process.env.SHELL || "/bin/sh";
         const env = { ...process.env, GROVE_DIR: slot.path };
 
+        const sigHandler = () => {};
+        process.on("SIGINT", sigHandler);
+        process.on("SIGTERM", sigHandler);
+
         const child = spawn(shell, [], {
           stdio: "inherit",
           env,
@@ -25,6 +29,8 @@ export const acquireCmd = new Command("acquire")
         });
 
         child.on("exit", async (code) => {
+          process.off("SIGINT", sigHandler);
+          process.off("SIGTERM", sigHandler);
           try {
             await grove.release(slot.path);
             console.error(pc.green("🌳 Worktree returned to pool."));
