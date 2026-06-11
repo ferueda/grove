@@ -1,0 +1,23 @@
+{
+  "name": "grove",
+  "version": "0.1.0",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsgo -p tsconfig.json",
+    "typecheck": "tsgo -p ../../tsconfig.test.json"
+  },
+  "dependencies": {
+    "proper-lockfile": "^4.0.0",
+    "zod": "^4.4.0"
+  }
+}
