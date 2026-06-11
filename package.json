@@ -9,9 +9,12 @@
     "lint": "oxlint packages/*/src packages/*/test scripts --deny-warnings",
     "format": "oxfmt --write packages/*/src packages/*/test scripts",
     "typecheck": "tsgo -p tsconfig.test.json",
+    "changeset": "changeset",
     "check": "pnpm lint && pnpm build && pnpm typecheck && pnpm test"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^0.7.0",
+    "@changesets/cli": "^2.31.0",
     "@types/node": "^24.0.0",
     "@types/proper-lockfile": "^4.1.4",
     "@typescript/native-preview": "^7.0.0-dev",
