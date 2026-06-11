@@ -240,4 +240,27 @@ describe("Grove Lease Mode Integration", () => {
       })
     ).rejects.toThrow(/does not match existing detached base or SHA/);
   });
+
+
+  it("destroyAll happy path: cleans up all idle leases safely", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+
+    const lease1 = await grove.acquire({ leaseId: "lease-1", mode: "detached", ref: "main" });
+    const lease2 = await grove.acquire({ leaseId: "lease-2", mode: "detached", ref: "main" });
+
+    // Release them to preserve to clear the owner/PID tracking, making them idle
+    await grove.release(lease1.leaseId, { cleanup: "preserve" });
+    await grove.release(lease2.leaseId, { cleanup: "preserve" });
+
+    await grove.destroyAll();
+
+    const leases = await grove.listLeases();
+    expect(leases).toHaveLength(0);
+
+    const { existsSync } = await import("node:fs");
+    expect(existsSync(lease1.path)).toBe(false);
+    expect(existsSync(lease2.path)).toBe(false);
+  });
 });
