@@ -36,6 +36,8 @@ export {
   BranchNotFoundError,
   RefNotFoundError,
   PathOutsidePoolError,
+  BranchDeleteFailedError,
+  HookFailedError,
 } from "./errors.js";
 export type { GroveErrorCode } from "./errors.js";
 
