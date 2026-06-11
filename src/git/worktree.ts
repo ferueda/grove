@@ -3,11 +3,11 @@ import { branchRef, hasRemote } from "./branch.js";
 
 export async function addWorktree(repoRoot: string, path: string, branch: string): Promise<void> {
   const ref = await branchRef(repoRoot, branch);
-  await runGit(repoRoot, ["worktree", "add", "--detach", path, ref]);
+  await runGit(repoRoot, ["worktree", "add", "--detach", "--", path, ref]);
 }
 
 export async function removeWorktree(repoRoot: string, path: string): Promise<void> {
-  await runGit(repoRoot, ["worktree", "remove", "--force", path]);
+  await runGit(repoRoot, ["worktree", "remove", "--force", "--", path]);
 }
 
 export async function resetWorktree(path: string, branch: string): Promise<void> {

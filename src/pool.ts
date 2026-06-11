@@ -250,6 +250,7 @@ export class Grove {
         await removeWorktree(this.config.repoRoot, worktreePath);
       } catch {}
 
+      assertPathWithinPool(this.poolDir, worktreePath);
       try {
         await rm(dirname(worktreePath), { recursive: true, force: true });
       } catch {}
@@ -310,6 +311,8 @@ export class Grove {
         try {
           await removeWorktree(this.config.repoRoot, wt.path);
         } catch {}
+        
+        assertPathWithinPool(this.poolDir, wt.path);
         try {
           await rm(dirname(wt.path), { recursive: true, force: true });
         } catch {}
@@ -343,4 +346,11 @@ function sameDestroyReservation(current: any, reserved: any): boolean {
 function cwdInWorktree(cwd: string, worktreePath: string): boolean {
   const rel = relative(worktreePath, cwd);
   return !rel.startsWith("..") && !isAbsolute(rel);
+}
+
+function assertPathWithinPool(poolDir: string, targetPath: string): void {
+  const rel = relative(poolDir, targetPath);
+  if (rel.startsWith("..") || isAbsolute(rel)) {
+    throw new Error("Security violation: target path is outside the pool boundary");
+  }
 }
