@@ -5,6 +5,9 @@
     "dist"
   ],
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "grove": "./dist/cli.js"
   },
