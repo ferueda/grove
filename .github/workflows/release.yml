@@ -18,21 +18,18 @@ jobs:
 
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           # This makes Actions fetch all Git history so that Changesets can generate changelogs correctly
           fetch-depth: 0
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          registry-url: 'https://registry.npmjs.org'
+      - run: corepack enable
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v3
+      - name: Setup Node
+        uses: actions/setup-node@v6
         with:
-          version: 9
+          node-version: "24"
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
