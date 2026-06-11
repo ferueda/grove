@@ -1,14 +1,21 @@
 import { Command } from "commander";
 import { loadGrove } from "../utils.js";
+import { handleError } from "../error-handler.js";
 import pc from "picocolors";
 
 export const statusCmd = new Command("status")
   .description("Show the status of all worktrees in the pool")
   .option("-r, --repo <path>", "Path to repository root")
+  .option("--json", "Output status as JSON")
   .action(async (options) => {
     try {
       const grove = await loadGrove({ repo: options.repo });
       const trees = await grove.list();
+
+      if (options.json) {
+        process.stdout.write(JSON.stringify(trees, null, 2) + "\n");
+        return;
+      }
 
       if (trees.length === 0) {
         console.log("🌳 No worktrees in pool.");
@@ -46,8 +53,7 @@ export const statusCmd = new Command("status")
           }
         }
       }
-    } catch (err: any) {
-      console.error(pc.red(err.message));
-      process.exit(1);
+    } catch (err: unknown) {
+      handleError(err);
     }
   });

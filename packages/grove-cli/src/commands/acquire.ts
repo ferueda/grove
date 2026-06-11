@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { loadGrove } from "../utils.js";
+import { handleError } from "../error-handler.js";
 import { spawn } from "node:child_process";
 import pc from "picocolors";
 
@@ -34,8 +35,9 @@ export const acquireCmd = new Command("acquire")
           try {
             await grove.release(slot.path);
             console.error(pc.green("🌳 Worktree returned to pool."));
-          } catch (err: any) {
-            console.error(pc.red(`🌳 Warning: failed to release worktree: ${err.message}`));
+          } catch (releaseErr: unknown) {
+            const msg = releaseErr instanceof Error ? releaseErr.message : String(releaseErr);
+            console.error(pc.red(`🌳 Warning: failed to release worktree: ${msg}`));
           }
           process.exit(code ?? 0);
         });
@@ -43,8 +45,7 @@ export const acquireCmd = new Command("acquire")
         // Output raw path to stdout for pipeability
         process.stdout.write(slot.path + "\n");
       }
-    } catch (err: any) {
-      console.error(pc.red(err.message));
-      process.exit(1);
+    } catch (err: unknown) {
+      handleError(err);
     }
   });
