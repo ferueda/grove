@@ -6,14 +6,14 @@ import type { GroveConfig } from "./schemas.js";
 export { Grove } from "./pool.js";
 export type {
   AcquiredSlot,
-  WorktreeStatus,
-  WorktreeStatusInfo,
-  GroveLease,
   AcquireLeaseOptions,
   ReleaseLeaseOptions,
   DestroyLeaseOptions,
   RepairLeaseOptions,
-} from "./pool.js";
+  GroveLease,
+  WorktreeStatus,
+  WorktreeStatusInfo,
+} from "./types.js";
 export { GroveConfigSchema } from "./schemas.js";
 export type { GroveConfig, WorktreeEntry, GroveState, GroveCleanupIntent } from "./schemas.js";
 
