@@ -110,7 +110,7 @@ describe("Grove Vertical Smoke", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const scriptPath = join(process.cwd(), "test", "helpers", "parallel-acquire.mjs");
+    const scriptPath = join(import.meta.dirname, "helpers", "parallel-acquire.mjs");
 
     const execa = (await import("execa")).execa;
 
@@ -130,7 +130,7 @@ describe("Grove Vertical Smoke", () => {
     await Promise.all(
       children.map((child) => {
         return new Promise<void>((resolve) => {
-          child.stdout!.on("data", (data) => {
+          child.stdout!.on("data", (data: Buffer) => {
             paths.push(data.toString().trim());
             resolve();
           });

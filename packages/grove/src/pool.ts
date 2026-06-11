@@ -108,7 +108,7 @@ export class Grove {
     if (runPostCreate && this.config.hooks?.postCreate) {
       try {
         await runHooks(this.config.hooks.postCreate, acquiredPath, {
-          stdout: process.stdout,
+          stdout: process.stderr,
           stderr: process.stderr,
         });
       } catch {
@@ -124,10 +124,12 @@ export class Grove {
 
     await withStateLock(this.poolDir, async () => {
       const state = await readState(this.poolDir);
-      for (const wt of state.worktrees) {
-        if (wt.path === worktreePath && wt.destroying) {
-          throw new WorktreeDestroyingError(`worktree ${worktreePath} is being destroyed`);
-        }
+      const wt = state.worktrees.find((w) => w.path === worktreePath);
+      if (!wt) {
+        throw new WorktreeNotManagedError(`worktree ${worktreePath} is not managed by grove`);
+      }
+      if (wt.destroying) {
+        throw new WorktreeDestroyingError(`worktree ${worktreePath} is being destroyed`);
       }
     });
 
@@ -135,16 +137,15 @@ export class Grove {
 
     await withStateLock(this.poolDir, async () => {
       const state = await readState(this.poolDir);
-      for (const wt of state.worktrees) {
-        if (wt.path === worktreePath) {
-          if (wt.destroying) {
-            throw new WorktreeDestroyingError(`worktree ${worktreePath} is being destroyed`);
-          }
-          wt.owner_pid = undefined;
-          wt.owner_started_at = undefined;
-          break;
-        }
+      const wt = state.worktrees.find((w: any) => w.path === worktreePath);
+      if (!wt) {
+        throw new WorktreeNotManagedError(`worktree ${worktreePath} is not managed by grove`);
       }
+      if (wt.destroying) {
+        throw new WorktreeDestroyingError(`worktree ${worktreePath} is being destroyed`);
+      }
+      wt.owner_pid = undefined;
+      wt.owner_started_at = undefined;
       await writeState(this.poolDir, state);
     });
   }
@@ -231,7 +232,7 @@ export class Grove {
     if (this.config.hooks?.preDestroy) {
       try {
         await runHooks(this.config.hooks.preDestroy, worktreePath, {
-          stdout: process.stdout,
+          stdout: process.stderr,
           stderr: process.stderr,
         });
       } catch {}
@@ -290,7 +291,7 @@ export class Grove {
       if (this.config.hooks?.preDestroy) {
         try {
           await runHooks(this.config.hooks.preDestroy, wt.path, {
-            stdout: process.stdout,
+            stdout: process.stderr,
             stderr: process.stderr,
           });
         } catch {}

@@ -1,0 +1,20 @@
+{
+  "name": "grove-cli",
+  "version": "0.1.0",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "bin": {
+    "grove": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsgo -p tsconfig.json"
+  },
+  "dependencies": {
+    "commander": "^13.0.0",
+    "execa": "^9.6.0",
+    "grove": "workspace:*",
+    "picocolors": "^1.1.0"
+  }
+}
