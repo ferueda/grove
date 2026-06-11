@@ -43,11 +43,12 @@ Felipe owns this. Work style: telegraph; noun-phrases ok; drop grammar; min toke
 - **Rule 3 — Validation at Boundaries:** Use `zod` to validate `GroveConfig` input and `GroveState` from disk. Once parsed, operate on trusted shapes.
 - **Rule 4 — Read before you write:** If you are porting a behavior, read the `grove-typescript-port.md` plan to ensure it's in scope for v0.1.
 
-## Commit Guidelines
+## Commit & Release Guidelines
 
-- Review `git diff` before commit.
+- **Branching:** All feature work must be done on branches and merged via Pull Requests to `main`. Do not push directly to `main`.
+- **Commit Formatting:** You MUST use strict Conventional Commits prefixes (`feat:`, `fix:`, `refactor:`, `build:`, `ci:`, `chore:`, `docs:`, `style:`, `test:`).
+- **Automated Versioning:** Do NOT run `pnpm changeset` manually. The CI pipeline will automatically derive the semantic version bumps (`minor`, `patch`) based solely on your Conventional Commits, and a bot will add the changeset to the PR.
 - Keep commits atomic and scoped.
-- Use conventional commit prefixes (`feat|fix|refactor|build|ci|chore|docs|style|test`).
 - E.g.: `feat: implement findInWorktree cwd scan`
 
 ## Core Commands

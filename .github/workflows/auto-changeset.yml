@@ -1,0 +1,69 @@
+name: Auto Changeset
+
+on:
+  pull_request:
+    types: ['opened', 'synchronize', 'reopened']
+
+jobs:
+  generate-changeset:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Generate Changeset
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            // If there's already a changeset (other than README.md), don't add another one.
+            const existing = fs.readdirSync('.changeset').filter(f => f.endsWith('.md') && f !== 'README.md');
+            if (existing.length > 0) {
+              console.log('Changeset already exists.');
+              return;
+            }
+
+            const { data: commits } = await github.rest.pulls.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+
+            let type = 'patch';
+            let isChore = true;
+            for (const c of commits) {
+               const msg = c.commit.message;
+               if (msg.includes('BREAKING CHANGE') || msg.includes('!:')) { 
+                 type = 'major'; 
+                 isChore = false; 
+               }
+               else if (msg.startsWith('feat:')) { 
+                 if (type !== 'major') type = 'minor'; 
+                 isChore = false; 
+               }
+               else if (msg.startsWith('fix:') || msg.startsWith('refactor:') || msg.startsWith('perf:')) { 
+                 isChore = false; 
+               }
+            }
+
+            if (isChore) {
+              console.log('No user-facing changes (only chore, test, ci, docs). No changeset required.');
+              return;
+            }
+
+            const id = Math.random().toString(36).substring(2, 8);
+            const title = context.payload.pull_request.title.replace(/"/g, '\\"');
+            const content = `---\n"grove": ${type}\n"grove-cli": ${type}\n---\n\n${title}\n`;
+            
+            fs.writeFileSync(`.changeset/auto-${id}.md`, content);
+            console.log(`Created .changeset/auto-${id}.md as a ${type} bump.`);
+
+      - name: Commit Changeset
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: auto-generate changeset"
+          file_pattern: ".changeset/*.md"
