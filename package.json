@@ -8,7 +8,7 @@
     "test:watch": "vitest",
     "lint": "oxlint packages/*/src packages/*/test scripts --deny-warnings",
     "format": "oxfmt --write packages/*/src packages/*/test scripts",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "tsgo -p tsconfig.test.json",
     "check": "pnpm lint && pnpm typecheck && pnpm build && pnpm test"
   },
   "devDependencies": {

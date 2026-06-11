@@ -13,8 +13,7 @@
     }
   },
   "scripts": {
-    "build": "tsgo -p tsconfig.json",
-    "typecheck": "tsgo -p ../../tsconfig.test.json"
+    "build": "tsgo -p tsconfig.json"
   },
   "dependencies": {
     "execa": "^9.6.0",
