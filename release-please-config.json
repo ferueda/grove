@@ -1,0 +1,13 @@
+{
+  "packages": {
+    "packages/grove": {
+      "release-type": "node"
+    },
+    "packages/grove-cli": {
+      "release-type": "node"
+    }
+  },
+  "plugins": [
+    "node-workspace"
+  ]
+}
