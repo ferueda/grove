@@ -18,7 +18,7 @@ import { withStateLock } from "./lock.js";
 import { readState, writeState, healState } from "./state.js";
 import { reserveOwner, ownerAlive, isWorktreeInUse, findInWorktree } from "./process/detect.js";
 import { runHooks } from "./hooks.js";
-import type { GroveConfig, GroveCleanupIntent } from "./index.js";
+import type { GroveConfig } from "./index.js";
 import type { WorktreeEntry, GroveState } from "./schemas.js";
 import {
   GroveExhaustedError,
@@ -33,72 +33,16 @@ import {
   BranchDeleteFailedError,
 } from "./errors.js";
 
-export type WorktreeStatusInfo = "available" | "dirty" | "in-use" | "you're here";
-
-export interface AcquiredSlot {
-  readonly path: string;
-  readonly name: string;
-}
-
-export interface WorktreeStatus {
-  name: string;
-  path: string;
-  status: WorktreeStatusInfo;
-  processes: { PID: number; Name?: string }[];
-}
-
-type AcquireMode =
-  | {
-      mode: "branch";
-      branch: string;
-      createBranch?: {
-        from: string;
-        ifExists?: "reuse" | "fail";
-      };
-    }
-  | {
-      mode: "detached";
-      ref: string;
-    };
-
-export type AcquireLeaseOptions = AcquireMode & {
-  leaseId: string;
-  ownerId?: string;
-  ifLeased?: "return-existing" | "fail";
-  fetchOnAcquire?: boolean;
-  metadata?: Record<string, string>;
-};
-
-export type ReleaseLeaseOptions = GroveCleanupIntent;
-
-export interface DestroyLeaseOptions {
-  force?: boolean;
-  deleteBranch?: boolean;
-}
-
-export interface RepairLeaseOptions {
-  leaseId: string;
-  action: "quarantine" | "resume-cleanup" | "force-destroy";
-  force?: boolean;
-}
-
-export interface GroveLease {
-  leaseId: string;
-  ownerId?: string | undefined;
-  slotName: string;
-  path: string;
-  repoRoot: string;
-  branch?: string | undefined;
-  baseRef?: string | undefined;
-  baseSha?: string | undefined;
-  acquiredHeadSha: string;
-  currentHeadSha: string;
-  state: "leased" | "available" | "releasing" | "destroying" | "quarantined";
-  pendingCleanup?: GroveCleanupIntent | undefined;
-  processSafety?: "verified" | "unverified" | undefined;
-  createdAt: string;
-  updatedAt: string;
-}
+import type {
+  AcquiredSlot,
+  AcquireLeaseOptions,
+  ReleaseLeaseOptions,
+  DestroyLeaseOptions,
+  RepairLeaseOptions,
+  GroveLease,
+  WorktreeStatus,
+} from "./types.js";
+import { entryToLease, listWorktrees, listLeases, inspectLease } from "./queries.js";
 
 export class Grove {
   constructor(
@@ -379,7 +323,7 @@ export class Grove {
       wt.pendingCleanup = options;
       await writeState(this.poolDir, state);
       targetWtPath = wt.path;
-      leaseEnvVars = this.leaseEnv(this.entryToLease(wt, unverified ? "unverified" : "verified"));
+      leaseEnvVars = this.leaseEnv(entryToLease(wt, unverified ? "unverified" : "verified", this.config.repoRoot));
     });
 
     await this.runHook(this.config.hooks?.preRelease, targetWtPath, leaseEnvVars);
@@ -417,7 +361,7 @@ export class Grove {
         wt.state = "available";
         const tempId = wt.leaseId; // capture to return lease metadata
         wt.leaseId = undefined;
-        finalLease = this.entryToLease({ ...wt, leaseId: tempId }, "verified");
+        finalLease = entryToLease({ ...wt, leaseId: tempId }, "verified", this.config.repoRoot);
       } else if (options.cleanup === "preserve") {
         wt.state = "leased";
       }
@@ -468,11 +412,20 @@ export class Grove {
       await reserveOwner(targetWt);
       
       targetWtPath = targetWt.path;
-      leaseEnvVars = targetWt.leaseId ? this.leaseEnv(this.entryToLease(targetWt, unverified ? "unverified" : "verified")) : {};
+      leaseEnvVars = targetWt.leaseId ? this.leaseEnv(entryToLease(targetWt, unverified ? "unverified" : "verified", this.config.repoRoot)) : {};
 
       await writeState(this.poolDir, state);
     });
 
+    await this.executeDestroy(targetWtPath, leaseEnvVars, branchToDelete, options);
+  }
+
+  private async executeDestroy(
+    targetWtPath: string,
+    leaseEnvVars: Record<string, string>,
+    branchToDelete: string | undefined,
+    options?: DestroyLeaseOptions
+  ): Promise<void> {
     await this.runHook(this.config.hooks?.preDestroy, targetWtPath, leaseEnvVars);
 
     await withStateLock(this.poolDir, async () => {
@@ -510,7 +463,7 @@ export class Grove {
   }
 
   async destroyAll(options?: { force?: boolean }): Promise<void> {
-    const targets: string[] = [];
+    const targets: { path: string, env: Record<string, string> }[] = [];
 
     await withStateLock(this.poolDir, async () => {
       const state = await readState(this.poolDir);
@@ -534,7 +487,9 @@ export class Grove {
         wt.destroying = true;
         wt.state = "destroying";
         await reserveOwner(wt);
-        targets.push(wt.leaseId || wt.path);
+        const { unverified } = await findInWorktree(wt.path);
+        const env = wt.leaseId ? this.leaseEnv(entryToLease(wt, unverified ? "unverified" : "verified", this.config.repoRoot)) : {};
+        targets.push({ path: wt.path, env });
       }
       
       await writeState(this.poolDir, state);
@@ -545,7 +500,7 @@ export class Grove {
     await Promise.all(
       targets.map(async (target) => {
         try {
-          await this.destroy(target, options);
+          await this.executeDestroy(target.path, target.env, undefined, options);
         } catch (err: any) {
           errors.push(err);
         }
@@ -609,91 +564,15 @@ export class Grove {
   }
 
   async inspect(leaseIdOrPath: string): Promise<GroveLease | null> {
-    let entry: WorktreeEntry | undefined;
-    let processSafety: "verified" | "unverified" = "verified";
-
-    await withStateLock(this.poolDir, async () => {
-      let state = await readState(this.poolDir);
-      state = await healState(state);
-      
-      entry = state.worktrees.find(w => w.leaseId === leaseIdOrPath || w.path === leaseIdOrPath);
-    });
-
-    if (!entry || !entry.leaseId) return null;
-
-    const { unverified } = await isWorktreeInUse(entry.path);
-    if (unverified) processSafety = "unverified";
-
-    try {
-      const headSha = await getHeadSha(entry.path);
-      entry.currentHeadSha = headSha;
-    } catch {}
-
-    return this.entryToLease(entry, processSafety);
+    return inspectLease(leaseIdOrPath, this.poolDir, this.config);
   }
 
   async list(_options?: { includeProcesses?: boolean }): Promise<WorktreeStatus[]> {
-    const result: WorktreeStatus[] = [];
-
-    await withStateLock(this.poolDir, async () => {
-      let state = await readState(this.poolDir);
-      state = await healState(state);
-      await writeState(this.poolDir, state);
-
-      const cwd = process.cwd();
-
-      for (const wt of state.worktrees) {
-        if (wt.destroying || wt.state === "destroying" || wt.leaseId) continue;
-
-        let status: WorktreeStatusInfo = "available";
-        const { processes } = await findInWorktree(wt.path);
-
-        const alive = await ownerAlive(wt);
-
-        if (alive) {
-          status = "in-use";
-        } else if (processes.length > 0) {
-          status = "in-use";
-          if (this.cwdInWorktree(cwd, wt.path)) {
-            status = "you're here";
-          }
-        } else if (await isDirty(wt.path)) {
-          status = "dirty";
-        }
-
-        result.push({
-          name: wt.name,
-          path: wt.path,
-          status,
-          processes,
-        });
-      }
-    });
-
-    return result;
+    return listWorktrees(this.poolDir);
   }
 
   async listLeases(_options?: { includeProcesses?: boolean }): Promise<GroveLease[]> {
-    const result: GroveLease[] = [];
-
-    await withStateLock(this.poolDir, async () => {
-      let state = await readState(this.poolDir);
-      state = await healState(state);
-
-      for (const wt of state.worktrees) {
-        if (!wt.leaseId) continue;
-        
-        const { unverified } = await findInWorktree(wt.path);
-        
-        try {
-          wt.currentHeadSha = await getHeadSha(wt.path);
-        } catch {}
-
-        result.push(this.entryToLease(wt, unverified ? "unverified" : "verified"));
-      }
-    });
-
-    return result;
+    return listLeases(this.poolDir, this.config);
   }
 
   async findByPath(worktreePath: string): Promise<WorktreeEntry | null> {
@@ -727,26 +606,6 @@ export class Grove {
     if (rel.startsWith("..") || isAbsolute(rel)) {
       throw new PathOutsidePoolError("Security violation: target path is outside the pool boundary");
     }
-  }
-
-  private entryToLease(wt: WorktreeEntry, processSafety: "verified" | "unverified"): GroveLease {
-    return {
-      leaseId: wt.leaseId!,
-      ownerId: wt.ownerId,
-      slotName: wt.name,
-      path: wt.path,
-      repoRoot: this.config.repoRoot,
-      branch: wt.branch,
-      baseRef: wt.baseRef,
-      baseSha: wt.baseSha,
-      acquiredHeadSha: wt.acquiredHeadSha || "",
-      currentHeadSha: wt.currentHeadSha || "",
-      state: (wt.state as any) || "available",
-      pendingCleanup: wt.pendingCleanup,
-      processSafety,
-      createdAt: wt.created_at,
-      updatedAt: wt.updatedAt || wt.created_at,
-    };
   }
 
   private leaseEnv(lease: GroveLease): Record<string, string> {
