@@ -15,7 +15,9 @@ export type GroveErrorCode =
   | "BRANCH_EXISTS"
   | "BRANCH_NOT_FOUND"
   | "REF_NOT_FOUND"
-  | "PATH_OUTSIDE_POOL";
+  | "PATH_OUTSIDE_POOL"
+  | "BRANCH_DELETE_FAILED"
+  | "HOOK_FAILED";
 
 export class GroveError extends Error {
   readonly code: GroveErrorCode;
@@ -127,5 +129,17 @@ export class RefNotFoundError extends GroveError {
 export class PathOutsidePoolError extends GroveError {
   constructor(message: string = "Path outside pool boundary") {
     super(message, "PATH_OUTSIDE_POOL");
+  }
+}
+
+export class BranchDeleteFailedError extends GroveError {
+  constructor(message: string) {
+    super(message, "BRANCH_DELETE_FAILED");
+  }
+}
+
+export class HookFailedError extends GroveError {
+  constructor(message: string) {
+    super(message, "HOOK_FAILED");
   }
 }
