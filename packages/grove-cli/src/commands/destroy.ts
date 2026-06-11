@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { loadGrove } from "../utils.js";
+import { handleError } from "../error-handler.js";
 import pc from "picocolors";
 
 export const destroyCmd = new Command("destroy")
@@ -12,9 +13,8 @@ export const destroyCmd = new Command("destroy")
       const grove = await loadGrove({ repo: options.repo });
       await grove.destroy(worktreePath, { force: options.force });
       console.error(pc.green(`🌳 Destroyed worktree at ${worktreePath}`));
-    } catch (err: any) {
-      console.error(pc.red(err.message));
-      process.exit(1);
+    } catch (err: unknown) {
+      handleError(err);
     }
   });
 
@@ -27,8 +27,7 @@ export const destroyAllCmd = new Command("destroy-all")
       const grove = await loadGrove({ repo: options.repo });
       await grove.destroyAll({ force: options.force });
       console.error(pc.green("🌳 Destroyed all worktrees in the pool."));
-    } catch (err: any) {
-      console.error(pc.red(err.message));
-      process.exit(1);
+    } catch (err: unknown) {
+      handleError(err);
     }
   });

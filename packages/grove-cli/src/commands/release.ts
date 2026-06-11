@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { loadGrove } from "../utils.js";
+import { handleError } from "../error-handler.js";
 import pc from "picocolors";
 
 export const releaseCmd = new Command("release")
@@ -10,11 +11,10 @@ export const releaseCmd = new Command("release")
     try {
       const targetPath = worktreePath || process.cwd();
       const grove = await loadGrove({ repo: options.repo });
-      
+
       await grove.release(targetPath);
       console.error(pc.green("🌳 Worktree returned to pool."));
-    } catch (err: any) {
-      console.error(pc.red(err.message));
-      process.exit(1);
+    } catch (err: unknown) {
+      handleError(err);
     }
   });
