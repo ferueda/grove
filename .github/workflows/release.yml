@@ -31,22 +31,28 @@ jobs:
         with:
           node-version: "24"
 
+      - name: Release Please
+        uses: google-github-actions/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
       - name: Install Dependencies
+        if: ${{ steps.release.outputs.releases_created }}
         run: pnpm install --frozen-lockfile
 
       - name: Verify Builds and Tests
+        if: ${{ steps.release.outputs.releases_created }}
         run: pnpm check
 
       - name: Build Workspace
+        if: ${{ steps.release.outputs.releases_created }}
         run: pnpm build
 
-      - name: Create Release Pull Request or Publish to NPM
-        id: changesets
-        uses: changesets/action@v1
-        with:
-          publish: pnpm changeset publish
-          commit: "chore(release): version packages"
-          title: "chore(release): version packages"
+      - name: Publish to NPM
+        if: ${{ steps.release.outputs.releases_created }}
+        run: pnpm -r publish --access public
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true

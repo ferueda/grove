@@ -47,7 +47,7 @@ Felipe owns this. Work style: telegraph; noun-phrases ok; drop grammar; min toke
 
 - **Branching:** All feature work must be done on branches and merged via Pull Requests to `main`. Do not push directly to `main`.
 - **Commit Formatting:** You MUST use strict Conventional Commits prefixes (`feat:`, `fix:`, `refactor:`, `build:`, `ci:`, `chore:`, `docs:`, `style:`, `test:`).
-- **Automated Versioning:** Do NOT run `pnpm changeset` manually. The CI pipeline will automatically derive the semantic version bumps (`minor`, `patch`) based solely on your Conventional Commits, and a bot will add the changeset to the PR.
+- **Automated Versioning:** Do NOT run `pnpm version` or `changesets`. The CI pipeline uses `release-please` to automatically derive semantic version bumps (`minor`, `patch`) based solely on your Conventional Commits. A Release PR will be automatically opened and updated, and publishing happens upon merging it.
 - Keep commits atomic and scoped.
 - E.g.: `feat: implement findInWorktree cwd scan`
 
