@@ -1,6 +1,6 @@
 import { execa } from "execa";
-import { createGrove } from "grove";
-import type { Grove } from "grove";
+import { createGrove } from "@ferueda/grove";
+import type { Grove } from "@ferueda/grove";
 
 export async function findRepoRoot(cwd: string = process.cwd()): Promise<string> {
   try {
