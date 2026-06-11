@@ -82,9 +82,9 @@ describe("Process Detection & Termination", () => {
       // Wait for child to initialize
       await new Promise((r) => setTimeout(r, 500));
 
-      const procs = await findInWorktree(worktreePath);
-      expect(procs.length).toBeGreaterThanOrEqual(1);
-      expect(procs.map((p) => p.PID)).toContain(child.pid);
+      const { processes } = await findInWorktree(worktreePath);
+      expect(processes.length).toBeGreaterThanOrEqual(1);
+      expect(processes.map((p: any) => p.PID)).toContain(child.pid);
 
       child.kill();
       await child.catch(() => {});
@@ -115,8 +115,8 @@ describe("Process Detection & Termination", () => {
       // Verify child is dead
       await expect(child).rejects.toThrow(/Command was killed/);
 
-      const procsAfter = await findInWorktree(worktreePath);
-      expect(procsAfter.map((p) => p.PID)).not.toContain(child.pid);
+      const { processes: procsAfter } = await findInWorktree(worktreePath);
+      expect(procsAfter.map((p: any) => p.PID)).not.toContain(child.pid);
     });
   });
 });
