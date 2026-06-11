@@ -17,4 +17,9 @@ program.addCommand(statusCmd);
 program.addCommand(destroyCmd);
 program.addCommand(destroyAllCmd);
 
-await program.parseAsync(process.argv);
+try {
+  await program.parseAsync(process.argv);
+} catch (err: any) {
+  console.error(`Error: ${err.message}`);
+  process.exit(1);
+}
