@@ -112,7 +112,7 @@ describe("Pool Core (Cluster A & B)", () => {
       repoRoot: repoDir,
       groveRoot: groveDir,
       hooks: {
-        postCreate: [`node \${GROVE_PROJECT_ROOT}/test/helpers/hook-probe.mjs check-lock`],
+        postCreate: [`node \${GROVE_PROJECT_ROOT}/packages/grove/test/helpers/hook-probe.mjs check-lock`],
       },
     });
 
@@ -389,7 +389,7 @@ describe("Pool Core (Cluster A & B)", () => {
       const { path: wtPath } = await grove.acquire();
 
       const sentinel = join(tmpDir, "acquired.txt");
-      const scriptPath = join(process.cwd(), "test", "helpers", "hook-probe.mjs");
+      const scriptPath = join(import.meta.dirname, "helpers", "hook-probe.mjs");
       const hookCmd = `node ${scriptPath} acquire-during-hook "${repoDir}" "${grove.poolDir}" "${sentinel}"`;
 
       const groveWithHook = await createGrove({
@@ -416,7 +416,7 @@ describe("Pool Core (Cluster A & B)", () => {
       await grove.release(wtPath);
 
       const sentinel = join(tmpDir, "superseded-ran.txt");
-      const scriptPath = join(process.cwd(), "test", "helpers", "hook-probe.mjs");
+      const scriptPath = join(import.meta.dirname, "helpers", "hook-probe.mjs");
       const hookCmd = `node ${scriptPath} supersede-destroy "${grove.poolDir}" "${wtPath}" "${sentinel}"`;
 
       const groveWithHook = await createGrove({
@@ -448,7 +448,7 @@ describe("Pool Core (Cluster A & B)", () => {
       await grove.acquire();
 
       const sentinel = join(tmpDir, "acquired.txt");
-      const scriptPath = join(process.cwd(), "test", "helpers", "hook-probe.mjs");
+      const scriptPath = join(import.meta.dirname, "helpers", "hook-probe.mjs");
       const hookCmd = `node ${scriptPath} acquire-during-hook "${repoDir}" "${grove.poolDir}" "${sentinel}"`;
 
       const groveWithHook = await createGrove({
@@ -478,7 +478,7 @@ describe("Pool Core (Cluster A & B)", () => {
       await grove.release(wtPath);
 
       const sentinel = join(tmpDir, "superseded-ran.txt");
-      const scriptPath = join(process.cwd(), "test", "helpers", "hook-probe.mjs");
+      const scriptPath = join(import.meta.dirname, "helpers", "hook-probe.mjs");
       const hookCmd = `node ${scriptPath} supersede-destroy "${grove.poolDir}" "${wtPath}" "${sentinel}"`;
 
       const groveWithHook = await createGrove({
