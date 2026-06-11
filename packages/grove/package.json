@@ -1,5 +1,5 @@
 {
-  "name": "grove",
+  "name": "@ferueda/grove",
   "version": "0.1.0",
   "files": [
     "dist"

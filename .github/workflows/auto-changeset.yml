@@ -57,7 +57,7 @@ jobs:
 
             const id = Math.random().toString(36).substring(2, 8);
             const title = context.payload.pull_request.title.replace(/"/g, '\\"');
-            const content = `---\n"grove": ${type}\n"grove-cli": ${type}\n---\n\n${title}\n`;
+            const content = `---\n"@ferueda/grove": ${type}\n"@ferueda/grove-cli": ${type}\n---\n\n${title}\n`;
             
             fs.writeFileSync(`.changeset/auto-${id}.md`, content);
             console.log(`Created .changeset/auto-${id}.md as a ${type} bump.`);

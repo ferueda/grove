@@ -1,5 +1,5 @@
 {
-  "name": "grove-cli",
+  "name": "@ferueda/grove-cli",
   "version": "0.1.0",
   "files": [
     "dist"
@@ -14,7 +14,7 @@
   "dependencies": {
     "commander": "^13.0.0",
     "execa": "^9.6.0",
-    "grove": "workspace:*",
+    "@ferueda/grove": "workspace:*",
     "picocolors": "^1.1.0"
   }
 }

@@ -24,9 +24,9 @@ Grove ships with a powerful CLI for your daily development workflow.
 Install the CLI globally to access it from anywhere:
 
 ```bash
-pnpm add -g grove-cli
+pnpm add -g @ferueda/grove-cli
 # Or using npm
-npm install -g grove-cli
+npm install -g @ferueda/grove-cli
 ```
 
 ### Usage
@@ -86,13 +86,13 @@ If you are building an AI agent, CI runner, or automation script, you can use Gr
 ### Installation
 
 ```bash
-pnpm add grove
+pnpm add @ferueda/grove
 ```
 
 ### Quick Start
 
 ```typescript
-import { createGrove } from "grove";
+import { createGrove } from "@ferueda/grove";
 
 // Initialize the Grove pool manager for your repository
 const grove = await createGrove({
