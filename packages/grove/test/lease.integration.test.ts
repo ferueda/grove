@@ -191,4 +191,53 @@ describe("Grove Lease Mode Integration", () => {
     expect(leases[0]?.leaseId).toBe("fail-checkout");
     expect(leases[0]?.state).toBe("quarantined");
   });
+
+
+  it("destroyAll is atomic: fails completely if one worktree is unsafe", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+
+    await grove.acquire({ leaseId: "safe-lease", mode: "detached", ref: "main" });
+    const lease2 = await grove.acquire({ leaseId: "unsafe-lease", mode: "detached", ref: "main" });
+
+    // Spawn a long-running process in lease2 to make it unsafe
+    const p = execa("sleep", ["60"], { cwd: lease2.path });
+    
+    // Attempt destroyAll without force
+    await expect(grove.destroyAll()).rejects.toThrow(/in use/);
+
+    // Verify NEITHER was destroyed
+    const leases = await grove.listLeases();
+    expect(leases).toHaveLength(2);
+    expect(leases.find(l => l.leaseId === "safe-lease")?.state).toBe("leased");
+    expect(leases.find(l => l.leaseId === "unsafe-lease")?.state).toBe("leased");
+
+    p.kill();
+    await p.catch(() => {});
+  });
+
+  it("idempotent acquire rejects incompatible detached ref", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+
+    // Create a new branch 'other'
+    await execa("git", ["branch", "other", "main"], { cwd: repoDir });
+
+    await grove.acquire({
+      leaseId: "detached-lease",
+      mode: "detached",
+      ref: "main",
+    });
+
+    await expect(
+      grove.acquire({
+        leaseId: "detached-lease",
+        mode: "detached",
+        ref: "other",
+        ifLeased: "return-existing",
+      })
+    ).rejects.toThrow(/does not match existing detached base or SHA/);
+  });
 });
