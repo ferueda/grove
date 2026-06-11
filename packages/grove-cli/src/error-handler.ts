@@ -2,12 +2,26 @@ import pc from "picocolors";
 import { GroveError, GitCommandError } from "@ferueda/grove";
 
 let debugEnabled = false;
+let jsonEnabled = false;
 
 export function setDebug(enabled: boolean): void {
   debugEnabled = enabled;
 }
 
+export function setJson(enabled: boolean): void {
+  jsonEnabled = enabled;
+}
+
 export function handleError(err: unknown): never {
+  if (jsonEnabled) {
+    const errorObj: any = { error: err instanceof Error ? err.message : String(err) };
+    if (err instanceof GroveError) {
+      errorObj.code = err.code;
+    }
+    process.stdout.write(JSON.stringify(errorObj, null, 2) + "\n");
+    process.exit(1);
+  }
+
   if (err instanceof GroveError) {
     console.error(pc.red(`[${err.code}] ${err.message}`));
     if (debugEnabled) {
