@@ -6,7 +6,6 @@ on:
 
 jobs:
   generate-changeset:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -75,5 +74,5 @@ jobs:
       - name: Commit Changeset
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore: auto-generate changeset"
+          commit_message: "chore: auto-generate changeset [skip ci]"
           file_pattern: ".changeset/*.md"
