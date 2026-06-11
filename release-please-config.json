@@ -6,8 +6,5 @@
     "packages/grove-cli": {
       "release-type": "node"
     }
-  },
-  "plugins": [
-    "node-workspace"
-  ]
+  }
 }
