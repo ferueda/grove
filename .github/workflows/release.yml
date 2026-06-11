@@ -39,13 +39,16 @@ jobs:
       - name: Verify Builds and Tests
         run: pnpm check
 
+      - name: Build Workspace
+        run: pnpm build
+
       - name: Create Release Pull Request or Publish to NPM
         id: changesets
         uses: changesets/action@v1
         with:
-          # This expects you to add a changeset publish script, or you can just run it directly
-          publish: pnpm build && pnpm changeset publish --provenance
+          publish: pnpm changeset publish
           commit: "chore(release): version packages"
           title: "chore(release): version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
