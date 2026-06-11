@@ -2,7 +2,7 @@
 
 > A fast, secure pool of reusable git worktrees
 
-Grove is a tool and standalone TypeScript SDK that manages a pool of Git worktrees. Instead of re-cloning repositories or suffering through long `git fetch` operations for concurrent jobs, Grove maintains a pool of fast, clean, and isolated worktrees.
+Grove is a TypeScript SDK and CLI for managing pools of Git worktrees. Instead of re-cloning repositories or suffering through long `git fetch` operations for concurrent jobs, Grove maintains a pool of fast, clean, and isolated worktrees.
 
 When your application, agent, or shell needs a clean workspace, it instantly acquires a detached-HEAD worktree from the pool. When the job is finished, the worktree is reset and released back to the pool—keeping dependencies (`node_modules`), build caches, and ignored files completely intact for the next run!
 
