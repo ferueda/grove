@@ -73,7 +73,7 @@ Since the CLI is run out-of-context, it must determine the `repoRoot`, `groveRoo
 1. **CLI Flags**: Explicit overrides (e.g., `grove status --repo /path/to/repo`).
 2. **Environment Variables**: Environment settings (e.g., `GROVE_REPO_ROOT`).
 3. **Repository Discovery**: Traverse parent directories starting from the current working directory (`process.cwd()`) to find the closest `.git` folder boundary.
-4. **Configuration File**: Locate a `.groverc.json` (or `.groverc.toml`) file in the discovered repository root for hook and `maxTrees` settings.
+4. **Configuration File**: Locate a `.groverc.json` (or `.groverc.toml`) file in the discovered repository root for `maxTrees` and other safe settings. For security reasons, lifecycle hooks will **not** be loaded from repository-level configurations.
 
 ---
 
