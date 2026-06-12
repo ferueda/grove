@@ -242,6 +242,29 @@ describe("Grove Lease Mode Integration", () => {
   });
 
 
+  it("inspect resolves lease by id or worktree path", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "inspect-me",
+      mode: "branch",
+      branch: "inspect-branch",
+      createBranch: { from: "main" },
+    });
+
+    const byId = await grove.inspect("inspect-me");
+    expect(byId?.leaseId).toBe("inspect-me");
+    expect(byId?.branch).toBe("inspect-branch");
+    expect(byId?.path).toBe(lease.path);
+
+    const byPath = await grove.inspect(lease.path);
+    expect(byPath?.leaseId).toBe("inspect-me");
+
+    expect(await grove.inspect("missing-lease")).toBeNull();
+  });
+
   it("destroyAll happy path: cleans up all idle leases safely", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
