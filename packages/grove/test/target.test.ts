@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { setupRepo } from "./helpers/git-repo.js";
+import { setupLocalRepo } from "./helpers/git-repo.js";
 import { buildAcquireTarget } from "../src/target.js";
 import { validateBranchName } from "../src/git/branch.js";
 import { InvalidInputError } from "../src/errors.js";
@@ -10,7 +10,7 @@ describe("lease target resolution", () => {
   let repoDir: string;
 
   beforeEach(async () => {
-    const setup = await setupRepo();
+    const setup = await setupLocalRepo();
     tmpDir = setup.tmpDir;
     repoDir = setup.repoDir;
   });

@@ -4,7 +4,6 @@ import type { AcquireLeaseOptions, GroveLease } from "./types.js";
 import {
   checkoutBranch,
   checkoutDetached,
-  fetchOrigin,
   getDefaultBranch,
   getHeadSha,
 } from "./git/index.js";
@@ -110,6 +109,7 @@ export async function quarantineFailedAcquire(
   });
 }
 
+/** Internal acquire mutator; `fetchOrigin` is handled by `Grove.acquire()` at the public boundary. */
 export async function acquireLease(
   poolDir: string,
   config: GroveConfig,
@@ -120,10 +120,6 @@ export async function acquireLease(
   } = {},
 ): Promise<GroveLease> {
   const repoRoot = config.repoRoot;
-  const shouldFetch = options.fetchOnAcquire !== false && config.fetchOnAcquire !== false;
-  if (shouldFetch) {
-    await fetchOrigin(repoRoot);
-  }
 
   const pendingTarget = await buildAcquireTarget(options, repoRoot);
   const now = new Date().toISOString();
