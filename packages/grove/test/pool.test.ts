@@ -344,7 +344,7 @@ describe("Pool Core (Cluster A & B)", () => {
       const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
       const { path: wt } = await grove.acquire();
 
-      await expect(grove.destroy(wt)).rejects.toThrow(/in use by an agent/);
+      await expect(grove.destroy(wt)).rejects.toThrow(/in use or unverified/);
       expect(existsSync(wt)).toBe(true);
     });
 
@@ -364,7 +364,7 @@ describe("Pool Core (Cluster A & B)", () => {
       const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
       const { path: wt } = await grove.acquire();
 
-      await expect(grove.destroyAll()).rejects.toThrow(/in use by an agent/);
+      await expect(grove.destroyAll()).rejects.toThrow(/in use or unverified/);
       expect(existsSync(wt)).toBe(true);
     });
 
@@ -517,7 +517,7 @@ describe("Pool Core (Cluster A & B)", () => {
       if (start) state.worktrees[0].owner_started_at = start;
       await writeFile(stateFile, JSON.stringify(state, null, 2));
 
-      await expect(grove.destroyAll()).rejects.toThrow(/is in use by an agent/);
+      await expect(grove.destroyAll()).rejects.toThrow(/in use or unverified/);
       expect(existsSync(wtPath)).toBe(true);
     });
   });

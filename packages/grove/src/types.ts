@@ -1,0 +1,68 @@
+import type { GroveCleanupIntent } from "./schemas.js";
+
+export type WorktreeStatusInfo = "available" | "dirty" | "in-use" | "you're here";
+
+export interface AcquiredSlot {
+  readonly path: string;
+  readonly name: string;
+}
+
+export interface WorktreeStatus {
+  name: string;
+  path: string;
+  status: WorktreeStatusInfo;
+  processes: { PID: number; Name?: string }[];
+}
+
+type AcquireMode =
+  | {
+      mode: "branch";
+      branch: string;
+      createBranch?: {
+        from: string;
+        ifExists?: "reuse" | "fail";
+      };
+    }
+  | {
+      mode: "detached";
+      ref: string;
+    };
+
+export type AcquireLeaseOptions = AcquireMode & {
+  leaseId: string;
+  ownerId?: string;
+  ifLeased?: "return-existing" | "fail";
+  fetchOnAcquire?: boolean;
+  metadata?: Record<string, string>;
+};
+
+export type ReleaseLeaseOptions = GroveCleanupIntent;
+
+export interface DestroyLeaseOptions {
+  force?: boolean;
+  deleteBranch?: boolean;
+}
+
+export interface RepairLeaseOptions {
+  leaseId: string;
+  action: "quarantine" | "resume-cleanup" | "force-destroy";
+  force?: boolean;
+}
+
+export interface GroveLease {
+  leaseId: string;
+  ownerId?: string | undefined;
+  slotName: string;
+  path: string;
+  repoRoot: string;
+  branch?: string | undefined;
+  baseRef?: string | undefined;
+  baseSha?: string | undefined;
+  acquiredHeadSha: string;
+  currentHeadSha: string;
+  state: "leased" | "available" | "releasing" | "destroying" | "quarantined";
+  pendingCleanup?: GroveCleanupIntent | undefined;
+  processSafety?: "verified" | "unverified" | undefined;
+  createdAt: string;
+  updatedAt: string;
+}

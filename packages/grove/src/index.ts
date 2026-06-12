@@ -4,9 +4,18 @@ import { GroveConfigSchema } from "./schemas.js";
 import type { GroveConfig } from "./schemas.js";
 
 export { Grove } from "./pool.js";
-export type { AcquiredSlot, WorktreeStatus, WorktreeStatusInfo } from "./pool.js";
+export type {
+  AcquiredSlot,
+  AcquireLeaseOptions,
+  ReleaseLeaseOptions,
+  DestroyLeaseOptions,
+  RepairLeaseOptions,
+  GroveLease,
+  WorktreeStatus,
+  WorktreeStatusInfo,
+} from "./types.js";
 export { GroveConfigSchema } from "./schemas.js";
-export type { GroveConfig, WorktreeEntry, GroveState } from "./schemas.js";
+export type { GroveConfig, WorktreeEntry, GroveState, GroveCleanupIntent } from "./schemas.js";
 
 export {
   GroveError,
@@ -18,6 +27,17 @@ export {
   GitCommandError,
   InvalidGroveStateError,
   LockFailedError,
+  LeaseNotFoundError,
+  LeaseConflictError,
+  LeaseAlreadyExistsError,
+  LeaseQuarantinedError,
+  UnsafeCleanupError,
+  BranchExistsError,
+  BranchNotFoundError,
+  RefNotFoundError,
+  PathOutsidePoolError,
+  BranchDeleteFailedError,
+  HookFailedError,
 } from "./errors.js";
 export type { GroveErrorCode } from "./errors.js";
 

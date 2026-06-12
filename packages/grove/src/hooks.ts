@@ -4,6 +4,9 @@ import type { Writable } from "node:stream";
 export interface RunHooksOptions {
   stdout?: Writable;
   stderr?: Writable;
+  timeoutMs?: number | undefined;
+  env?: Record<string, string> | undefined;
+  onFailure?: "ignore" | "fail" | undefined;
 }
 
 export async function runHooks(
@@ -17,12 +20,16 @@ export async function runHooks(
       const shell = isWin ? process.env.COMSPEC || "cmd.exe" : "/bin/sh";
       const args = isWin ? ["/d", "/s", "/c", command] : ["-c", command];
 
-      const child = execa(shell, args, {
+      const execOpts: any = {
         cwd: workDir,
         stdout: opts.stdout ? "pipe" : "ignore",
         stderr: opts.stderr ? "pipe" : "ignore",
         windowsVerbatimArguments: isWin,
-      });
+      };
+      if (opts.timeoutMs !== undefined) execOpts.timeout = opts.timeoutMs;
+      if (opts.env !== undefined) execOpts.env = opts.env;
+
+      const child = execa(shell, args, execOpts);
 
       if (opts.stdout) {
         child.stdout?.pipe(opts.stdout, { end: false });
@@ -39,6 +46,10 @@ export async function runHooks(
         opts.stderr.write(msg);
       } else {
         process.stderr.write(msg);
+      }
+      if (opts.onFailure === "fail") {
+        const { HookFailedError } = await import("./errors.js");
+        throw new HookFailedError(`Hook failed: ${command}`);
       }
     }
   }

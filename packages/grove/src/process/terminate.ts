@@ -93,8 +93,8 @@ export async function terminateWorktreeProcesses(
   worktreePath: string,
   gracePeriodMs: number,
 ): Promise<ProcessInfo[]> {
-  const procs = await findInWorktree(worktreePath);
-  const targetProcs = await filterProtectedProcesses(procs, process.pid);
+  const { processes } = await findInWorktree(worktreePath);
+  const targetProcs = await filterProtectedProcesses(processes, process.pid);
 
   if (targetProcs.length === 0) {
     return [];

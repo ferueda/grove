@@ -8,6 +8,11 @@ export interface ProcessInfo {
   Name?: string;
 }
 
+export interface ProcessScanResult {
+  processes: ProcessInfo[];
+  unverified: boolean;
+}
+
 let cachedBtime: number | null = null;
 const cachedClkTck = 100;
 
@@ -97,7 +102,7 @@ async function resolvePathSafe(p: string): Promise<string> {
   }
 }
 
-export async function findInWorktree(worktreePath: string): Promise<ProcessInfo[]> {
+export async function findInWorktree(worktreePath: string): Promise<ProcessScanResult> {
   const absWorktree = await resolvePathSafe(worktreePath);
   const result: ProcessInfo[] = [];
 
@@ -106,7 +111,7 @@ export async function findInWorktree(worktreePath: string): Promise<ProcessInfo[
     try {
       procs = await readdir("/proc");
     } catch {
-      return [];
+      return { processes: [], unverified: true };
     }
 
     for (const p of procs) {
@@ -122,6 +127,7 @@ export async function findInWorktree(worktreePath: string): Promise<ProcessInfo[
         continue;
       }
     }
+    return { processes: result, unverified: false };
   } else if (process.platform === "darwin") {
     try {
       const { stdout } = await execa("lsof", ["-F", "pn", "-d", "cwd"], { reject: false });
@@ -139,15 +145,16 @@ export async function findInWorktree(worktreePath: string): Promise<ProcessInfo[
           }
         }
       }
+      return { processes: result, unverified: false };
     } catch {
-      // lsof returns error code if it finds no files or encounters permission errors.
+      return { processes: [], unverified: true };
     }
   }
 
-  return result;
+  return { processes: [], unverified: true };
 }
 
-export async function isWorktreeInUse(worktreePath: string): Promise<boolean> {
-  const procs = await findInWorktree(worktreePath);
-  return procs.length > 0;
+export async function isWorktreeInUse(worktreePath: string): Promise<{ inUse: boolean; unverified: boolean }> {
+  const scan = await findInWorktree(worktreePath);
+  return { inUse: scan.processes.length > 0, unverified: scan.unverified };
 }

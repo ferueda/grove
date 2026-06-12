@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { runGit } from "./run.js";
+import { BranchExistsError, BranchNotFoundError, RefNotFoundError, GitCommandError } from "../errors.js";
 
 export async function findRepoRoot(cwd?: string): Promise<string> {
   return runGit(cwd, ["rev-parse", "--show-toplevel"]);
@@ -110,4 +111,62 @@ export async function branchRef(repoRoot: string, branch: string): Promise<strin
   if (remoteExists) return remote;
 
   return branch; // fallback
+}
+
+export async function getHeadSha(wtPath: string): Promise<string> {
+  return (await runGit(wtPath, ["rev-parse", "HEAD"])).trim();
+}
+
+export async function resolveRef(repoRoot: string, ref: string): Promise<string> {
+  try {
+    return (await runGit(repoRoot, ["rev-parse", ref])).trim();
+  } catch {
+    throw new RefNotFoundError(`Ref not found: ${ref}`);
+  }
+}
+
+export async function checkoutBranch(
+  wtPath: string,
+  branch: string,
+  createOpts?: { from: string; ifExists?: "reuse" | "fail" }
+): Promise<void> {
+  if (createOpts) {
+    const localBranches = await runGit(wtPath, ["branch", "--list", branch]);
+    if (localBranches.trim()) {
+      if (createOpts.ifExists === "fail") {
+        throw new BranchExistsError(`Branch exists: ${branch}`);
+      }
+      // reuse
+      await runGit(wtPath, ["checkout", branch]);
+    } else {
+      try {
+        await runGit(wtPath, ["checkout", "-b", branch, createOpts.from]);
+      } catch (err: any) {
+        throw new GitCommandError(`Failed to create branch ${branch} from ${createOpts.from}`, err.message);
+      }
+    }
+  } else {
+    try {
+      await runGit(wtPath, ["checkout", branch]);
+    } catch {
+      throw new BranchNotFoundError(`Branch not found: ${branch}`);
+    }
+  }
+}
+
+export async function checkoutDetached(wtPath: string, ref: string): Promise<void> {
+  try {
+    await runGit(wtPath, ["checkout", "--detach", ref]);
+  } catch {
+    throw new RefNotFoundError(`Ref not found: ${ref}`);
+  }
+}
+
+export async function deleteBranch(repoRoot: string, branch: string, force?: boolean): Promise<void> {
+  try {
+    const args = force ? ["branch", "-D", branch] : ["branch", "-d", branch];
+    await runGit(repoRoot, args);
+  } catch (err: any) {
+    throw new GitCommandError(`Failed to delete branch ${branch}`, err.message);
+  }
 }

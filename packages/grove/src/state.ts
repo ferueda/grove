@@ -64,5 +64,11 @@ export async function healState(state: GroveState): Promise<GroveState> {
     healed.worktrees.push(entry);
   }
 
+  for (const entry of healed.worktrees) {
+    if (!entry.state) {
+      entry.state = "available";
+    }
+  }
+
   return healed;
 }

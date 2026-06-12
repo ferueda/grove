@@ -108,6 +108,7 @@ describe("State & Locking", () => {
             owner_pid: -1, // Stub treats -1 as dead
             owner_started_at: 1234,
             destroying: true,
+            state: "available",
           },
         ],
       };
@@ -116,6 +117,25 @@ describe("State & Locking", () => {
       expect(healed.worktrees[0]?.owner_pid).toBeUndefined();
       expect(healed.worktrees[0]?.owner_started_at).toBeUndefined();
       expect(healed.worktrees[0]?.destroying).toBeUndefined();
+    });
+
+    it("migrates legacy entries to available state", async () => {
+      const existingPath = join(tmpDir, "exists-legacy");
+      await mkdir(existingPath, { recursive: true });
+      const state = {
+        worktrees: [
+          {
+            name: "legacy",
+            path: existingPath,
+            created_at: new Date().toISOString(),
+          },
+        ],
+      } as unknown as GroveState;
+
+      const healed = await healState(state);
+      expect(healed.worktrees).toHaveLength(1);
+      expect(healed.worktrees[0]?.state).toBe("available");
+      expect(healed.worktrees[0]?.name).toBe("legacy");
     });
   });
 });
