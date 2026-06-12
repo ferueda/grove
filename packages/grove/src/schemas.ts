@@ -27,7 +27,9 @@ export const LeaseFirstCleanupIntentSchema = z.discriminatedUnion("cleanup", [
 
 export type LeaseFirstCleanupIntent = z.infer<typeof LeaseFirstCleanupIntentSchema>;
 
-export const LeaseIdSchema = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/, "Invalid lease ID format");
+export const LeaseIdSchema = z
+  .string()
+  .regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/, "Invalid lease ID format");
 
 export const WorktreeEntrySchema = z.object({
   name: z.string(),
