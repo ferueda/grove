@@ -7,7 +7,7 @@ Grove is a TypeScript SDK and CLI for managing pools of Git worktrees. Instead o
 Grove supports two allocation modes:
 
 - **Ephemeral pool** (default): instantly acquire a detached-HEAD checkout, do work, reset and return the slot to the pool. Ideal for CI jobs and one-off clean checkouts.
-- **Lease mode** (v0.3+): acquire a durable, branch-aware reservation tied to a stable `leaseId`. Commits and dirty state survive until you explicitly release, reset, quarantine, or destroy the lease. Ideal for long-running orchestrators (e.g. DaddyBot work units).
+- **Lease mode** (v0.3+): acquire a durable, branch-aware reservation tied to a stable `leaseId`. Commits and dirty state survive until you explicitly release, reset, quarantine, or destroy the lease. Ideal for long-running orchestrators and multi-stage agent jobs.
 
 When your application, agent, or shell needs a clean workspace, it acquires a worktree from the pool. When the job is finished, you either reset and release (ephemeral) or apply a cleanup policy (lease).
 
@@ -103,8 +103,8 @@ Lease commands require a stable `--lease` ID (format: `^[a-zA-Z0-9][a-zA-Z0-9._-
 # Branch lease: create branch from origin/main if missing
 grove acquire --json \
   --lease wu_abc123 \
-  --owner daddybot \
-  --branch daddybot/wu_abc123 \
+  --owner my-orchestrator \
+  --branch jobs/wu_abc123 \
   --create-branch-from origin/main
 
 # Detached ref lease
@@ -212,7 +212,7 @@ import { createGrove } from "@ferueda/grove";
 
 const grove = await createGrove({
   repoRoot: "/absolute/path/to/my-repo",
-  safeDeleteBranchPrefixes: ["daddybot/"],
+  safeDeleteBranchPrefixes: ["jobs/"],
   hooks: {
     postAcquire: ["pnpm install"],
   },
@@ -220,9 +220,9 @@ const grove = await createGrove({
 
 const lease = await grove.acquire({
   leaseId: "wu_abc123",
-  ownerId: "daddybot",
+  ownerId: "my-orchestrator",
   mode: "branch",
-  branch: "daddybot/wu_abc123",
+  branch: "jobs/wu_abc123",
   createBranch: { from: "origin/main", ifExists: "reuse" },
   ifLeased: "return-existing",
 });
@@ -426,5 +426,4 @@ try {
 ## Related Docs
 
 - Product vision: [`VISION.md`](VISION.md)
-- DaddyBot compatibility PRD: [`grove-daddybot-compatibility-prd.md`](grove-daddybot-compatibility-prd.md)
 - Agent/contributor guide: [`AGENTS.md`](AGENTS.md)
