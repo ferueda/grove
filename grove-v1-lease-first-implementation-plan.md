@@ -792,11 +792,52 @@ if cheap: old entries can become available slots when their disk paths are valid
 Invalid or missing old entries should quarantine or be ignored with clear repair
 guidance.
 
+## Integration Branch and Release
+
+Lease-first v1 is a **breaking change**. Do not land it on `main` incrementally.
+
+Use a long-lived integration branch and one final merge to `main` for the major
+release.
+
+```text
+main (stable, current semver — releasable)
+  └─ feat/lease-first-v1 (integration branch)
+       ├─ PR 1 → merge
+       ├─ PR 2 → merge
+       ├─ …
+       └─ PR 6 → merge
+            └─ feat/lease-first-v1 → main  (single breaking release)
+```
+
+**Branch roles**
+
+| Branch | Role |
+| --- | --- |
+| `main` | Production line. No lease-first breaking API until integration merge. |
+| `feat/lease-first-v1` | Integration branch. All PRs 1–6 merge here first. |
+| `feat/lease-first-prN-*` | Short-lived implementation branches; base = `feat/lease-first-v1`. |
+
+**Workflow rules**
+
+- Every implementation PR (1–6) targets **`feat/lease-first-v1`**, not `main`.
+- Keep **`feat/lease-first-v1` CI green** after each merged PR.
+- **PR 6** removes legacy API surface; it is the last PR before release.
+- When PR 6 is merged and CI is green, open **one PR**: `feat/lease-first-v1` → `main`.
+- That merge ships **v1 major** via release-please. Use `feat!:` or a
+  `BREAKING CHANGE:` footer on the final merge PR (or PR 6 commits) so semver
+  bumps correctly.
+
+**Current status**
+
+- Integration branch: `feat/lease-first-v1` (created from `main`).
+- PR 1: [#32](https://github.com/ferueda/grove/pull/32) —
+  `feat/lease-first-pr1-schemas-transitions` → `feat/lease-first-v1`.
+
 ## PR Split
 
-Ship as **6 stacked PRs** on a feature branch (for example `feat/lease-first-v1`),
-each green before the next. Use test-first per PR: add failing tests from Phase 9
-for that slice, implement, then run `pnpm test`, `pnpm typecheck`, and `pnpm build`.
+Ship as **6 stacked PRs** merged into **`feat/lease-first-v1`**, each green before
+the next. Use test-first per PR: add failing tests from Phase 9 for that slice,
+implement, then run `pnpm test`, `pnpm typecheck`, and `pnpm build`.
 
 Guiding rules:
 
@@ -919,7 +960,8 @@ PR1 (schemas + transitions)
 
 **Tests:** CLI JSON stdout and stderr, error envelope shape.
 
-Ship to `main` as the v1 breaking release.
+Merge into `feat/lease-first-v1`; then ship `feat/lease-first-v1` → `main` as the
+v1 breaking release.
 
 ### Out of MVP PR scope
 
