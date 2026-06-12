@@ -31,10 +31,11 @@ import {
 } from "./pool-state.js";
 import { enrichLeaseReadOnly } from "./lease-view.js";
 import {
-  AcquireInProgressError,
   BranchExistsError,
   LeaseAlreadyExistsError,
+  LeaseNotFoundError,
   LeaseQuarantinedError,
+  RepairNotAvailableError,
 } from "./errors.js";
 
 export async function executeLeaseCheckout(
@@ -254,8 +255,16 @@ export async function resumeAcquireLease(
   await withStateLock(poolDir, async () => {
     const state = await loadPoolState(poolDir, repoRoot);
     const lease = findLease(state, leaseId);
-    if (!lease?.pendingAcquire) {
-      throw new AcquireInProgressError(`No pending acquire for lease ${leaseId}`);
+    if (!lease) {
+      throw new LeaseNotFoundError(`Lease ${leaseId} not found`);
+    }
+    if (!lease.pendingAcquire) {
+      throw new RepairNotAvailableError("resume-acquire requires pendingAcquire");
+    }
+    if (lease.state !== "quarantined") {
+      throw new RepairNotAvailableError(
+        `resume-acquire requires quarantined lease, got ${lease.state}`,
+      );
     }
 
     const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === leaseId);

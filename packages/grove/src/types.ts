@@ -59,6 +59,19 @@ export function isReleaseResult(value: unknown): value is ReleaseResult {
   );
 }
 
+export type RepairResult =
+  | { status: "quarantined"; leaseId: string; lease: GroveLease }
+  | { status: "destroyed"; leaseId: string };
+
+export function isRepairResult(value: unknown): value is RepairResult {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "status" in value &&
+    (value.status === "quarantined" || value.status === "destroyed")
+  );
+}
+
 export interface DestroyLeaseOptions {
   force?: boolean;
   deleteBranch?: boolean;
