@@ -7,7 +7,11 @@ import type {
   PendingAcquire,
   GroveFailedPhase,
 } from "./schemas.js";
-import { InvalidGroveStateError, InvalidTransitionError, RepairNotAvailableError } from "./errors.js";
+import {
+  InvalidGroveStateError,
+  InvalidTransitionError,
+  RepairNotAvailableError,
+} from "./errors.js";
 
 export type LeaseEvent =
   | { type: "ACQUIRE_COMPLETE"; target: GroveLeaseTarget; headSha: string }
@@ -68,9 +72,7 @@ export function transitionLease(
     }
     case "ACQUIRE_FAILED": {
       if (lease.state !== "preparing") {
-        throw new InvalidTransitionError(
-          `ACQUIRE_FAILED invalid from lease state ${lease.state}`,
-        );
+        throw new InvalidTransitionError(`ACQUIRE_FAILED invalid from lease state ${lease.state}`);
       }
       return {
         ...base,
@@ -80,9 +82,7 @@ export function transitionLease(
     }
     case "RELEASE_START": {
       if (lease.state !== "leased") {
-        throw new InvalidTransitionError(
-          `RELEASE_START invalid from lease state ${lease.state}`,
-        );
+        throw new InvalidTransitionError(`RELEASE_START invalid from lease state ${lease.state}`);
       }
       return {
         ...base,
@@ -115,17 +115,13 @@ export function transitionLease(
         );
       }
       if (lease.pendingCleanup?.cleanup !== "reset") {
-        throw new InvalidTransitionError(
-          "RELEASE_RESET_COMPLETE requires reset pendingCleanup",
-        );
+        throw new InvalidTransitionError("RELEASE_RESET_COMPLETE requires reset pendingCleanup");
       }
       return null;
     }
     case "RELEASE_FAILED": {
       if (lease.state !== "releasing") {
-        throw new InvalidTransitionError(
-          `RELEASE_FAILED invalid from lease state ${lease.state}`,
-        );
+        throw new InvalidTransitionError(`RELEASE_FAILED invalid from lease state ${lease.state}`);
       }
       return {
         ...base,
@@ -152,9 +148,7 @@ export function transitionLease(
     }
     case "DESTROY_START": {
       if (lease.state !== "leased" && lease.state !== "quarantined") {
-        throw new InvalidTransitionError(
-          `DESTROY_START invalid from lease state ${lease.state}`,
-        );
+        throw new InvalidTransitionError(`DESTROY_START invalid from lease state ${lease.state}`);
       }
       return { ...base, state: "destroying" };
     }
@@ -168,9 +162,7 @@ export function transitionLease(
     }
     case "DESTROY_FAILED": {
       if (lease.state !== "destroying") {
-        throw new InvalidTransitionError(
-          `DESTROY_FAILED invalid from lease state ${lease.state}`,
-        );
+        throw new InvalidTransitionError(`DESTROY_FAILED invalid from lease state ${lease.state}`);
       }
       return {
         ...base,
@@ -217,26 +209,18 @@ export function transitionSlot(
   switch (event.type) {
     case "RESERVE_FOR_LEASE": {
       if (slot.state !== "available") {
-        throw new InvalidTransitionError(
-          `RESERVE_FOR_LEASE invalid from slot state ${slot.state}`,
-        );
+        throw new InvalidTransitionError(`RESERVE_FOR_LEASE invalid from slot state ${slot.state}`);
       }
       return { ...base, state: "leased" };
     }
     case "RELEASE_TO_POOL": {
       if (slot.state !== "leased") {
-        throw new InvalidTransitionError(
-          `RELEASE_TO_POOL invalid from slot state ${slot.state}`,
-        );
+        throw new InvalidTransitionError(`RELEASE_TO_POOL invalid from slot state ${slot.state}`);
       }
       return { ...base, state: "available" };
     }
     case "QUARANTINE": {
-      if (
-        slot.state !== "available" &&
-        slot.state !== "leased" &&
-        slot.state !== "destroying"
-      ) {
+      if (slot.state !== "available" && slot.state !== "leased" && slot.state !== "destroying") {
         throw new InvalidTransitionError(`QUARANTINE invalid from slot state ${slot.state}`);
       }
       return {
@@ -247,22 +231,14 @@ export function transitionSlot(
       };
     }
     case "DESTROY_START": {
-      if (
-        slot.state !== "available" &&
-        slot.state !== "leased" &&
-        slot.state !== "quarantined"
-      ) {
-        throw new InvalidTransitionError(
-          `DESTROY_START invalid from slot state ${slot.state}`,
-        );
+      if (slot.state !== "available" && slot.state !== "leased" && slot.state !== "quarantined") {
+        throw new InvalidTransitionError(`DESTROY_START invalid from slot state ${slot.state}`);
       }
       return { ...base, state: "destroying" };
     }
     case "DESTROY_COMPLETE": {
       if (slot.state !== "destroying") {
-        throw new InvalidTransitionError(
-          `DESTROY_COMPLETE invalid from slot state ${slot.state}`,
-        );
+        throw new InvalidTransitionError(`DESTROY_COMPLETE invalid from slot state ${slot.state}`);
       }
       return null;
     }
