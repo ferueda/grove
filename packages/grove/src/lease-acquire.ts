@@ -1,12 +1,7 @@
 import { existsSync } from "node:fs";
 import type { GroveConfig, GroveFailedPhase, GroveLeaseTarget } from "./schemas.js";
 import type { AcquireLeaseOptions, GroveLease } from "./types.js";
-import {
-  checkoutBranch,
-  checkoutDetached,
-  getDefaultBranch,
-  getHeadSha,
-} from "./git/index.js";
+import { checkoutBranch, checkoutDetached, getDefaultBranch, getHeadSha } from "./git/index.js";
 import { withStateLock } from "./lock.js";
 import {
   assertCompatibleReacquire,
