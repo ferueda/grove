@@ -1,6 +1,6 @@
 import { dirname } from "node:path";
 import { rm } from "node:fs/promises";
-import type { GroveConfig } from "./schemas.js";
+import type { GroveConfig, GroveLeaseRecord, GroveSlot } from "./schemas.js";
 import type { DestroyLeaseOptions } from "./types.js";
 import { removeWorktree } from "./git/index.js";
 import { withStateLock } from "./lock.js";
@@ -16,7 +16,6 @@ import {
 import { buildLeaseHookEnv, recordToGroveLease } from "./lease-view.js";
 import {
   findLease,
-  findLeaseByIdOrPath,
   findSlot,
   findSlotByPath,
   leaseForSlot,
@@ -91,12 +90,14 @@ async function beginDestroy(
 
   await withStateLock(poolDir, async () => {
     const state = await loadPoolState(poolDir, config.repoRoot);
-    const resolved = findLeaseByIdOrPath(state, leaseId);
-    if (!resolved) {
+    const lease = findLease(state, leaseId);
+    if (!lease) {
       throw new LeaseNotFoundError(`Lease ${leaseId} not found`);
     }
-
-    const { lease, slot } = resolved;
+    const slot = findSlot(state, lease.slotName);
+    if (!slot) {
+      throw new LeaseNotFoundError(`Lease ${leaseId} slot not found`);
+    }
     const resuming = lease.state === "destroying" && slot.state === "destroying";
 
     assertLeaseDestroyable(lease, resuming);
@@ -134,24 +135,25 @@ async function beginDestroy(
   return context;
 }
 
-async function assertFreshDestroyProcessSafety(
+async function loadDestroyRemovalTarget(
   poolDir: string,
   repoRoot: string,
   leaseId: string,
-  force: boolean | undefined,
-): Promise<void> {
+  slotName: string,
+  expectedPath: string,
+): Promise<{ lease: GroveLeaseRecord; slot: GroveSlot; wtPath: string }> {
   const state = await loadPoolState(poolDir, repoRoot);
   const lease = findLease(state, leaseId);
-  const slot = lease ? findSlot(state, lease.slotName) : undefined;
+  const slot = findSlot(state, slotName);
   if (!lease || !slot) {
-    throw new LeaseNotFoundError(`Lease ${leaseId} not found during destroy safety check`);
+    throw new LeaseNotFoundError(`Lease ${leaseId} not found during destroy removal`);
   }
-
-  await assertWorktreeSafeForCleanup(slot.path, slot, lease, {
-    force,
-    ignoreOwnerReservation: true,
-    message: DESTROY_UNSAFE_MESSAGE(slot.path),
-  });
+  if (slot.path !== expectedPath) {
+    throw new InvalidInputError(
+      `destroy path changed during operation: expected ${expectedPath}, got ${slot.path}`,
+    );
+  }
+  return { lease, slot, wtPath: slot.path };
 }
 
 async function assertDestroyStillPending(
@@ -284,16 +286,23 @@ async function completeDestroy(
       return;
     }
 
-    await assertFreshDestroyProcessSafety(
+    const { lease, slot, wtPath } = await loadDestroyRemovalTarget(
       poolDir,
       config.repoRoot,
       context.leaseId,
-      context.force,
+      context.slotName,
+      context.wtPath,
     );
 
-    await assertPathWithinPool(poolDir, context.wtPath);
-    await removeWorktree(config.repoRoot, context.wtPath);
-    await rm(dirname(context.wtPath), { recursive: true, force: true });
+    await assertWorktreeSafeForCleanup(wtPath, slot, lease, {
+      force: context.force,
+      ignoreOwnerReservation: true,
+      message: DESTROY_UNSAFE_MESSAGE(wtPath),
+    });
+
+    await assertPathWithinPool(poolDir, wtPath);
+    await removeWorktree(config.repoRoot, wtPath);
+    await rm(dirname(wtPath), { recursive: true, force: true });
   } catch (err) {
     const reason = err instanceof Error ? err.message : "destroy failed";
     await quarantineFailedDestroy(poolDir, config.repoRoot, context.leaseId, reason);
@@ -411,9 +420,9 @@ async function completeEphemeralDestroy(
       message: DESTROY_UNSAFE_MESSAGE(slotAfterHook.path),
     });
 
-    await assertPathWithinPool(poolDir, context.wtPath);
-    await removeWorktree(config.repoRoot, context.wtPath);
-    await rm(dirname(context.wtPath), { recursive: true, force: true });
+    await assertPathWithinPool(poolDir, slotAfterHook.path);
+    await removeWorktree(config.repoRoot, slotAfterHook.path);
+    await rm(dirname(slotAfterHook.path), { recursive: true, force: true });
   } catch (err) {
     const reason = err instanceof Error ? err.message : "destroy failed";
     await quarantineFailedEphemeralDestroy(poolDir, config.repoRoot, context.slotName, reason);

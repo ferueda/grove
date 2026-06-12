@@ -642,6 +642,25 @@ describe("Grove Lease Mode Integration", () => {
     expect(existsSync(lease.path)).toBe(false);
   });
 
+  it("destroy rejects physical worktree paths and only accepts leaseId", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "path-destroy-lease",
+      mode: "branch",
+      branch: "path-destroy-branch",
+      createBranch: { from: "main" },
+    });
+
+    await expect(grove.destroy(lease.path, { force: true })).rejects.toMatchObject({
+      code: "LEASE_NOT_FOUND",
+    });
+    expect(await grove.inspect("path-destroy-lease")).toMatchObject({ state: "leased" });
+    expect(existsSync(lease.path)).toBe(true);
+  });
+
   it("destroy rejects paths outside the pool boundary and quarantines the lease", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
