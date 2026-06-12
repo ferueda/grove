@@ -401,7 +401,10 @@ describe("assertJointInvariants", () => {
     expect(() =>
       assertJointInvariants({
         slots: [leasedSlot()],
-        leases: [leasedLease({ leaseId: "job-1" }), leasedLease({ leaseId: "job-2" })],
+        leases: [
+          leasedLease({ leaseId: "job-1" }),
+          leasedLease({ leaseId: "job-2" }),
+        ],
       }),
     ).toThrowError(InvalidGroveStateError);
   });

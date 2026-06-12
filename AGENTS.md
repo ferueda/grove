@@ -26,7 +26,7 @@ Felipe owns this. Work style: telegraph; noun-phrases ok; drop grammar; min toke
 
 ## Agent Protocol
 
-- **Spec:** Lease mode integration tests in `packages/grove/test/lease.integration.test.ts`. Use **test-first** for behavior changes.
+- **Spec:** Lease integration tests in `packages/grove/test/lease-*.integration.test.ts` (acquire, hooks, release, repair, destroy). Use **test-first** for behavior changes.
 - **Module Size:** Split files if they grow >700 LOC.
 - **Mocks:** DO NOT mock `git` in pool/integration tests. Use `setupRepo()` from `packages/grove/test/helpers/git-repo.ts`.
 - **Config:** Programmatic `createGrove()` config only; no config files (TOML/YAML) loader.
@@ -44,7 +44,7 @@ Felipe owns this. Work style: telegraph; noun-phrases ok; drop grammar; min toke
 - **Rule 1 — Simplicity First:** Minimum code that solves the problem. Don't add speculative features.
 - **Rule 2 — Surgical Changes:** Touch only what you must. If you modify core pool logic, run `vitest` immediately.
 - **Rule 3 — Validation at Boundaries:** Use `zod` to validate `GroveConfig` input and `GroveState` from disk. `leaseId` must match `LeaseIdSchema` regex.
-- **Rule 4 — Read before you write:** Lease behavior spec → `lease.integration.test.ts`. Transition rules → `transitions.test.ts`.
+- **Rule 4 — Read before you write:** Lease behavior → `lease-*.integration.test.ts` buckets under `packages/grove/test/`. Transition rules → `transitions.test.ts`.
 
 ## Commit & Release Guidelines
 
@@ -76,7 +76,7 @@ Felipe owns this. Work style: telegraph; noun-phrases ok; drop grammar; min toke
 | Schemas / config | `packages/grove/src/schemas.ts` |
 | Errors | `packages/grove/src/errors.ts` |
 | CLI commands | `packages/grove-cli/src/commands/` |
-| Lease integration tests | `packages/grove/test/lease.integration.test.ts` |
+| Lease integration tests | `packages/grove/test/lease-{acquire,hooks,release,repair,destroy}.integration.test.ts` |
 | CLI JSON tests | `packages/grove-cli/test/cli.test.ts` |
 
 ## Source of Truth Docs
