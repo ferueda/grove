@@ -226,7 +226,11 @@ export function transitionSlot(
       return { ...base, state: "available" };
     }
     case "QUARANTINE": {
-      if (slot.state !== "available" && slot.state !== "leased") {
+      if (
+        slot.state !== "available" &&
+        slot.state !== "leased" &&
+        slot.state !== "destroying"
+      ) {
         throw new InvalidTransitionError(`QUARANTINE invalid from slot state ${slot.state}`);
       }
       return { ...base, state: "quarantined" };

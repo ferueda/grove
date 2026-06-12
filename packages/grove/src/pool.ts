@@ -1,14 +1,11 @@
-import { dirname, isAbsolute, relative } from "node:path";
-import { rm } from "node:fs/promises";
 import {
   getDefaultBranch,
   resetWorktree,
-  removeWorktree,
   fetchOrigin,
-  deleteBranch,
 } from "./git/index.js";
 import { withStateLock } from "./lock.js";
-import { reserveOwner, ownerAlive, isWorktreeInUse, findInWorktree } from "./process/detect.js";
+import { reserveOwner } from "./process/detect.js";
+import { assertWorktreeSafeForCleanup } from "./process/cleanup-safety.js";
 import { runHooks } from "./hooks.js";
 import type { GroveConfig } from "./index.js";
 import type { GroveSlot } from "./schemas.js";
@@ -16,9 +13,6 @@ import {
   WorktreeDestroyingError,
   WorktreeNotManagedError,
   LeaseNotFoundError,
-  UnsafeCleanupError,
-  PathOutsidePoolError,
-  BranchDeleteFailedError,
 } from "./errors.js";
 import type {
   AcquiredSlot,
@@ -31,16 +25,18 @@ import type {
   WorktreeStatus,
 } from "./types.js";
 import { acquireLease, resumeAcquireLease } from "./lease-acquire.js";
+import { destroyEphemeralSlot, destroyLease, preflightDestroyAll } from "./lease-destroy.js";
 import { releaseLease, resumeCleanupLease } from "./lease-release.js";
 import {
   buildLeaseHookEnv,
   inspectLeaseRecord,
   listLeaseRecords,
-  recordToGroveLease,
 } from "./lease-view.js";
 import {
+  applyLeaseSlotQuarantine,
   clearSlotOwner,
   findLease,
+  findLeaseByIdOrPath,
   findOrAllocateSlot,
   findSlot,
   leaseForSlot,
@@ -48,7 +44,6 @@ import {
   savePoolState,
   slotToWorktreeEntry,
 } from "./pool-state.js";
-import { transitionLease, transitionSlot } from "./transitions.js";
 
 export class Grove {
   constructor(
@@ -152,170 +147,41 @@ export class Grove {
   }
 
   async destroy(leaseIdOrPath: string, options?: DestroyLeaseOptions): Promise<void> {
-    let targetWtPath = "";
-    let leaseEnvVars: Record<string, string> = {};
-    let branchToDelete: string | undefined;
-    let slotName = "";
+    const state = await loadPoolState(this.poolDir, this.config.repoRoot);
+    const resolved = findLeaseByIdOrPath(state, leaseIdOrPath);
+    const destroyHooks = {
+      preDestroy: (path: string, env: Record<string, string>) =>
+        this.runHook(this.config.hooks?.preDestroy, path, env),
+    };
 
-    await withStateLock(this.poolDir, async () => {
-      const state = await loadPoolState(this.poolDir, this.config.repoRoot);
-      const lease =
-        findLease(state, leaseIdOrPath) ??
-        state.leases.find((entry) => entry.path === leaseIdOrPath);
-      const slot = lease
-        ? findSlot(state, lease.slotName)
-        : state.slots.find((entry) => entry.path === leaseIdOrPath);
+    if (resolved?.lease) {
+      await destroyLease(
+        this.poolDir,
+        this.config,
+        resolved.lease.leaseId,
+        options,
+        destroyHooks,
+      );
+      return;
+    }
 
-      if (!slot) {
-        throw new WorktreeNotManagedError(`worktree ${leaseIdOrPath} not managed by grove`);
-      }
-
-      const { inUse, unverified } = await isWorktreeInUse(slot.path);
-      const alive = await ownerAlive(slotToWorktreeEntry(slot, lease));
-
-      if (!options?.force) {
-        if (inUse || alive || unverified) {
-          throw new UnsafeCleanupError(
-            `worktree ${slot.path} is in use or unverified. Use --force to override`,
-          );
-        }
-      }
-
-      if (options?.deleteBranch && lease?.target?.mode === "branch") {
-        const branchTarget = lease.target;
-        const safePrefixes = this.config.safeDeleteBranchPrefixes || [];
-        if (!safePrefixes.some((p) => branchTarget.branch.startsWith(p))) {
-          throw new UnsafeCleanupError(
-            `Branch ${branchTarget.branch} does not match safe-delete prefixes`,
-          );
-        }
-        branchToDelete = branchTarget.branch;
-      }
-
-      if (lease) {
-        const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === lease.leaseId);
-        state.leases[leaseIndex] = transitionLease(lease, { type: "DESTROY_START" })!;
-      }
-      const slotIndex = state.slots.findIndex((entry) => entry.slotName === slot.slotName);
-      state.slots[slotIndex] = transitionSlot(slot, { type: "DESTROY_START" })!;
-      const ownerEntry = slotToWorktreeEntry(state.slots[slotIndex]!, lease);
-      await reserveOwner(ownerEntry);
-      state.slots[slotIndex]!.ownerPid = ownerEntry.owner_pid;
-      state.slots[slotIndex]!.ownerStartedAt = ownerEntry.owner_started_at;
-
-      targetWtPath = slot.path;
-      slotName = slot.slotName;
-      leaseEnvVars = lease
-        ? this.leaseEnv(recordToGroveLease(lease, unverified ? "unverified" : "verified"))
-        : {};
-
-      await savePoolState(this.poolDir, state);
-    });
-
-    await this.executeDestroy(targetWtPath, slotName, leaseEnvVars, branchToDelete, options);
-  }
-
-  private async executeDestroy(
-    targetWtPath: string,
-    slotName: string,
-    leaseEnvVars: Record<string, string>,
-    branchToDelete: string | undefined,
-    options?: DestroyLeaseOptions,
-  ): Promise<void> {
-    await this.runHook(this.config.hooks?.preDestroy, targetWtPath, leaseEnvVars);
-
-    await withStateLock(this.poolDir, async () => {
-      const state = await loadPoolState(this.poolDir, this.config.repoRoot);
-      const slot = findSlot(state, slotName);
-      const lease = leaseForSlot(state, slotName);
-      if (!slot || slot.state !== "destroying") return;
-
-      try {
-        await removeWorktree(this.config.repoRoot, targetWtPath);
-      } catch {}
-
-      this.assertPathWithinPool(this.poolDir, targetWtPath);
-      try {
-        await rm(dirname(targetWtPath), { recursive: true, force: true });
-      } catch {}
-
-      let branchDeleteError: Error | undefined;
-      if (branchToDelete) {
-        try {
-          await deleteBranch(this.config.repoRoot, branchToDelete, options?.force);
-        } catch (err) {
-          branchDeleteError = err as Error;
-        }
-      }
-
-      if (lease) {
-        const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === lease.leaseId);
-        state.leases.splice(leaseIndex, 1);
-      }
-      const slotIndex = state.slots.findIndex((entry) => entry.slotName === slotName);
-      state.slots.splice(slotIndex, 1);
-
-      await savePoolState(this.poolDir, state);
-
-      if (branchDeleteError) {
-        throw new BranchDeleteFailedError(`Branch deletion failed: ${branchDeleteError.message}`);
-      }
-    });
+    await destroyEphemeralSlot(this.poolDir, this.config, leaseIdOrPath, options, destroyHooks);
   }
 
   async destroyAll(options?: { force?: boolean }): Promise<void> {
-    const targets: { path: string; slotName: string; env: Record<string, string> }[] = [];
+    await preflightDestroyAll(this.poolDir, this.config.repoRoot, options);
 
-    await withStateLock(this.poolDir, async () => {
-      const state = await loadPoolState(this.poolDir, this.config.repoRoot);
+    const state = await loadPoolState(this.poolDir, this.config.repoRoot);
+    const leaseIds = state.leases.map((lease) => lease.leaseId);
+    const ephemeralPaths = state.slots
+      .filter((slot) => !leaseForSlot(state, slot.slotName))
+      .map((slot) => slot.path);
 
-      for (const slot of state.slots) {
-        const lease = leaseForSlot(state, slot.slotName);
-        const { inUse, unverified } = await isWorktreeInUse(slot.path);
-        const alive = await ownerAlive(slotToWorktreeEntry(slot, lease));
-
-        if (!options?.force) {
-          if (inUse || alive || unverified) {
-            throw new UnsafeCleanupError(
-              `worktree ${slot.path} is in use or unverified. Use --force to override`,
-            );
-          }
-        }
-      }
-
-      for (const slot of state.slots) {
-        const lease = leaseForSlot(state, slot.slotName);
-        const slotIndex = state.slots.findIndex((entry) => entry.slotName === slot.slotName);
-        if (lease) {
-          const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === lease.leaseId);
-          state.leases[leaseIndex] = transitionLease(lease, { type: "DESTROY_START" })!;
-        }
-        state.slots[slotIndex] = transitionSlot(slot, { type: "DESTROY_START" })!;
-        const ownerEntry = slotToWorktreeEntry(state.slots[slotIndex]!, lease);
-        await reserveOwner(ownerEntry);
-        state.slots[slotIndex]!.ownerPid = ownerEntry.owner_pid;
-        state.slots[slotIndex]!.ownerStartedAt = ownerEntry.owner_started_at;
-        const { unverified } = await findInWorktree(slot.path);
-        const env = lease
-          ? this.leaseEnv(recordToGroveLease(lease, unverified ? "unverified" : "verified"))
-          : {};
-        targets.push({ path: slot.path, slotName: slot.slotName, env });
-      }
-
-      await savePoolState(this.poolDir, state);
-    });
-
-    const errors: Error[] = [];
-    for (const target of targets) {
-      try {
-        await this.executeDestroy(target.path, target.slotName, target.env, undefined, options);
-      } catch (err: any) {
-        errors.push(err);
-      }
+    for (const leaseId of leaseIds) {
+      await this.destroy(leaseId, options);
     }
-
-    if (errors.length > 0) {
-      throw errors[0];
+    for (const path of ephemeralPaths) {
+      await this.destroy(path, options);
     }
   }
 
@@ -340,31 +206,17 @@ export class Grove {
       if (!lease) throw new LeaseNotFoundError(`Lease ${options.leaseId} not found`);
 
       const slot = findSlot(state, lease.slotName);
-      const { inUse, unverified } = slot
-        ? await isWorktreeInUse(slot.path)
-        : { inUse: false, unverified: false };
-      const alive = slot ? await ownerAlive(slotToWorktreeEntry(slot, lease)) : false;
 
-      if (options.action === "force-destroy") {
-        if (!options.force && (inUse || alive || unverified)) {
-          throw new UnsafeCleanupError(
+      if (options.action === "force-destroy" && slot) {
+        await assertWorktreeSafeForCleanup(slot.path, slot, lease, {
+          force: options.force,
+          message:
             "Cannot force-destroy: processes running or unverified. Use force: true",
-          );
-        }
+        });
       }
 
-      if (options.action === "quarantine" && slot) {
-        if (lease.state !== "quarantined") {
-          const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === lease.leaseId);
-          state.leases[leaseIndex] = transitionLease(lease, {
-            type: "QUARANTINE",
-            reason: "repair quarantine",
-          })!;
-          if (slot.state !== "quarantined") {
-            const slotIndex = state.slots.findIndex((entry) => entry.slotName === slot.slotName);
-            state.slots[slotIndex] = transitionSlot(slot, { type: "QUARANTINE" })!;
-          }
-        }
+      if (options.action === "quarantine" && slot && lease.state !== "quarantined") {
+        applyLeaseSlotQuarantine(state, lease, "repair quarantine");
         await savePoolState(this.poolDir, state);
         return;
       }
@@ -411,13 +263,6 @@ export class Grove {
   async findByPath(worktreePath: string): Promise<GroveSlot | null> {
     const state = await loadPoolState(this.poolDir, this.config.repoRoot);
     return state.slots.find((slot) => slot.path === worktreePath) ?? null;
-  }
-
-  private assertPathWithinPool(poolDir: string, targetPath: string): void {
-    const rel = relative(poolDir, targetPath);
-    if (rel.startsWith("..") || isAbsolute(rel)) {
-      throw new PathOutsidePoolError("Security violation: target path is outside the pool boundary");
-    }
   }
 
   private leaseEnv(lease: GroveLease): Record<string, string> {

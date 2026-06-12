@@ -12,6 +12,7 @@ import { readLeaseFirstState, writeLeaseFirstState } from "./state-v1.js";
 import { addWorktree, isDirty, resetWorktree } from "./git/index.js";
 import { ownerAlive, isWorktreeInUse, reserveOwner } from "./process/detect.js";
 import { GroveExhaustedError } from "./errors.js";
+import { transitionLease, transitionSlot } from "./transitions.js";
 
 export async function healPoolState(state: LeaseFirstGroveState): Promise<LeaseFirstGroveState> {
   const slots: GroveSlot[] = [];
@@ -23,8 +24,11 @@ export async function healPoolState(state: LeaseFirstGroveState): Promise<LeaseF
       await clearSlotOwner(slot);
     }
     if (slot.state === "destroying" && !(await ownerAlive(slotOwnerEntry(slot)))) {
-      slot.state = "available";
-      await clearSlotOwner(slot);
+      const lease = leaseForSlot(state, slot.slotName);
+      if (!lease || lease.state !== "destroying") {
+        slot.state = "available";
+        await clearSlotOwner(slot);
+      }
     }
     slots.push(slot);
   }
@@ -34,8 +38,12 @@ export async function healPoolState(state: LeaseFirstGroveState): Promise<LeaseF
 export async function loadPoolState(
   poolDir: string,
   repoRoot: string,
+  options?: { heal?: boolean },
 ): Promise<LeaseFirstGroveState> {
   const state = await readLeaseFirstState(poolDir, { repoRoot });
+  if (options?.heal === false) {
+    return state;
+  }
   return healPoolState(state);
 }
 
@@ -65,6 +73,48 @@ export function findSlot(
   slotName: string,
 ): GroveSlot | undefined {
   return state.slots.find((slot) => slot.slotName === slotName);
+}
+
+export function findSlotByPath(
+  state: LeaseFirstGroveState,
+  path: string,
+): GroveSlot | undefined {
+  return state.slots.find((slot) => slot.path === path);
+}
+
+export function findLeaseByIdOrPath(
+  state: LeaseFirstGroveState,
+  leaseIdOrPath: string,
+): { lease: GroveLeaseRecord; slot: GroveSlot } | undefined {
+  const lease =
+    findLease(state, leaseIdOrPath) ??
+    state.leases.find((entry) => entry.path === leaseIdOrPath);
+  if (!lease) {
+    return undefined;
+  }
+  const slot = findSlot(state, lease.slotName);
+  if (!slot) {
+    return undefined;
+  }
+  return { lease, slot };
+}
+
+export function applyLeaseSlotQuarantine(
+  state: LeaseFirstGroveState,
+  lease: GroveLeaseRecord,
+  reason: string,
+): void {
+  const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === lease.leaseId);
+  state.leases[leaseIndex] = transitionLease(lease, {
+    type: "QUARANTINE",
+    reason,
+  })!;
+
+  const slot = findSlot(state, lease.slotName);
+  if (slot && slot.state !== "quarantined") {
+    const slotIndex = state.slots.findIndex((entry) => entry.slotName === slot.slotName);
+    state.slots[slotIndex] = transitionSlot(slot, { type: "QUARANTINE", reason })!;
+  }
 }
 
 export function nextSlotName(state: LeaseFirstGroveState): string {
