@@ -24,19 +24,21 @@ function printReport(output) {
   const fileTimes = new Map();
 
   for (const line of output.split("\n")) {
-    const testMatch = line.match(/✓\s+(.+?)\s+(\d+)ms$/);
-    if (testMatch) {
-      const [, name, ms] = testMatch;
-      const duration = Number(ms);
-      tests.push({ name, duration });
+    const fileSummaryMatch = line.match(/✓\s+(.+\.test\.ts)\s+\((\d+)\s+tests?\)\s+(\d+)ms$/);
+    if (fileSummaryMatch) {
+      const [, file, , ms] = fileSummaryMatch;
+      fileTimes.set(file, Number(ms));
       continue;
     }
 
-    const fileMatch = line.match(/✓\s+(.+\.test\.ts)\s+\((\d+)\s+tests?\)\s+(\d+)ms$/);
-    if (fileMatch) {
-      const [, file, , ms] = fileMatch;
-      fileTimes.set(file, Number(ms));
-    }
+    const testMatch = line.match(/✓\s+(.+\.test\.ts)\s+>\s+(.+?)\s+(\d+)ms$/);
+    if (!testMatch) continue;
+
+    const [, file, testName, ms] = testMatch;
+    const duration = Number(ms);
+    const name = `${file} > ${testName}`;
+    tests.push({ name, duration });
+    fileTimes.set(file, (fileTimes.get(file) ?? 0) + duration);
   }
 
   const wallMatch = output.match(/Duration\s+([\d.]+)s/);

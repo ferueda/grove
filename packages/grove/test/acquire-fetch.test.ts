@@ -15,7 +15,7 @@ describe("acquire fetch policy", () => {
     vi.restoreAllMocks();
   });
 
-  it("fetches origin at most once per default acquire", async () => {
+  it("fetches origin at most once when GroveConfig fetchOnAcquire defaults to true", async () => {
     const setup = await setupRepo();
     tmpDir = setup.tmpDir;
     const fetchSpy = vi.spyOn(worktree, "fetchOrigin").mockResolvedValue(undefined);
@@ -23,7 +23,6 @@ describe("acquire fetch policy", () => {
     const grove = await createGrove({
       repoRoot: setup.repoDir,
       groveRoot: setup.groveDir,
-      fetchOnAcquire: true,
     });
     await grove.acquire({
       leaseId: "fetch-once",
