@@ -42,7 +42,7 @@ When a CI job or bot needs to operate on a repository without disrupting a user'
 
 ### Durable Work-Unit Isolation
 
-Orchestrators like DaddyBot need the same worktree across multiple process invocations (create, resume, finalize). Ephemeral acquire/release destroys commits on every release. Lease mode persists ownership by `leaseId`, supports idempotent re-acquire, and separates cleanup intent (`preserve`, `reset`, `quarantine`, `destroy`) from reservation.
+Downstream orchestrators often need the same worktree across multiple process invocations (create, resume, finalize). Ephemeral acquire/release destroys commits on every release. Lease mode persists ownership by `leaseId`, supports idempotent re-acquire, and separates cleanup intent (`preserve`, `reset`, `quarantine`, `destroy`) from reservation.
 
 ### Process Safety
 
@@ -76,7 +76,7 @@ The core architecture wraps Git operations, process detection, and state locking
 
 ### What We Are Not Building
 
-- Agent execution or state-machine orchestration (DaddyBot owns lifecycle).
+- Agent execution or state-machine orchestration (callers own lifecycle).
 - PR creation, review, or validation policy.
 - Remote push/upstream tracking (orchestrator responsibility).
 - Config file loaders (TOML/YAML).
@@ -97,7 +97,7 @@ Grove state must always match disk reality.
 
 The primary directive is **Faithful port first** for ephemeral pool semantics: the original Go behavior is the specification.
 
-For lease mode, the [DaddyBot compatibility PRD](grove-daddybot-compatibility-prd.md) is the product spec.
+For lease mode, acceptance tests in `packages/grove/test/lease.integration.test.ts` define expected behavior.
 
 Prefer changes that:
 
