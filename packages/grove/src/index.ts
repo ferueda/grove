@@ -6,7 +6,6 @@ import type { GroveConfig } from "./schemas.js";
 export { Grove } from "./pool.js";
 export { isReleaseResult, isRepairResult } from "./types.js";
 export type {
-  AcquiredSlot,
   AcquireLeaseOptions,
   ReleaseLeaseOptions,
   ReleaseResult,
@@ -14,8 +13,6 @@ export type {
   DestroyLeaseOptions,
   RepairLeaseOptions,
   GroveLease,
-  WorktreeStatus,
-  WorktreeStatusInfo,
 } from "./types.js";
 export { GroveConfigSchema } from "./schemas.js";
 export type {

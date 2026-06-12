@@ -1304,3 +1304,49 @@ Branch: `feat/lease-first-pr5-repair`
   - `packages/grove/test/transitions.test.ts`
   - `packages/grove/test/mutator-enforcement.test.ts` (new)
   - `grove-v1-lease-first-implementation-plan.md`
+
+## PR 6 Implementation Summary (Completed)
+
+Branch: `feat/lease-first-pr6-cutover`
+
+- **What was done**
+
+  - Removed ephemeral pool from the public SDK: no-arg `acquire()`, path-based
+    `release()` / `destroy()`, `destroyAll()`, `listLeases()`, and
+    `listWorktreeStatus()`.
+  - `Grove.acquire()` requires `AcquireLeaseOptions`; `list()` returns leases only.
+  - Dropped public `AcquiredSlot`, `WorktreeStatus`, and `queries.ts` (ephemeral
+    listing).
+  - CLI is lease-first: `--lease-id`, `--branch` / `--ref`, `--cleanup`, etc.
+  - Replaced `status` with `list`; removed `destroy-all`.
+  - Stable JSON envelopes: `{ ok: true, lease }`, `{ ok: true, result }`,
+    `{ ok: true, leases }`, `{ ok: false, error: { code, message, details } }`.
+  - Human prose on stderr only; stdout is machine-readable in `--json` mode.
+  - Exit codes mapped from `GroveErrorCode` via `exit-codes.ts`.
+  - Removed `pool.test.ts` (ephemeral pool); rewrote `grove.integration.test.ts`
+    for lease-first smoke; added `packages/grove-cli/test/cli.test.ts`.
+
+- **How it was done**
+
+  - `pool.ts` trimmed to lease-only orchestration delegating to acquire/release/
+    destroy/repair modules.
+  - CLI shared helpers: `json-output.ts`, `exit-codes.ts`, updated `error-handler.ts`.
+  - All commands emit envelopes in `--json` mode.
+
+- **Why it was done**
+
+  - PR 6 completes Phase 8 breaking API cutover so `feat/lease-first-v1` can ship
+    as the v1 lease-first release.
+
+- **Files worked on**
+
+  - `packages/grove/src/pool.ts`, `types.ts`, `index.ts`
+  - `packages/grove/src/queries.ts` (removed)
+  - `packages/grove-cli/src/cli.ts`, `error-handler.ts`, `json-output.ts`,
+    `exit-codes.ts`
+  - `packages/grove-cli/src/commands/*.ts` (acquire, release, destroy, inspect,
+    list, repair; status removed)
+  - `packages/grove/test/grove.integration.test.ts`, `lease.integration.test.ts`
+  - `packages/grove/test/pool.test.ts` (removed)
+  - `packages/grove-cli/test/cli.test.ts` (new)
+  - `grove-v1-lease-first-implementation-plan.md`
