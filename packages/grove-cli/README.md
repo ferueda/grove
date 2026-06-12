@@ -1,7 +1,7 @@
-# Grove CLI
+# @ferueda/grove-cli
 
 > A fast, secure pool of reusable git worktrees
 
-This is the CLI package for Grove.
+CLI for Grove — ephemeral pool commands plus lease mode (`acquire --lease`, `inspect`, `repair`, `status --leases`) with `--json` output.
 
-Please see the [main documentation](https://github.com/ferueda/grove#readme) for full usage and installation instructions!
+See the [main documentation](https://github.com/ferueda/grove#the-grove-cli) for installation and command reference.
