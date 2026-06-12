@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createGrove } from "../src/index.js";
 import { setupRepo } from "./helpers/git-repo.js";
-import { rm, writeFile } from "node:fs/promises";
+import { rm, writeFile, readFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { existsSync } from "node:fs";
 import { execa } from "execa";
 
 describe("Grove Lease Mode Integration", () => {
@@ -173,6 +174,161 @@ describe("Grove Lease Mode Integration", () => {
     }
   });
 
+  it("preserve release keeps dirty files and returns preserved lease", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "preserve-lease",
+      mode: "branch",
+      branch: "preserve-branch",
+      createBranch: { from: "main" },
+    });
+
+    const dirtyPath = join(lease.path, "dirty.txt");
+    await writeFile(dirtyPath, "dirty");
+
+    const result = await grove.release(lease.leaseId, { cleanup: "preserve" });
+    expect(result).toEqual({
+      status: "preserved",
+      leaseId: "preserve-lease",
+      lease: expect.objectContaining({ state: "leased", leaseId: "preserve-lease" }),
+    });
+    expect(existsSync(dirtyPath)).toBe(true);
+
+    const reacquired = await grove.acquire({
+      leaseId: "preserve-lease",
+      mode: "branch",
+      branch: "preserve-branch",
+      ifLeased: "return-existing",
+    });
+    expect(reacquired.path).toBe(lease.path);
+  });
+
+  it("reset release clears lease and returns slot to available pool", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "reset-lease",
+      mode: "branch",
+      branch: "reset-branch",
+      createBranch: { from: "main" },
+    });
+
+    await writeFile(join(lease.path, "untracked.txt"), "remove-me");
+
+    const result = await grove.release(lease.leaseId, {
+      cleanup: "reset",
+      resetTo: "main",
+      force: true,
+    });
+    expect(result).toMatchObject({
+      status: "released",
+      leaseId: "reset-lease",
+      path: lease.path,
+    });
+    expect(await grove.listLeases()).toHaveLength(0);
+    expect(existsSync(join(lease.path, "untracked.txt"))).toBe(false);
+
+    const slots = await grove.listWorktreeStatus();
+    expect(slots.find((slot) => slot.path === lease.path)?.status).toBe("available");
+  });
+
+  it("reset preserves ignored files by default and removes them with cleanIgnored", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "clean-lease",
+      mode: "branch",
+      branch: "clean-branch",
+      createBranch: { from: "main" },
+    });
+
+    await writeFile(join(lease.path, ".gitignore"), "cache/\n");
+    await mkdir(join(lease.path, "cache"), { recursive: true });
+    await writeFile(join(lease.path, "cache/ignored.txt"), "cached");
+
+    await grove.release(lease.leaseId, {
+      cleanup: "reset",
+      resetTo: "main",
+      force: true,
+    });
+    expect(existsSync(join(lease.path, "cache/ignored.txt"))).toBe(true);
+
+    const lease2 = await grove.acquire({
+      leaseId: "clean-lease-2",
+      mode: "branch",
+      branch: "clean-branch-2",
+      createBranch: { from: "main" },
+    });
+    await writeFile(join(lease2.path, ".gitignore"), "cache/\n");
+    await mkdir(join(lease2.path, "cache"), { recursive: true });
+    await writeFile(join(lease2.path, "cache/ignored.txt"), "cached");
+
+    await grove.release(lease2.leaseId, {
+      cleanup: "reset",
+      resetTo: "main",
+      force: true,
+      cleanIgnored: true,
+    });
+    expect(existsSync(join(lease2.path, "cache/ignored.txt"))).toBe(false);
+  });
+
+  it("quarantine release returns quarantined lease", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "quarantine-lease",
+      mode: "branch",
+      branch: "quarantine-branch",
+      createBranch: { from: "main" },
+    });
+
+    const result = await grove.release(lease.leaseId, { cleanup: "quarantine" });
+    expect(result).toEqual({
+      status: "quarantined",
+      leaseId: "quarantine-lease",
+      lease: expect.objectContaining({ state: "quarantined", leaseId: "quarantine-lease" }),
+    });
+  });
+
+  it("resume-cleanup completes interrupted preserve release", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "resume-cleanup-lease",
+      mode: "branch",
+      branch: "resume-cleanup-branch",
+      createBranch: { from: "main" },
+    });
+
+    const statePath = join(grove.poolDir, "grove-state.json");
+    const state = JSON.parse(await readFile(statePath, "utf8"));
+    state.leases[0].state = "releasing";
+    state.leases[0].pendingCleanup = { cleanup: "preserve" };
+    await writeFile(statePath, JSON.stringify(state));
+
+    const result = await grove.repair({
+      leaseId: "resume-cleanup-lease",
+      action: "resume-cleanup",
+    });
+    expect(result).toMatchObject({
+      status: "preserved",
+      leaseId: "resume-cleanup-lease",
+    });
+    expect((await grove.inspect("resume-cleanup-lease"))?.state).toBe("leased");
+    expect(existsSync(lease.path)).toBe(true);
+  });
+
   it("repair intent test", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
@@ -194,13 +350,14 @@ describe("Grove Lease Mode Integration", () => {
     const list = await grove.listLeases();
     const l = list.find(x => x.leaseId === "repair-lease");
     expect(l?.state).toBe("quarantined");
+    expect(l?.pendingCleanup).toMatchObject({ cleanup: "reset", resetTo: "invalid-branch" });
 
     // Can repair quarantine
-    const repaired = await grove.repair({
+    await grove.repair({
       leaseId: "repair-lease",
       action: "quarantine"
     });
-    expect(repaired?.state).toBe("quarantined");
+    expect((await grove.inspect("repair-lease"))?.state).toBe("quarantined");
   });
 
   it("safe delete branches", async () => {
@@ -268,8 +425,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "resume-lease",
       action: "resume-acquire",
     });
-    expect(repaired?.state).toBe("leased");
-    expect(repaired?.branch).toBe("missing-branch");
+    expect(repaired).toMatchObject({ state: "leased", branch: "missing-branch" });
   });
 
   it("inspect reports missing path without mutating lease state", async () => {

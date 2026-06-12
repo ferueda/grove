@@ -831,7 +831,8 @@ main (stable, current semver — releasable)
 
 - Integration branch: `feat/lease-first-v1` (created from `main`).
 - PR 1: merged — `feat/lease-first-pr1-schemas-transitions` → `feat/lease-first-v1`.
-- PR 2: in progress — `feat/lease-first-pr2-acquire` → `feat/lease-first-v1`.
+- PR 2: merged — `feat/lease-first-pr2-acquire` → `feat/lease-first-v1`.
+- PR 3: in progress — `feat/lease-first-pr3-release` → `feat/lease-first-v1`.
 
 ## PR Split
 
@@ -1126,4 +1127,45 @@ Branch: `feat/lease-first-pr2-acquire`
   - `packages/grove/test/lease.integration.test.ts`
   - `packages/grove/test/pool.test.ts`, `grove.integration.test.ts`
   - `packages/grove/test/helpers/hook-probe.mjs`
+  - `grove-v1-lease-first-implementation-plan.md`
+
+## PR 3 Implementation Summary (Completed)
+
+Branch: `feat/lease-first-pr3-release`
+
+- **What was done**
+
+  - Added `ReleaseResult` discriminated union (`preserved`, `released`, `quarantined`).
+  - Implemented `lease-release.ts` with WAL release: all policies enter `releasing`
+    and persist `pendingCleanup` before side effects.
+  - Reset: fresh process scan, `git reset --hard`, `git clean -fd` (or `-fdx` with
+    `cleanIgnored: true`), `RELEASE_RESET_COMPLETE`, slot `RELEASE_TO_POOL`.
+  - Preserve: clears owner only via `RELEASE_PRESERVE_COMPLETE`; no git reset/clean.
+  - Quarantine cleanup policy via `RELEASE_START` + `QUARANTINE` finalize.
+  - Failed reset quarantines lease and slot; preserves `pendingCleanup` for repair.
+  - `repair({ action: "resume-cleanup" })` via `resumeCleanupLease()` (handles
+    quarantined and interrupted `releasing` states).
+  - CLI release/repair commands updated for `ReleaseResult` return type.
+
+- **How it was done**
+
+  - `releaseLease()` and `resumeCleanupLease()` share `completeRelease()` for
+    hooks, reset side effects, and transition-driven finalize.
+  - `toLeaseFirstCleanupIntent()` normalizes reset options with default branch.
+  - `pool.ts` delegates lease release and resume-cleanup to `lease-release.ts`.
+
+- **Why it was done**
+
+  - PR 3 delivers durable release with crash-recoverable cleanup intent and typed
+    results orchestrators need before destroy/repair enforcement in PR 4–5.
+
+- **Files worked on**
+
+  - `packages/grove/src/lease-release.ts` (new)
+  - `packages/grove/src/types.ts` — `ReleaseResult`
+  - `packages/grove/src/git/worktree.ts` — `cleanIgnored` on reset
+  - `packages/grove/src/pool.ts` — delegate release/repair cleanup
+  - `packages/grove/src/index.ts` — export `ReleaseResult`
+  - `packages/grove-cli/src/commands/release.ts`, `repair.ts`
+  - `packages/grove/test/lease.integration.test.ts`
   - `grove-v1-lease-first-implementation-plan.md`

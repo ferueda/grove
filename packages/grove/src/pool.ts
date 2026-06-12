@@ -11,7 +11,7 @@ import { withStateLock } from "./lock.js";
 import { reserveOwner, ownerAlive, isWorktreeInUse, findInWorktree } from "./process/detect.js";
 import { runHooks } from "./hooks.js";
 import type { GroveConfig } from "./index.js";
-import type { GroveSlot, LeaseFirstCleanupIntent } from "./schemas.js";
+import type { GroveSlot } from "./schemas.js";
 import {
   WorktreeDestroyingError,
   WorktreeNotManagedError,
@@ -19,18 +19,19 @@ import {
   UnsafeCleanupError,
   PathOutsidePoolError,
   BranchDeleteFailedError,
-  RepairNotAvailableError,
 } from "./errors.js";
 import type {
   AcquiredSlot,
   AcquireLeaseOptions,
   ReleaseLeaseOptions,
+  ReleaseResult,
   DestroyLeaseOptions,
   RepairLeaseOptions,
   GroveLease,
   WorktreeStatus,
 } from "./types.js";
 import { acquireLease, resumeAcquireLease } from "./lease-acquire.js";
+import { releaseLease, resumeCleanupLease } from "./lease-release.js";
 import { inspectLeaseRecord, listLeaseRecords, recordToGroveLease } from "./lease-view.js";
 import {
   clearSlotOwner,
@@ -109,8 +110,8 @@ export class Grove {
   }
 
   async release(path: string): Promise<void>;
-  async release(leaseIdOrPath: string, options: ReleaseLeaseOptions): Promise<GroveLease>;
-  async release(leaseIdOrPath: string, options?: ReleaseLeaseOptions): Promise<void | GroveLease> {
+  async release(leaseIdOrPath: string, options: ReleaseLeaseOptions): Promise<ReleaseResult>;
+  async release(leaseIdOrPath: string, options?: ReleaseLeaseOptions): Promise<void | ReleaseResult> {
     if (!options) {
       const branch = await getDefaultBranch(this.config.repoRoot);
 
@@ -139,113 +140,10 @@ export class Grove {
       return;
     }
 
-    let targetWtPath = "";
-    let leaseEnvVars: Record<string, string> = {};
-
-    await withStateLock(this.poolDir, async () => {
-      const state = await loadPoolState(this.poolDir, this.config.repoRoot);
-      const lease =
-        findLease(state, leaseIdOrPath) ??
-        state.leases.find((entry) => entry.path === leaseIdOrPath);
-      if (!lease) {
-        throw new LeaseNotFoundError(`Lease ${leaseIdOrPath} not found`);
-      }
-
-      const slot = findSlot(state, lease.slotName);
-      if (!slot) {
-        throw new LeaseNotFoundError(`Lease ${leaseIdOrPath} slot not found`);
-      }
-
-      const { inUse, unverified } = await isWorktreeInUse(slot.path);
-      const alive = await ownerAlive(slotToWorktreeEntry(slot, lease));
-
-      if (options.cleanup === "reset" && !options.force) {
-        if (inUse || alive || unverified) {
-          throw new UnsafeCleanupError(
-            `Unsafe cleanup: active processes or unverified safety. Use force: true.`,
-          );
-        }
-      }
-
-      const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === lease.leaseId);
-      state.leases[leaseIndex] = transitionLease(lease, {
-        type: "RELEASE_START",
-        cleanup: options as LeaseFirstCleanupIntent,
-      })!;
-      await savePoolState(this.poolDir, state);
-      targetWtPath = slot.path;
-      leaseEnvVars = this.leaseEnv(recordToGroveLease(lease, unverified ? "unverified" : "verified"));
+    return releaseLease(this.poolDir, this.config, leaseIdOrPath, options, {
+      preRelease: (path, env) => this.runHook(this.config.hooks?.preRelease, path, env),
+      postRelease: (path, env) => this.runHook(this.config.hooks?.postRelease, path, env),
     });
-
-    await this.runHook(this.config.hooks?.preRelease, targetWtPath, leaseEnvVars);
-
-    try {
-      if (options.cleanup === "reset") {
-        await resetWorktree(
-          targetWtPath,
-          options.resetTo || (await getDefaultBranch(this.config.repoRoot)),
-        );
-      }
-    } catch (err) {
-      await withStateLock(this.poolDir, async () => {
-        const state = await loadPoolState(this.poolDir, this.config.repoRoot);
-        const lease = state.leases.find((entry) => entry.path === targetWtPath);
-        const slot = lease ? findSlot(state, lease.slotName) : undefined;
-        if (lease && slot) {
-          const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === lease.leaseId);
-          state.leases[leaseIndex] = transitionLease(lease, {
-            type: "RELEASE_FAILED",
-            reason: (err as Error).message,
-          })!;
-          const slotIndex = state.slots.findIndex((entry) => entry.slotName === slot.slotName);
-          state.slots[slotIndex] = transitionSlot(slot, {
-            type: "QUARANTINE",
-            reason: (err as Error).message,
-          })!;
-          await savePoolState(this.poolDir, state);
-        }
-      });
-      throw new UnsafeCleanupError(`Cleanup failed: ${(err as Error).message}`);
-    }
-
-    let finalLease: GroveLease | null = null;
-    await withStateLock(this.poolDir, async () => {
-      const state = await loadPoolState(this.poolDir, this.config.repoRoot);
-      const lease = state.leases.find((entry) => entry.path === targetWtPath);
-      if (!lease) return;
-      const slot = findSlot(state, lease.slotName);
-      if (!slot) return;
-
-      await clearSlotOwner(slot);
-
-      if (options.cleanup === "quarantine") {
-        const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === lease.leaseId);
-        state.leases[leaseIndex] = transitionLease(lease, {
-          type: "QUARANTINE",
-          reason: "release quarantine",
-        })!;
-        const slotIndex = state.slots.findIndex((entry) => entry.slotName === slot.slotName);
-        state.slots[slotIndex] = transitionSlot(slot, { type: "QUARANTINE" })!;
-      } else if (options.cleanup === "reset") {
-        const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === lease.leaseId);
-        finalLease = recordToGroveLease(state.leases[leaseIndex]!);
-        state.leases.splice(leaseIndex, 1);
-        const slotIndex = state.slots.findIndex((entry) => entry.slotName === slot.slotName);
-        state.slots[slotIndex] = transitionSlot(slot, { type: "RELEASE_TO_POOL" })!;
-      } else if (options.cleanup === "preserve") {
-        const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === lease.leaseId);
-        state.leases[leaseIndex] = transitionLease(lease, {
-          type: "RELEASE_PRESERVE_COMPLETE",
-        })!;
-      }
-
-      await savePoolState(this.poolDir, state);
-    });
-
-    await this.runHook(this.config.hooks?.postRelease, targetWtPath, leaseEnvVars);
-
-    if (finalLease) return finalLease;
-    return this.inspect(leaseIdOrPath) as Promise<GroveLease>;
   }
 
   async destroy(leaseIdOrPath: string, options?: DestroyLeaseOptions): Promise<void> {
@@ -416,11 +314,18 @@ export class Grove {
     }
   }
 
-  async repair(options: RepairLeaseOptions): Promise<GroveLease | void> {
+  async repair(options: RepairLeaseOptions): Promise<GroveLease | ReleaseResult | void> {
     if (options.action === "resume-acquire") {
       return resumeAcquireLease(this.poolDir, this.config, options.leaseId, {
         postAcquire: (path, lease) =>
           this.runHook(this.config.hooks?.postAcquire, path, this.leaseEnv(lease)),
+      });
+    }
+
+    if (options.action === "resume-cleanup") {
+      return resumeCleanupLease(this.poolDir, this.config, options.leaseId, {
+        preRelease: (path, env) => this.runHook(this.config.hooks?.preRelease, path, env),
+        postRelease: (path, env) => this.runHook(this.config.hooks?.postRelease, path, env),
       });
     }
 
@@ -459,19 +364,7 @@ export class Grove {
         return;
       }
 
-      if (options.action === "resume-cleanup") {
-        if (!lease.pendingCleanup) {
-          throw new RepairNotAvailableError("resume-cleanup requires pendingCleanup");
-        }
-      }
     });
-
-    if (options.action === "resume-cleanup") {
-      const lease = await this.inspect(options.leaseId);
-      if (lease?.pendingCleanup) {
-        return this.release(options.leaseId, lease.pendingCleanup);
-      }
-    }
 
     if (options.action === "force-destroy") {
       await this.destroy(options.leaseId, { force: true });

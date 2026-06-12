@@ -43,6 +43,11 @@ export type AcquireLeaseOptions = AcquireMode & {
 
 export type ReleaseLeaseOptions = GroveCleanupIntent;
 
+export type ReleaseResult =
+  | { status: "preserved"; leaseId: string; lease: GroveLease }
+  | { status: "released"; leaseId: string; slotName: string; path: string }
+  | { status: "quarantined"; leaseId: string; lease: GroveLease };
+
 export interface DestroyLeaseOptions {
   force?: boolean;
   deleteBranch?: boolean;

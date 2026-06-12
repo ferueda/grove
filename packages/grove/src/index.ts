@@ -8,6 +8,7 @@ export type {
   AcquiredSlot,
   AcquireLeaseOptions,
   ReleaseLeaseOptions,
+  ReleaseResult,
   DestroyLeaseOptions,
   RepairLeaseOptions,
   GroveLease,
