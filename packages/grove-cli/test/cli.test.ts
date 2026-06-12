@@ -3,6 +3,7 @@ import { execa } from "execa";
 import { join } from "node:path";
 import { rm } from "node:fs/promises";
 import { setupRepo } from "../../grove/test/helpers/git-repo.js";
+import { seedLease } from "./helpers/seed-lease.js";
 
 const CLI_PATH = join(import.meta.dirname, "..", "dist", "cli.js");
 
@@ -111,10 +112,11 @@ describe("grove CLI lease-first JSON", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    await runCli(
-      ["acquire", "--json", "--lease-id", "list-lease", "--ref", "main", "-r", repoDir],
-      { GROVE_DIR: groveDir },
-    );
+    await seedLease(repoDir, groveDir, {
+      leaseId: "list-lease",
+      mode: "detached",
+      ref: "main",
+    });
 
     const result = await runCli(["list", "--json", "-r", repoDir], { GROVE_DIR: groveDir });
     expect(result.exitCode).toBe(0);
@@ -129,10 +131,11 @@ describe("grove CLI lease-first JSON", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    await runCli(
-      ["acquire", "--json", "--lease-id", "release-lease", "--ref", "main", "-r", repoDir],
-      { GROVE_DIR: groveDir },
-    );
+    await seedLease(repoDir, groveDir, {
+      leaseId: "release-lease",
+      mode: "detached",
+      ref: "main",
+    });
 
     const result = await runCli(
       ["release", "--json", "--lease-id", "release-lease", "--cleanup", "preserve", "-r", repoDir],
@@ -152,21 +155,12 @@ describe("grove CLI lease-first JSON", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    await runCli(
-      [
-        "acquire",
-        "--json",
-        "--lease-id",
-        "conflict-lease",
-        "--branch",
-        "branch-a",
-        "--create-from",
-        "main",
-        "-r",
-        repoDir,
-      ],
-      { GROVE_DIR: groveDir },
-    );
+    await seedLease(repoDir, groveDir, {
+      leaseId: "conflict-lease",
+      mode: "branch",
+      branch: "branch-a",
+      createBranch: { from: "main", ifExists: "fail" },
+    });
 
     const result = await runCli(
       ["acquire", "--json", "--lease-id", "conflict-lease", "--branch", "branch-b", "-r", repoDir],
