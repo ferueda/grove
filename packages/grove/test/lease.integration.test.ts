@@ -28,13 +28,13 @@ describe("Grove Lease Mode Integration", () => {
     expect(wt1.path).toBeDefined();
     expect(wt1.name).toBeDefined();
 
-    const list1 = await grove.list();
+    const list1 = await grove.listWorktreeStatus();
     expect(list1).toHaveLength(1);
     expect(list1[0]?.status).toBe("in-use");
 
     await grove.release(wt1.path);
 
-    const list2 = await grove.list();
+    const list2 = await grove.listWorktreeStatus();
     expect(list2).toHaveLength(1);
   });
 
@@ -172,7 +172,7 @@ describe("Grove Lease Mode Integration", () => {
     await expect(execa("git", ["rev-parse", "--verify", "pr/123"], { cwd: repoDir })).rejects.toThrowError(/exit code/);
   });
 
-  it("atomicity: failed branch checkout leaves lease quarantined", async () => {
+  it("failed checkout quarantines lease and preserves pendingAcquire for repair", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
@@ -183,15 +183,61 @@ describe("Grove Lease Mode Integration", () => {
         leaseId: "fail-checkout",
         mode: "branch",
         branch: "does-not-exist",
-      })
+      }),
     ).rejects.toThrow(/Branch not found/);
 
     const leases = await grove.listLeases();
     expect(leases).toHaveLength(1);
     expect(leases[0]?.leaseId).toBe("fail-checkout");
     expect(leases[0]?.state).toBe("quarantined");
+    expect(leases[0]?.pendingAcquire).toBeDefined();
   });
 
+  it("repair resume-acquire completes a quarantined pending acquire", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+
+    await expect(
+      grove.acquire({
+        leaseId: "resume-lease",
+        mode: "branch",
+        branch: "missing-branch",
+      }),
+    ).rejects.toThrow(/Branch not found/);
+
+    await execa("git", ["branch", "missing-branch", "main"], { cwd: repoDir });
+
+    const repaired = await grove.repair({
+      leaseId: "resume-lease",
+      action: "resume-acquire",
+    });
+    expect(repaired?.state).toBe("leased");
+    expect(repaired?.branch).toBe("missing-branch");
+  });
+
+  it("inspect reports missing path without mutating lease state", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "inspect-lease",
+      mode: "detached",
+      ref: "main",
+    });
+
+    await rm(lease.path, { recursive: true, force: true });
+
+    const inspected = await grove.inspect("inspect-lease");
+    expect(inspected?.diagnostics?.missingPath).toBe(true);
+    expect(inspected?.state).toBe("leased");
+
+    const listed = await grove.list();
+    expect(listed).toHaveLength(1);
+    expect(listed[0]?.diagnostics?.missingPath).toBe(true);
+  });
 
   it("destroyAll is atomic: fails completely if one worktree is unsafe", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();

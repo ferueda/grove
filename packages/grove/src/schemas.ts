@@ -111,6 +111,8 @@ export const GroveSlotSchema = z.object({
   path: z.string(),
   state: z.enum(["available", "leased", "quarantined", "destroying"]),
   lastProcessSafetyCheck: ProcessSafetyDiagnosticSchema.optional(),
+  ownerPid: z.number().optional(),
+  ownerStartedAt: z.number().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -122,6 +124,8 @@ export const GroveLeaseDiagnosticsSchema = z.object({
   lastProcessSafetyCheck: ProcessSafetyDiagnosticSchema.optional(),
   quarantineReason: z.string().optional(),
 });
+
+export type GroveLeaseDiagnostics = z.infer<typeof GroveLeaseDiagnosticsSchema>;
 
 export const GroveLeaseSchema = z
   .object({

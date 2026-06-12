@@ -830,8 +830,8 @@ main (stable, current semver — releasable)
 **Current status**
 
 - Integration branch: `feat/lease-first-v1` (created from `main`).
-- PR 1: [#32](https://github.com/ferueda/grove/pull/32) —
-  `feat/lease-first-pr1-schemas-transitions` → `feat/lease-first-v1`.
+- PR 1: merged — `feat/lease-first-pr1-schemas-transitions` → `feat/lease-first-v1`.
+- PR 2: in progress — `feat/lease-first-pr2-acquire` → `feat/lease-first-v1`.
 
 ## PR Split
 
@@ -1063,3 +1063,67 @@ Branch: `feat/lease-first-pr1-schemas-transitions`
   - `packages/grove/src/index.ts` — public exports for v1 APIs
   - `packages/grove/test/transitions.test.ts` — transition and invariant tests (new)
   - `packages/grove/test/state-v1.test.ts` — state loader and migration tests (new)
+
+## PR 2 Implementation Summary (Completed)
+
+Branch: `feat/lease-first-pr2-acquire`
+
+- **What was done**
+
+  - Added `validateBranchName()` (`git check-ref-format --branch`) and
+    `buildAcquireTarget()` / `assertCompatibleReacquire()` in `target.ts`.
+  - Implemented v1 lease acquire with WAL: `preparing` + `pendingAcquire`, checkout
+    side effects, `ACQUIRE_COMPLETE` / `ACQUIRE_FAILED` transitions, and
+    quarantined failure handling.
+  - Added `repair({ action: "resume-acquire" })` via `resumeAcquireLease()`.
+  - Migrated pool persistence to `slots[]` + `leases[]` through `pool-state.ts`
+    (`loadPoolState`, `savePoolState`, `findOrAllocateSlot`, heal/recovery).
+  - Rewired `inspect()` and `list()` to read-only lease views with best-effort
+    `currentHeadSha` refresh and `diagnostics.missingPath`.
+  - Added `listWorktreeStatus()` for ephemeral slot listing; `list()` now returns
+    leases only per v1 contract.
+  - Bridged release/destroy/destroyAll to v1 state with transition helpers where
+    applicable (full release WAL polish remains PR 3).
+  - Added `REPAIR_RESUME_LEASE` slot transition and slot `ownerPid` fields for
+    process reservation persistence.
+  - Extended integration and unit tests: target resolution, resume-acquire,
+    inspect/list diagnostics, pendingAcquire on failed checkout.
+
+- **How it was done**
+
+  - `lease-acquire.ts` orchestrates the plan's acquire flow using
+    `withStateLock`, `transitionLease`, and `transitionSlot`.
+  - `lease-view.ts` maps `GroveLeaseRecord` to public `GroveLease`, enriching
+    read-only diagnostics without mutating persisted state.
+  - `pool.ts` delegates lease acquire to `acquireLease()`; ephemeral
+    acquire/release uses v1 slots without lease records.
+  - Reacquire compares normalized `GroveLeaseTarget` fields; omitted
+    `createBranch` on reacquire does not conflict with stored `createFromRef`.
+  - CLI `status` uses `listWorktreeStatus()` for ephemeral slot display.
+
+- **Why it was done**
+
+  - PR 2 delivers the core lease lifecycle entry point: durable acquire with
+    crash-recoverable intent, idempotent reacquire, and read APIs orchestrators
+    need after process restart.
+  - Unified on-disk v1 state is required before release/destroy can be fully
+    transition-driven in PR 3–5.
+
+- **Files worked on**
+
+  - `packages/grove/src/target.ts` (new)
+  - `packages/grove/src/pool-state.ts` (new)
+  - `packages/grove/src/lease-view.ts` (new)
+  - `packages/grove/src/lease-acquire.ts` (new)
+  - `packages/grove/src/pool.ts` — v1 state integration
+  - `packages/grove/src/queries.ts` — v1 `listWorktrees`
+  - `packages/grove/src/git/branch.ts` — `validateBranchName`
+  - `packages/grove/src/schemas.ts` — slot owner fields
+  - `packages/grove/src/transitions.ts` — `REPAIR_RESUME_LEASE`
+  - `packages/grove/src/types.ts` — `GroveLease` v1 fields, `resume-acquire`
+  - `packages/grove-cli/src/commands/status.ts`
+  - `packages/grove/test/target.test.ts` (new)
+  - `packages/grove/test/lease.integration.test.ts`
+  - `packages/grove/test/pool.test.ts`, `grove.integration.test.ts`
+  - `packages/grove/test/helpers/hook-probe.mjs`
+  - `grove-v1-lease-first-implementation-plan.md`

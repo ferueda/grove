@@ -1,4 +1,9 @@
-import type { GroveCleanupIntent } from "./schemas.js";
+import type {
+  GroveCleanupIntent,
+  GroveLeaseDiagnostics,
+  GroveLeaseTarget,
+  PendingAcquire,
+} from "./schemas.js";
 
 export type WorktreeStatusInfo = "available" | "dirty" | "in-use" | "you're here";
 
@@ -45,7 +50,7 @@ export interface DestroyLeaseOptions {
 
 export interface RepairLeaseOptions {
   leaseId: string;
-  action: "quarantine" | "resume-cleanup" | "force-destroy";
+  action: "quarantine" | "resume-acquire" | "resume-cleanup" | "force-destroy";
   force?: boolean;
 }
 
@@ -58,10 +63,19 @@ export interface GroveLease {
   branch?: string | undefined;
   baseRef?: string | undefined;
   baseSha?: string | undefined;
+  target?: GroveLeaseTarget | undefined;
   acquiredHeadSha: string;
   currentHeadSha: string;
-  state: "leased" | "available" | "releasing" | "destroying" | "quarantined";
+  state:
+    | "preparing"
+    | "leased"
+    | "releasing"
+    | "destroying"
+    | "quarantined";
+  pendingAcquire?: PendingAcquire | undefined;
   pendingCleanup?: GroveCleanupIntent | undefined;
+  diagnostics?: GroveLeaseDiagnostics | undefined;
+  metadata?: Record<string, string> | undefined;
   processSafety?: "verified" | "unverified" | undefined;
   createdAt: string;
   updatedAt: string;

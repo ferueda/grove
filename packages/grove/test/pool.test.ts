@@ -159,7 +159,7 @@ describe("Pool Core (Cluster A & B)", () => {
 
     await grove.release(wt2);
 
-    const list = await grove.list();
+    const list = await grove.listWorktreeStatus();
     expect(list).toHaveLength(2);
     expect(list.map((l) => l.path).sort()).toEqual([wt1, wt2].sort());
 
@@ -193,18 +193,18 @@ describe("Pool Core (Cluster A & B)", () => {
     const stateFile = join(grove.poolDir, "grove-state.json");
     const data = await readFile(stateFile, "utf8");
     const state = JSON.parse(data);
-    state.worktrees[0].destroying = true;
-    state.worktrees[0].owner_pid = 999999;
+    state.slots[0].state = "destroying";
+    state.slots[0].ownerPid = 999999;
     await writeFile(stateFile, JSON.stringify(state, null, 2));
 
-    const list = await grove.list();
+    const list = await grove.listWorktreeStatus();
     expect(list).toHaveLength(1);
     expect(list[0]?.path).toBe(wtPath);
 
     const dataHealed = await readFile(stateFile, "utf8");
     const stateHealed = JSON.parse(dataHealed);
-    expect(stateHealed.worktrees[0].destroying).toBeUndefined();
-    expect(stateHealed.worktrees[0].owner_pid).toBeUndefined();
+    expect(stateHealed.slots[0].state).not.toBe("destroying");
+    expect(stateHealed.slots[0].ownerPid).toBeUndefined();
   });
 
   it("recovers destroying worktree when owner identity does not match", async () => {
@@ -218,20 +218,20 @@ describe("Pool Core (Cluster A & B)", () => {
     const stateFile = join(grove.poolDir, "grove-state.json");
     const data = await readFile(stateFile, "utf8");
     const state = JSON.parse(data);
-    state.worktrees[0].destroying = true;
-    state.worktrees[0].owner_pid = process.pid;
-    state.worktrees[0].owner_started_at = 1;
+    state.slots[0].state = "destroying";
+    state.slots[0].ownerPid = process.pid;
+    state.slots[0].ownerStartedAt = 1;
     await writeFile(stateFile, JSON.stringify(state, null, 2));
 
-    const list = await grove.list();
+    const list = await grove.listWorktreeStatus();
     expect(list).toHaveLength(1);
     expect(list[0]?.path).toBe(wtPath);
 
     const dataHealed = await readFile(stateFile, "utf8");
     const stateHealed = JSON.parse(dataHealed);
-    expect(stateHealed.worktrees[0].destroying).toBeUndefined();
-    expect(stateHealed.worktrees[0].owner_pid).toBeUndefined();
-    expect(stateHealed.worktrees[0].owner_started_at).toBeUndefined();
+    expect(stateHealed.slots[0].state).not.toBe("destroying");
+    expect(stateHealed.slots[0].ownerPid).toBeUndefined();
+    expect(stateHealed.slots[0].ownerStartedAt).toBeUndefined();
   });
 
   it("release rejects destroying worktree", async () => {
@@ -245,10 +245,10 @@ describe("Pool Core (Cluster A & B)", () => {
     const stateFile = join(grove.poolDir, "grove-state.json");
     const data = await readFile(stateFile, "utf8");
     const state = JSON.parse(data);
-    state.worktrees[0].destroying = true;
-    state.worktrees[0].owner_pid = process.pid;
+    state.slots[0].state = "destroying";
+    state.slots[0].ownerPid = process.pid;
     const start = await startedAt(process.pid);
-    if (start) state.worktrees[0].owner_started_at = start;
+    if (start) state.slots[0].ownerStartedAt = start;
     await writeFile(stateFile, JSON.stringify(state, null, 2));
 
     await expect(grove.release(wtPath)).rejects.toThrow(/is being destroyed/);
@@ -302,16 +302,16 @@ describe("Pool Core (Cluster A & B)", () => {
     const stateFile = join(grove.poolDir, "grove-state.json");
     const data = await readFile(stateFile, "utf8");
     const state = JSON.parse(data);
-    state.worktrees[0].destroying = true;
-    state.worktrees[0].owner_pid = 999999;
+    state.slots[0].state = "destroying";
+    state.slots[0].ownerPid = 999999;
     await writeFile(stateFile, JSON.stringify(state, null, 2));
 
     const { path: wtAcquired } = await grove.acquire();
     expect(wtAcquired).toBe(wtPath);
 
     const stateAfter = JSON.parse(await readFile(stateFile, "utf8"));
-    expect(stateAfter.worktrees[0].destroying).toBeUndefined();
-    expect(stateAfter.worktrees[0].owner_pid).toBe(process.pid);
+    expect(stateAfter.slots[0].state).not.toBe("destroying");
+    expect(stateAfter.slots[0].ownerPid).toBe(process.pid);
   });
 
   describe("Destroy and DestroyAll", () => {
@@ -377,7 +377,7 @@ describe("Pool Core (Cluster A & B)", () => {
       await grove.destroyAll({ force: true });
       expect(existsSync(wt)).toBe(false);
 
-      const list = await grove.list();
+      const list = await grove.listWorktreeStatus();
       expect(list.length).toBe(0);
     });
 
@@ -433,7 +433,7 @@ describe("Pool Core (Cluster A & B)", () => {
       expect(content.trim()).toBe("superseded");
       expect(existsSync(wtPath)).toBe(true);
 
-      const list = await groveWithHook.list();
+      const list = await groveWithHook.listWorktreeStatus();
       expect(list).toHaveLength(1);
       expect(list[0]?.path).toBe(wtPath);
       expect(list[0]?.status).toBe("available");
@@ -464,7 +464,7 @@ describe("Pool Core (Cluster A & B)", () => {
       const hookAcquired = (await readFile(sentinel, "utf8")).trim();
       expect(existsSync(hookAcquired)).toBe(true);
 
-      const list = await groveWithHook.list();
+      const list = await groveWithHook.listWorktreeStatus();
       expect(list).toHaveLength(1);
       expect(list[0]?.path).toBe(hookAcquired);
     });
@@ -495,7 +495,7 @@ describe("Pool Core (Cluster A & B)", () => {
       expect(content.trim()).toBe("superseded");
       expect(existsSync(wtPath)).toBe(true);
 
-      const list = await groveWithHook.list();
+      const list = await groveWithHook.listWorktreeStatus();
       expect(list).toHaveLength(1);
       expect(list[0]?.path).toBe(wtPath);
     });
@@ -511,10 +511,10 @@ describe("Pool Core (Cluster A & B)", () => {
       const stateFile = join(grove.poolDir, "grove-state.json");
       const data = await readFile(stateFile, "utf8");
       const state = JSON.parse(data);
-      state.worktrees[0].destroying = true;
-      state.worktrees[0].owner_pid = process.pid;
+      state.slots[0].state = "destroying";
+      state.slots[0].ownerPid = process.pid;
       const start = await startedAt(process.pid);
-      if (start) state.worktrees[0].owner_started_at = start;
+      if (start) state.slots[0].ownerStartedAt = start;
       await writeFile(stateFile, JSON.stringify(state, null, 2));
 
       await expect(grove.destroyAll()).rejects.toThrow(/in use or unverified/);
