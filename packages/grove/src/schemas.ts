@@ -80,8 +80,8 @@ export const BranchLeaseTargetSchema = z.object({
   mode: z.literal("branch"),
   branch: z.string(),
   requestedRef: z.string(),
-  resolvedRefSha: z.string(),
-  branchHeadShaAtAcquire: z.string(),
+  resolvedRefSha: z.string().optional(),
+  branchHeadShaAtAcquire: z.string().optional(),
   createFromRef: z.string().optional(),
   createFromSha: z.string().optional(),
 });
@@ -160,6 +160,22 @@ export const GroveLeaseSchema = z
           message: "leased lease requires target",
           path: ["target"],
         });
+      }
+      if (lease.target?.mode === "branch") {
+        if (!lease.target.resolvedRefSha) {
+          ctx.addIssue({
+            code: "custom",
+            message: "leased branch lease requires resolvedRefSha",
+            path: ["target", "resolvedRefSha"],
+          });
+        }
+        if (!lease.target.branchHeadShaAtAcquire) {
+          ctx.addIssue({
+            code: "custom",
+            message: "leased branch lease requires branchHeadShaAtAcquire",
+            path: ["target", "branchHeadShaAtAcquire"],
+          });
+        }
       }
       if (!lease.acquiredHeadSha) {
         ctx.addIssue({

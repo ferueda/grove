@@ -34,6 +34,18 @@ describe("lease target resolution", () => {
     expect(target.resolvedRefSha).toMatch(/^[0-9a-f]{40}$/);
   });
 
+  it("omits SHA fields when reusing a branch that does not exist yet", async () => {
+    const target = await buildAcquireTarget(
+      { leaseId: "job-1", mode: "branch", branch: "agent/not-created" },
+      repoDir,
+    );
+    expect(target).toEqual({
+      mode: "branch",
+      branch: "agent/not-created",
+      requestedRef: "agent/not-created",
+    });
+  });
+
   it("builds branch targets with createFrom metadata", async () => {
     const target = await buildAcquireTarget(
       {

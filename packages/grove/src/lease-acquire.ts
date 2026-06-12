@@ -217,24 +217,26 @@ export async function acquireLease(
     await hooks.postCreate(targetWtPath);
   }
 
+  let lease: GroveLease;
   try {
     await executeLeaseCheckout(targetWtPath, options);
-    const lease = await finalizeLeaseCheckout(
+    lease = await finalizeLeaseCheckout(
       poolDir,
       repoRoot,
       leaseIdForCheckout,
       targetWtPath,
       pendingTarget,
     );
-    if (hooks.postAcquire) {
-      await hooks.postAcquire(targetWtPath, lease);
-    }
-    return lease;
   } catch (err) {
     const reason = err instanceof Error ? err.message : "checkout failed";
     await quarantineFailedAcquire(poolDir, repoRoot, leaseIdForCheckout, reason);
     throw err;
   }
+
+  if (hooks.postAcquire) {
+    await hooks.postAcquire(targetWtPath, lease);
+  }
+  return lease;
 }
 
 export async function resumeAcquireLease(
@@ -271,18 +273,20 @@ export async function resumeAcquireLease(
   });
 
   const options = targetToAcquireOptions(pendingTarget, leaseId);
+  let lease: GroveLease;
   try {
     await executeLeaseCheckout(wtPath, options);
-    const lease = await finalizeLeaseCheckout(poolDir, repoRoot, leaseId, wtPath, pendingTarget);
-    if (hooks.postAcquire) {
-      await hooks.postAcquire(wtPath, lease);
-    }
-    return lease;
+    lease = await finalizeLeaseCheckout(poolDir, repoRoot, leaseId, wtPath, pendingTarget);
   } catch (err) {
     const reason = err instanceof Error ? err.message : "resume acquire failed";
     await quarantineFailedAcquire(poolDir, repoRoot, leaseId, reason);
     throw err;
   }
+
+  if (hooks.postAcquire) {
+    await hooks.postAcquire(wtPath, lease);
+  }
+  return lease;
 }
 
 function targetToAcquireOptions(

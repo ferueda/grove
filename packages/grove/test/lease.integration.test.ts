@@ -38,6 +38,61 @@ describe("Grove Lease Mode Integration", () => {
     expect(list2).toHaveLength(1);
   });
 
+  it("reacquire allows commits made inside the leased branch worktree", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+
+    const lease1 = await grove.acquire({
+      leaseId: "commit-lease",
+      mode: "branch",
+      branch: "work-branch",
+      createBranch: { from: "main" },
+    });
+
+    await execa("git", ["commit", "--allow-empty", "-m", "work"], { cwd: lease1.path });
+
+    const lease2 = await grove.acquire({
+      leaseId: "commit-lease",
+      mode: "branch",
+      branch: "work-branch",
+      ifLeased: "return-existing",
+    });
+
+    expect(lease2.leaseId).toBe("commit-lease");
+    expect(lease2.path).toBe(lease1.path);
+    expect(lease2.state).toBe("leased");
+  });
+
+  it("postAcquire hook failure does not quarantine a leased acquire", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({
+      repoRoot: repoDir,
+      groveRoot: groveDir,
+      onHookFailure: "fail",
+      hooks: {
+        postAcquire: ["exit 1"],
+      },
+    });
+
+    await expect(
+      grove.acquire({
+        leaseId: "hook-fail-lease",
+        mode: "branch",
+        branch: "hook-branch",
+        createBranch: { from: "main" },
+      }),
+    ).rejects.toThrow(/Hook failed/);
+
+    const leases = await grove.listLeases();
+    expect(leases).toHaveLength(1);
+    expect(leases[0]?.leaseId).toBe("hook-fail-lease");
+    expect(leases[0]?.state).toBe("leased");
+  });
+
   it("acquire idempotency for leases", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);

@@ -36,19 +36,24 @@ export async function buildAcquireTarget(
     };
   }
 
-  let resolvedRefSha = options.branch;
   try {
-    resolvedRefSha = await resolveRef(repoRoot, options.branch);
+    const branchHeadSha = await resolveRef(repoRoot, options.branch);
+    return {
+      mode: "branch",
+      branch: options.branch,
+      requestedRef: options.branch,
+      resolvedRefSha: branchHeadSha,
+      branchHeadShaAtAcquire: branchHeadSha,
+    };
   } catch {
     // Branch may not exist yet; checkout will surface BranchNotFoundError.
+    // Omit SHA fields until checkout finalizes the normalized target.
+    return {
+      mode: "branch",
+      branch: options.branch,
+      requestedRef: options.branch,
+    };
   }
-  return {
-    mode: "branch",
-    branch: options.branch,
-    requestedRef: options.branch,
-    resolvedRefSha,
-    branchHeadShaAtAcquire: resolvedRefSha,
-  };
 }
 
 export function buildPendingAcquire(target: GroveLeaseTarget, startedAt: string): PendingAcquire {
@@ -128,20 +133,32 @@ export async function assertCompatibleReacquire(
     }
   }
 
-  const branchHead = await resolveRef(repoRoot, stored.branch);
-  if (branchHead !== stored.branchHeadShaAtAcquire) {
-    let worktreeHead = existing.currentHeadSha;
-    try {
-      worktreeHead = await getHeadSha(existing.path);
-    } catch {
-      // use stored value
-    }
-    if (worktreeHead !== stored.branchHeadShaAtAcquire) {
-      throw new LeaseConflictError(
-        `Lease conflict: branch ${stored.branch} moved outside lease ${existing.leaseId}`,
-      );
-    }
+  if (!stored.branchHeadShaAtAcquire) {
+    throw new LeaseConflictError(
+      `Lease conflict: branch ${stored.branch} has no recorded head for ${existing.leaseId}`,
+    );
   }
+
+  const branchHead = await resolveRef(repoRoot, stored.branch);
+  if (branchHead === stored.branchHeadShaAtAcquire) {
+    return;
+  }
+
+  let worktreeHead = existing.currentHeadSha;
+  try {
+    worktreeHead = await getHeadSha(existing.path);
+  } catch {
+    // use stored value
+  }
+
+  // Worktree on branch tip: commits made inside this lease advanced both refs together.
+  if (worktreeHead === branchHead) {
+    return;
+  }
+
+  throw new LeaseConflictError(
+    `Lease conflict: branch ${stored.branch} moved outside lease ${existing.leaseId}`,
+  );
 }
 
 export function branchOwnedByOtherLease(
