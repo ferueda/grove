@@ -102,7 +102,7 @@ describe("Grove Vertical Smoke", () => {
 
     await rm(wt, { recursive: true, force: true });
 
-    const list = await grove.list();
+    const list = await grove.listWorktreeStatus();
     expect(list.length).toBe(0);
   });
 

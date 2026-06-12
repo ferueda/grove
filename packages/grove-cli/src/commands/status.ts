@@ -36,7 +36,7 @@ export const statusCmd = new Command("status")
       }
 
       // Legacy
-      const trees = await grove.list();
+      const trees = await grove.listWorktreeStatus();
 
       if (options.json) {
         process.stdout.write(JSON.stringify(trees, null, 2) + "\n");

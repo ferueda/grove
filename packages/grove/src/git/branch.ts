@@ -1,6 +1,20 @@
 import { createHash } from "node:crypto";
 import { runGit } from "./run.js";
-import { BranchExistsError, BranchNotFoundError, RefNotFoundError, GitCommandError } from "../errors.js";
+import {
+  BranchExistsError,
+  BranchNotFoundError,
+  RefNotFoundError,
+  GitCommandError,
+  InvalidInputError,
+} from "../errors.js";
+
+export async function validateBranchName(repoRoot: string, branch: string): Promise<void> {
+  try {
+    await runGit(repoRoot, ["check-ref-format", "--branch", branch]);
+  } catch {
+    throw new InvalidInputError(`Invalid branch name: ${branch}`);
+  }
+}
 
 export async function findRepoRoot(cwd?: string): Promise<string> {
   return runGit(cwd, ["rev-parse", "--show-toplevel"]);

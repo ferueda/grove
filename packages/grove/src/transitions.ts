@@ -27,7 +27,8 @@ export type SlotEvent =
   | { type: "RELEASE_TO_POOL" }
   | { type: "QUARANTINE"; reason?: string }
   | { type: "DESTROY_START" }
-  | { type: "DESTROY_COMPLETE" };
+  | { type: "DESTROY_COMPLETE" }
+  | { type: "REPAIR_RESUME_LEASE" };
 
 function quarantineDiagnostics(
   lease: GroveLeaseRecord,
@@ -249,6 +250,14 @@ export function transitionSlot(
         );
       }
       return null;
+    }
+    case "REPAIR_RESUME_LEASE": {
+      if (slot.state !== "quarantined") {
+        throw new InvalidTransitionError(
+          `REPAIR_RESUME_LEASE invalid from slot state ${slot.state}`,
+        );
+      }
+      return { ...base, state: "leased" };
     }
     default: {
       const _exhaustive: never = event;

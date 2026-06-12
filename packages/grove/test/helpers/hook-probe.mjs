@@ -59,12 +59,27 @@ if (command === "lock-probe") {
     readFile(stateFile, "utf8")
       .then((data) => {
         const state = JSON.parse(data);
-        for (const wt of state.worktrees) {
-          if (wt.path === wtPath) {
-            wt.destroying = false;
-            delete wt.state;
-            delete wt.owner_pid;
-            delete wt.owner_started_at;
+        if (Array.isArray(state.slots)) {
+          for (const slot of state.slots) {
+            if (slot.path === wtPath) {
+              slot.state = "available";
+              delete slot.ownerPid;
+              delete slot.ownerStartedAt;
+            }
+          }
+          for (const lease of state.leases ?? []) {
+            if (lease.path === wtPath && lease.state === "destroying") {
+              lease.state = "leased";
+            }
+          }
+        } else {
+          for (const wt of state.worktrees) {
+            if (wt.path === wtPath) {
+              wt.destroying = false;
+              delete wt.state;
+              delete wt.owner_pid;
+              delete wt.owner_started_at;
+            }
           }
         }
         return writeFile(stateFile, JSON.stringify(state, null, 2));
