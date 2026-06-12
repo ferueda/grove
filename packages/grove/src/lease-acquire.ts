@@ -16,16 +16,13 @@ import {
   buildPendingAcquire,
   finalizeBranchTarget,
 } from "./target.js";
-import {
-  createPreparingLease,
-  transitionLease,
-  transitionSlot,
-} from "./transitions.js";
+import { createPreparingLease, transitionLease, transitionSlot } from "./transitions.js";
 import {
   findLease,
   findOrAllocateSlot,
   findSlot,
   loadPoolState,
+  materializeSlotWorktree,
   reserveSlotOwner,
   savePoolState,
 } from "./pool-state.js";
@@ -177,12 +174,14 @@ export async function acquireLease(
       }
     }
 
-    if (options.mode === "branch" && branchOwnedByOtherLease(state.leases, options.branch, options.leaseId)) {
+    if (
+      options.mode === "branch" &&
+      branchOwnedByOtherLease(state.leases, options.branch, options.leaseId)
+    ) {
       throw new BranchExistsError(`Branch ${options.branch} belongs to another active lease`);
     }
 
-    const defaultBranch = await getDefaultBranch(repoRoot);
-    const { slot, isNew } = await findOrAllocateSlot(state, poolDir, config, defaultBranch);
+    const { slot, isNew } = await findOrAllocateSlot(state, poolDir, config);
 
     const reservedSlot = transitionSlot(slot, { type: "RESERVE_FOR_LEASE" }, now)!;
     const slotIndex = state.slots.findIndex((entry) => entry.slotName === slot.slotName);
@@ -214,12 +213,21 @@ export async function acquireLease(
     return enrichLeaseReadOnly(lease);
   }
 
-  if (isNewSlot && hooks.postCreate) {
-    await hooks.postCreate(targetWtPath);
-  }
-
   let lease: GroveLease;
   try {
+    if (isNewSlot) {
+      const state = await loadPoolState(poolDir, repoRoot, { heal: false });
+      const leaseRecord = findLease(state, leaseIdForCheckout);
+      const slot = leaseRecord ? findSlot(state, leaseRecord.slotName) : undefined;
+      if (!slot) {
+        throw new LeaseNotFoundError(`Lease ${leaseIdForCheckout} slot not found before checkout`);
+      }
+      const defaultBranch = await getDefaultBranch(repoRoot);
+      await materializeSlotWorktree(slot, config, defaultBranch);
+      if (hooks.postCreate) {
+        await hooks.postCreate(targetWtPath);
+      }
+    }
     await executeLeaseCheckout(targetWtPath, options);
     lease = await finalizeLeaseCheckout(
       poolDir,
@@ -245,11 +253,14 @@ export async function resumeAcquireLease(
   config: GroveConfig,
   leaseId: string,
   hooks: {
+    postCreate?: (path: string) => Promise<void>;
     postAcquire?: (path: string, lease: GroveLease) => Promise<void>;
   } = {},
 ): Promise<GroveLease> {
   const repoRoot = config.repoRoot;
   let wtPath = "";
+  let slotName = "";
+  let runPostCreate = false;
   let pendingTarget!: GroveLeaseTarget;
 
   await withStateLock(poolDir, async () => {
@@ -278,12 +289,26 @@ export async function resumeAcquireLease(
 
     await savePoolState(poolDir, state);
     wtPath = lease.path;
+    slotName = lease.slotName;
+    runPostCreate = lease.diagnostics?.quarantineReason?.startsWith("Hook failed:") ?? false;
     pendingTarget = lease.pendingAcquire.target;
   });
 
   const options = targetToAcquireOptions(pendingTarget, leaseId);
   let lease: GroveLease;
   try {
+    if (!existsSync(wtPath)) {
+      const state = await loadPoolState(poolDir, repoRoot, { heal: false });
+      const slot = findSlot(state, slotName);
+      if (!slot) {
+        throw new LeaseNotFoundError(`Lease ${leaseId} slot not found before resume-acquire`);
+      }
+      await materializeSlotWorktree(slot, config, await getDefaultBranch(repoRoot));
+      runPostCreate = true;
+    }
+    if (runPostCreate && hooks.postCreate) {
+      await hooks.postCreate(wtPath);
+    }
     await executeLeaseCheckout(wtPath, options);
     lease = await finalizeLeaseCheckout(poolDir, repoRoot, leaseId, wtPath, pendingTarget);
   } catch (err) {
@@ -298,10 +323,7 @@ export async function resumeAcquireLease(
   return lease;
 }
 
-function targetToAcquireOptions(
-  target: GroveLeaseTarget,
-  leaseId: string,
-): AcquireLeaseOptions {
+function targetToAcquireOptions(target: GroveLeaseTarget, leaseId: string): AcquireLeaseOptions {
   if (target.mode === "detached") {
     return { leaseId, mode: "detached", ref: target.requestedRef };
   }
@@ -311,7 +333,7 @@ function targetToAcquireOptions(
     branch: target.branch,
   };
   if (target.createFromRef) {
-    options.createBranch = { from: target.createFromRef };
+    options.createBranch = { from: target.createFromRef, ifExists: "reuse" };
   }
   return options;
 }

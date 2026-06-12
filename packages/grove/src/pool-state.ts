@@ -9,7 +9,7 @@ import type {
   WorktreeEntry,
 } from "./schemas.js";
 import { readLeaseFirstState, writeLeaseFirstState } from "./state-v1.js";
-import { addWorktree, isDirty, resetWorktree } from "./git/index.js";
+import { addWorktree, isDirty } from "./git/index.js";
 import { ownerAlive, isWorktreeInUse, reserveOwner } from "./process/detect.js";
 import { GroveExhaustedError } from "./errors.js";
 import { transitionLease, transitionSlot } from "./transitions.js";
@@ -17,7 +17,7 @@ import { transitionLease, transitionSlot } from "./transitions.js";
 export async function healPoolState(state: LeaseFirstGroveState): Promise<LeaseFirstGroveState> {
   const slots: GroveSlot[] = [];
   for (const slot of state.slots) {
-    if (!existsSync(slot.path)) {
+    if (!existsSync(slot.path) && !leaseForSlot(state, slot.slotName)) {
       continue;
     }
     if (slot.ownerPid !== undefined && !(await ownerAlive(slotOwnerEntry(slot)))) {
@@ -47,10 +47,7 @@ export async function loadPoolState(
   return healPoolState(state);
 }
 
-export async function savePoolState(
-  poolDir: string,
-  state: LeaseFirstGroveState,
-): Promise<void> {
+export async function savePoolState(poolDir: string, state: LeaseFirstGroveState): Promise<void> {
   await writeLeaseFirstState(poolDir, state);
 }
 
@@ -68,10 +65,7 @@ export function findLease(
   return state.leases.find((lease) => lease.leaseId === leaseId);
 }
 
-export function findSlot(
-  state: LeaseFirstGroveState,
-  slotName: string,
-): GroveSlot | undefined {
+export function findSlot(state: LeaseFirstGroveState, slotName: string): GroveSlot | undefined {
   return state.slots.find((slot) => slot.slotName === slotName);
 }
 
@@ -153,7 +147,6 @@ export async function findOrAllocateSlot(
   state: LeaseFirstGroveState,
   poolDir: string,
   config: GroveConfig,
-  defaultBranch: string,
 ): Promise<{ slot: GroveSlot; isNew: boolean }> {
   for (const slot of state.slots) {
     if (slot.state === "destroying") {
@@ -172,12 +165,6 @@ export async function findOrAllocateSlot(
     const dirty = await isDirty(slot.path);
     if (dirty) continue;
 
-    try {
-      await resetWorktree(slot.path, defaultBranch);
-    } catch {
-      continue;
-    }
-
     return { slot, isNew: false };
   }
 
@@ -189,9 +176,6 @@ export async function findOrAllocateSlot(
   const slotName = nextSlotName(state);
   const repoName = basename(config.repoRoot);
   const wtPath = join(poolDir, slotName, repoName);
-
-  await mkdir(dirname(wtPath), { recursive: true });
-  await addWorktree(config.repoRoot, wtPath, defaultBranch);
 
   const now = new Date().toISOString();
   const slot: GroveSlot = {
@@ -206,11 +190,20 @@ export async function findOrAllocateSlot(
   return { slot, isNew: true };
 }
 
-/** Bridge v1 slot to WorktreeEntry shape for process detection. */
-export function slotToWorktreeEntry(
+export async function materializeSlotWorktree(
   slot: GroveSlot,
-  lease?: GroveLeaseRecord,
-): WorktreeEntry {
+  config: GroveConfig,
+  defaultBranch: string,
+): Promise<void> {
+  if (existsSync(slot.path)) {
+    return;
+  }
+  await mkdir(dirname(slot.path), { recursive: true });
+  await addWorktree(config.repoRoot, slot.path, defaultBranch);
+}
+
+/** Bridge v1 slot to WorktreeEntry shape for process detection. */
+export function slotToWorktreeEntry(slot: GroveSlot, lease?: GroveLeaseRecord): WorktreeEntry {
   return {
     name: slot.slotName,
     path: slot.path,

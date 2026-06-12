@@ -15,11 +15,7 @@ import { acquireLease } from "./lease-acquire.js";
 import { destroyLease } from "./lease-destroy.js";
 import { releaseLease } from "./lease-release.js";
 import { repairLease } from "./lease-repair.js";
-import {
-  buildLeaseHookEnv,
-  inspectLeaseRecord,
-  listLeaseRecords,
-} from "./lease-view.js";
+import { buildLeaseHookEnv, inspectLeaseRecord, listLeaseRecords } from "./lease-view.js";
 import { loadPoolState } from "./pool-state.js";
 
 export class Grove {
@@ -28,7 +24,11 @@ export class Grove {
     private config: GroveConfig,
   ) {}
 
-  private async runHook(hookNames: string[] | undefined, workDir: string, env: Record<string, string> = {}) {
+  private async runHook(
+    hookNames: string[] | undefined,
+    workDir: string,
+    env: Record<string, string> = {},
+  ) {
     if (!hookNames || hookNames.length === 0) return;
     try {
       await runHooks(hookNames, workDir, {
@@ -71,10 +71,9 @@ export class Grove {
     });
   }
 
-  async repair(
-    options: RepairLeaseOptions,
-  ): Promise<GroveLease | ReleaseResult | RepairResult> {
+  async repair(options: RepairLeaseOptions): Promise<GroveLease | ReleaseResult | RepairResult> {
     return repairLease(this.poolDir, this.config, options, {
+      postCreate: (path) => this.runHook(this.config.hooks?.postCreate, path),
       postAcquire: (path, lease) =>
         this.runHook(this.config.hooks?.postAcquire, path, this.leaseEnv(lease)),
       preRelease: (path, env) => this.runHook(this.config.hooks?.preRelease, path, env),

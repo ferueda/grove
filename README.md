@@ -49,6 +49,12 @@ grove acquire --json \
   --create-from origin/main
 
 grove acquire --json \
+  --lease-id existing_job \
+  --branch agent/existing_job \
+  --create-from origin/main \
+  --reuse-existing-branch
+
+grove acquire --json \
   --lease-id validation_abc123 \
   --ref origin/main
 ```
@@ -206,7 +212,7 @@ type AcquireLeaseOptions = {
   | {
       mode: "branch";
       branch: string;
-      createBranch?: { from: string; ifExists?: "reuse" | "fail" };
+      createBranch?: { from: string; ifExists: "reuse" | "fail" };
     }
   | { mode: "detached"; ref: string }
 );

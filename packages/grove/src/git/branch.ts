@@ -142,12 +142,12 @@ export async function resolveRef(repoRoot: string, ref: string): Promise<string>
 export async function checkoutBranch(
   wtPath: string,
   branch: string,
-  createOpts?: { from: string; ifExists?: "reuse" | "fail" }
+  createOpts?: { from: string; ifExists: "reuse" | "fail" },
 ): Promise<void> {
   if (createOpts) {
     const localBranches = await runGit(wtPath, ["branch", "--list", branch]);
     if (localBranches.trim()) {
-      if (createOpts.ifExists === "fail") {
+      if (createOpts.ifExists !== "reuse") {
         throw new BranchExistsError(`Branch exists: ${branch}`);
       }
       // reuse
@@ -156,7 +156,10 @@ export async function checkoutBranch(
       try {
         await runGit(wtPath, ["checkout", "-b", branch, createOpts.from]);
       } catch (err: any) {
-        throw new GitCommandError(`Failed to create branch ${branch} from ${createOpts.from}`, err.message);
+        throw new GitCommandError(
+          `Failed to create branch ${branch} from ${createOpts.from}`,
+          err.message,
+        );
       }
     }
   } else {
@@ -176,7 +179,11 @@ export async function checkoutDetached(wtPath: string, ref: string): Promise<voi
   }
 }
 
-export async function deleteBranch(repoRoot: string, branch: string, force?: boolean): Promise<void> {
+export async function deleteBranch(
+  repoRoot: string,
+  branch: string,
+  force?: boolean,
+): Promise<void> {
   try {
     const args = force ? ["branch", "-D", branch] : ["branch", "-d", branch];
     await runGit(repoRoot, args);

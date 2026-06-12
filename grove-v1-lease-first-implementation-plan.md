@@ -147,7 +147,7 @@ type AcquireMode =
       branch: string;
       createBranch?: {
         from: string;
-        ifExists?: "reuse" | "fail";
+        ifExists: "reuse" | "fail";
       };
     }
   | {
@@ -655,6 +655,12 @@ grove acquire --json \
   --create-from origin/main
 
 grove acquire --json \
+  --lease-id existing_job \
+  --branch agent/existing_job \
+  --create-from origin/main \
+  --reuse-existing-branch
+
+grove acquire --json \
   --lease-id validation_abc123 \
   --ref origin/main
 
@@ -1122,11 +1128,11 @@ Branch: `feat/lease-first-pr2-acquire`
     `withStateLock`, `transitionLease`, and `transitionSlot`.
   - `lease-view.ts` maps `GroveLeaseRecord` to public `GroveLease`, enriching
     read-only diagnostics without mutating persisted state.
-  - `pool.ts` delegates lease acquire to `acquireLease()`; ephemeral
-    acquire/release uses v1 slots without lease records.
+  - `pool.ts` delegates lease acquire to `acquireLease()`; v1 public operations
+    are lease-first only.
   - Reacquire compares normalized `GroveLeaseTarget` fields; omitted
     `createBranch` on reacquire does not conflict with stored `createFromRef`.
-  - CLI `status` uses `listWorktreeStatus()` for ephemeral slot display.
+  - CLI `list` returns lease records through the stable JSON envelope.
 
 - **Why it was done**
 
