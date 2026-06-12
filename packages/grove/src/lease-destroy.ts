@@ -35,13 +35,14 @@ type DestroyContext = {
 
 function assertDeleteBranchNotRequested(options?: DestroyLeaseOptions): void {
   if (options?.deleteBranch) {
-    throw new InvalidInputError(
-      "deleteBranch is not supported in lease-first destroy MVP",
-    );
+    throw new InvalidInputError("deleteBranch is not supported in lease-first destroy MVP");
   }
 }
 
-function assertLeaseDestroyable(lease: { leaseId: string; state: string }, resuming: boolean): void {
+function assertLeaseDestroyable(
+  lease: { leaseId: string; state: string },
+  resuming: boolean,
+): void {
   if (resuming) {
     return;
   }
@@ -141,9 +142,7 @@ async function assertDestroyStillPending(
   const state = await loadPoolState(poolDir, repoRoot);
   const lease = findLease(state, leaseId);
   const slot = findSlot(state, slotName);
-  return Boolean(
-    slot?.state === "destroying" && (!lease || lease.state === "destroying"),
-  );
+  return Boolean(slot?.state === "destroying" && (!lease || lease.state === "destroying"));
 }
 
 async function quarantineFailedDestroy(

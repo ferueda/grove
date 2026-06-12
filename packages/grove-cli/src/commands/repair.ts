@@ -1,8 +1,4 @@
-import {
-  InvalidInputError,
-  isReleaseResult,
-  isRepairResult,
-} from "@ferueda/grove";
+import { InvalidInputError, isReleaseResult, isRepairResult } from "@ferueda/grove";
 import { Command } from "commander";
 import { loadGrove } from "../utils.js";
 import { handleError } from "../error-handler.js";
@@ -14,7 +10,10 @@ const REPAIR_ACTIONS = ["quarantine", "resume-acquire", "resume-cleanup", "force
 export const repairCmd = new Command("repair")
   .description("Repair a stuck or broken lease")
   .requiredOption("--lease-id <id>", "Lease ID to repair")
-  .requiredOption("--action <action>", "Action: quarantine, resume-acquire, resume-cleanup, force-destroy")
+  .requiredOption(
+    "--action <action>",
+    "Action: quarantine, resume-acquire, resume-cleanup, force-destroy",
+  )
   .option("-f, --force", "Force action even if processes are running")
   .option("-r, --repo <path>", "Path to repository root")
   .option("--json", "Output result as JSON")
