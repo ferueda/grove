@@ -13,7 +13,7 @@
 * **cli:** update release.ts for lease mode ([e317c2b](https://github.com/ferueda/grove/commit/e317c2be08534ac2af752d98d8b5b19c36316aa8))
 * **cli:** update repair.ts for lease mode ([e738c9a](https://github.com/ferueda/grove/commit/e738c9aeb8132a8582cc9d927fc891cb635ce8f7))
 * **cli:** update status.ts for lease mode ([87ef258](https://github.com/ferueda/grove/commit/87ef2584808e57ada3ba25792f3f8ebcf128b108))
-* implement lease mode for DaddyBot compatibility ([c2545c0](https://github.com/ferueda/grove/commit/c2545c0cfb1d83acf6bf726fb1485b70e9ff2932))
+* implement lease mode ([c2545c0](https://github.com/ferueda/grove/commit/c2545c0cfb1d83acf6bf726fb1485b70e9ff2932))
 
 ## [0.2.0](https://github.com/ferueda/grove/compare/grove-cli-v0.1.2...grove-cli-v0.2.0) (2026-06-11)
 
