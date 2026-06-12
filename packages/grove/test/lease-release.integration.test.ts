@@ -321,7 +321,7 @@ describe("lease release integration", () => {
     });
 
     await expect(grove.release(lease.path, { cleanup: "preserve" })).rejects.toMatchObject({
-      code: "LEASE_NOT_FOUND",
+      code: "INVALID_INPUT",
     });
     expect(await grove.inspect("path-release-lease")).toMatchObject({ state: "leased" });
   });

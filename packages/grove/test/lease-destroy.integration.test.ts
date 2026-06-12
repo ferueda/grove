@@ -23,7 +23,7 @@ describe("lease destroy integration", () => {
     });
 
     await expect(grove.destroy(lease.path, { force: true })).rejects.toMatchObject({
-      code: "LEASE_NOT_FOUND",
+      code: "INVALID_INPUT",
     });
     expect(await grove.inspect("path-destroy-lease")).toMatchObject({ state: "leased" });
     expect(existsSync(lease.path)).toBe(true);

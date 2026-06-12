@@ -18,6 +18,7 @@ import { repairLease } from "./lease-repair.js";
 import { buildLeaseHookEnv, inspectLeaseRecord, listLeaseRecords } from "./lease-view.js";
 import { loadPoolState } from "./pool-state.js";
 import { HookFailedError } from "./errors.js";
+import { parseLeaseId } from "./parse-lease-id.js";
 
 export class Grove {
   constructor(
@@ -47,6 +48,8 @@ export class Grove {
   }
 
   async acquire(options: AcquireLeaseOptions): Promise<GroveLease> {
+    parseLeaseId(options.leaseId);
+
     if (options.fetchOnAcquire !== false && this.config.fetchOnAcquire !== false) {
       await fetchOrigin(this.config.repoRoot);
     }
@@ -59,6 +62,8 @@ export class Grove {
   }
 
   async release(leaseId: string, options: ReleaseLeaseOptions): Promise<ReleaseResult> {
+    parseLeaseId(leaseId);
+
     return releaseLease(this.poolDir, this.config, leaseId, options, {
       preRelease: (path, env) => this.runHook(this.config.hooks?.preRelease, path, env),
       postRelease: (path, env) => this.runHook(this.config.hooks?.postRelease, path, env),
@@ -66,6 +71,8 @@ export class Grove {
   }
 
   async destroy(leaseId: string, options?: DestroyLeaseOptions): Promise<void> {
+    parseLeaseId(leaseId);
+
     await destroyLease(this.poolDir, this.config, leaseId, options, {
       preDestroy: (path: string, env: Record<string, string>) =>
         this.runHook(this.config.hooks?.preDestroy, path, env),
@@ -73,6 +80,8 @@ export class Grove {
   }
 
   async repair(options: RepairLeaseOptions): Promise<GroveLease | ReleaseResult | RepairResult> {
+    parseLeaseId(options.leaseId);
+
     return repairLease(this.poolDir, this.config, options, {
       postCreate: (path) => this.runHook(this.config.hooks?.postCreate, path),
       postAcquire: (path, lease) =>
@@ -84,6 +93,8 @@ export class Grove {
   }
 
   async inspect(leaseId: string): Promise<GroveLease | null> {
+    parseLeaseId(leaseId);
+
     let lease: GroveLease | null = null;
     await withStateLock(this.poolDir, async () => {
       const state = await loadPoolState(this.poolDir, this.config.repoRoot);
