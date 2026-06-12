@@ -15,7 +15,6 @@ import { buildLeaseHookEnv, enrichLeaseReadOnly, recordToGroveLease } from "./le
 import {
   clearSlotOwner,
   findLease,
-  findLeaseByIdOrPath,
   findSlot,
   loadPoolState,
   savePoolState,
@@ -100,18 +99,21 @@ function buildReleaseContext(
 async function beginRelease(
   poolDir: string,
   repoRoot: string,
-  leaseIdOrPath: string,
+  leaseId: string,
   cleanup: LeaseFirstCleanupIntent,
 ): Promise<ReleaseContext> {
   let context!: ReleaseContext;
 
   await withStateLock(poolDir, async () => {
     const state = await loadPoolState(poolDir, repoRoot);
-    const resolved = findLeaseByIdOrPath(state, leaseIdOrPath);
-    if (!resolved) {
-      throw new LeaseNotFoundError(`Lease ${leaseIdOrPath} not found`);
+    const lease = findLease(state, leaseId);
+    if (!lease) {
+      throw new LeaseNotFoundError(`Lease ${leaseId} not found`);
     }
-    const { lease, slot } = resolved;
+    const slot = findSlot(state, lease.slotName);
+    if (!slot) {
+      throw new LeaseNotFoundError(`Lease ${leaseId} slot not found`);
+    }
 
     assertLeaseReleasable(lease);
 
@@ -319,7 +321,7 @@ async function completeRelease(
 export async function releaseLease(
   poolDir: string,
   config: GroveConfig,
-  leaseIdOrPath: string,
+  leaseId: string,
   options: ReleaseLeaseOptions,
   hooks: ReleaseHooks = {},
 ): Promise<ReleaseResult> {
@@ -328,7 +330,7 @@ export async function releaseLease(
       ? await getDefaultBranch(config.repoRoot)
       : "";
   const cleanup = toLeaseFirstCleanupIntent(options, defaultBranch);
-  const context = await beginRelease(poolDir, config.repoRoot, leaseIdOrPath, cleanup);
+  const context = await beginRelease(poolDir, config.repoRoot, leaseId, cleanup);
   return completeRelease(poolDir, config.repoRoot, context, hooks);
 }
 

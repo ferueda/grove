@@ -6,7 +6,7 @@ It helps applications (like downstream orchestrators or CLI tools) maintain an i
 
 ## North Star
 
-Provide a robust and reliable implementation of git worktree pool semantics — both ephemeral clean-job checkouts and durable branch-aware leases.
+Provide a robust and reliable implementation of git worktree pool semantics as durable, branch-aware leases keyed by `leaseId`.
 
 The SDK should feel:
 
@@ -17,7 +17,7 @@ The SDK should feel:
 The SDK should not be:
 
 - an agent runner or workflow manager;
-- an interactive shell spawner (the CLI may offer `--shell` for convenience, but Grove does not own job lifecycle);
+- an interactive shell spawner;
 - an opinionated PR/review/validation system;
 - a config-file-driven product (v0.x relies on programmatic `createGrove()` configuration).
 
@@ -38,11 +38,11 @@ Grove helps by exposing a programmatically controllable worktree allocator with 
 
 ### Checkout Contention
 
-When a CI job or bot needs to operate on a repository without disrupting a user's current branch or another concurrent job, standard checkouts cause conflicts. Grove manages a structured pool of isolated worktrees so each job gets its own checkout — detached HEAD for ephemeral jobs, or a specific branch for leased work units.
+When a CI job or bot needs to operate on a repository without disrupting a user's current branch or another concurrent job, standard checkouts cause conflicts. Grove manages a structured pool of isolated worktrees so each job gets its own checkout on a specific branch or detached ref, tied to a stable `leaseId`.
 
 ### Durable Work-Unit Isolation
 
-Downstream orchestrators often need the same worktree across multiple process invocations (create, resume, finalize). Ephemeral acquire/release destroys commits on every release. Lease mode persists ownership by `leaseId`, supports idempotent re-acquire, and separates cleanup intent (`preserve`, `reset`, `quarantine`, `destroy`) from reservation.
+Downstream orchestrators often need the same worktree across multiple process invocations (create, resume, finalize). Grove persists ownership by `leaseId`, supports idempotent re-acquire, and separates cleanup intent (`preserve`, `reset`, `quarantine`, `destroy`) from reservation.
 
 ### Process Safety
 
@@ -56,23 +56,16 @@ Managing pool state concurrently requires strict synchronization. Grove uses cro
 
 The core architecture wraps Git operations, process detection, and state locking under a unified facade (`createGrove`).
 
-### What We Are Building
-
-**Ephemeral pool (v0.1+):**
-
-- **Acquire/Release:** Check out clean detached-HEAD worktrees; reset on return.
-- **Process Detection:** Unix-based `cwd` scan to identify active worktrees.
-- **Hooks:** `postCreate`, `preDestroy`.
-- **State Persistence:** JSON state with exclusive file locking.
-
-**Lease mode (v0.3+):**
+### What We Are Building (v1)
 
 - **Branch-aware acquire:** Checkout existing branch, create branch from ref, or detached ref.
 - **Durable leases:** Stable `leaseId`, persisted across process restarts, idempotent re-acquire.
-- **Cleanup policies:** `preserve`, `reset`, `quarantine`; explicit `destroy()` with optional safe branch deletion.
-- **Repair:** Resume stuck cleanup, quarantine, or force-destroy.
-- **Extended hooks:** `postAcquire`, `preRelease`, `postRelease` with lease env vars.
-- **CLI:** Scriptable commands with `--json` for orchestrator integration.
+- **Cleanup policies:** `preserve`, `reset`, `quarantine`; explicit `destroy()`.
+- **Repair:** Resume stuck acquire/cleanup, quarantine, or force-destroy.
+- **Process detection:** Unix-based `cwd` scan; fresh safety scan before destructive ops.
+- **Hooks:** `postCreate`, `postAcquire`, `preRelease`, `postRelease`, `preDestroy` with lease env vars.
+- **CLI:** Lease-first commands with stable `--json` envelopes.
+- **State persistence:** JSON state with exclusive file locking and transition-driven mutations.
 
 ### What We Are Not Building
 
@@ -95,9 +88,8 @@ Grove state must always match disk reality.
 
 ## Agent And Contributor Guardrails
 
-The primary directive is **Faithful port first** for ephemeral pool semantics: the original Go behavior is the specification.
-
-For lease mode, acceptance tests in `packages/grove/test/lease.integration.test.ts` define expected behavior.
+Acceptance tests in `packages/grove/test/lease.integration.test.ts` define expected lease behavior.
+Transition rules live in `packages/grove/test/transitions.test.ts`.
 
 Prefer changes that:
 

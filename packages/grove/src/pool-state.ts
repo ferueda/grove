@@ -75,30 +75,6 @@ export function findSlot(
   return state.slots.find((slot) => slot.slotName === slotName);
 }
 
-export function findSlotByPath(
-  state: LeaseFirstGroveState,
-  path: string,
-): GroveSlot | undefined {
-  return state.slots.find((slot) => slot.path === path);
-}
-
-export function findLeaseByIdOrPath(
-  state: LeaseFirstGroveState,
-  leaseIdOrPath: string,
-): { lease: GroveLeaseRecord; slot: GroveSlot } | undefined {
-  const lease =
-    findLease(state, leaseIdOrPath) ??
-    state.leases.find((entry) => entry.path === leaseIdOrPath);
-  if (!lease) {
-    return undefined;
-  }
-  const slot = findSlot(state, lease.slotName);
-  if (!slot) {
-    return undefined;
-  }
-  return { lease, slot };
-}
-
 export function applyLeaseSlotQuarantine(
   state: LeaseFirstGroveState,
   lease: GroveLeaseRecord,
@@ -230,7 +206,7 @@ export async function findOrAllocateSlot(
   return { slot, isNew: true };
 }
 
-/** Bridge v1 slot to legacy WorktreeEntry shape for release/destroy paths. */
+/** Bridge v1 slot to WorktreeEntry shape for process detection. */
 export function slotToWorktreeEntry(
   slot: GroveSlot,
   lease?: GroveLeaseRecord,
@@ -268,28 +244,4 @@ export function slotToWorktreeEntry(
     pendingCleanup: lease?.pendingCleanup,
     destroying: slot.state === "destroying" || lease?.state === "destroying",
   };
-}
-
-export function syncLeaseFromWorktreeEntry(
-  lease: GroveLeaseRecord,
-  slot: GroveSlot,
-  wt: WorktreeEntry,
-): void {
-  lease.state = (wt.state as GroveLeaseRecord["state"]) || lease.state;
-  lease.ownerId = wt.ownerId;
-  lease.acquiredHeadSha = wt.acquiredHeadSha;
-  lease.currentHeadSha = wt.currentHeadSha;
-  lease.pendingCleanup = wt.pendingCleanup as GroveLeaseRecord["pendingCleanup"];
-  slot.ownerPid = wt.owner_pid;
-  slot.ownerStartedAt = wt.owner_started_at;
-  slot.state =
-    wt.state === "quarantined"
-      ? "quarantined"
-      : wt.state === "destroying" || wt.destroying
-        ? "destroying"
-        : wt.leaseId
-          ? "leased"
-          : "available";
-  slot.updatedAt = new Date().toISOString();
-  lease.updatedAt = slot.updatedAt;
 }

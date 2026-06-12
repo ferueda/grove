@@ -7,18 +7,11 @@ import { withStateLock } from "./lock.js";
 import { assertPathWithinPool } from "./path-boundary.js";
 import { isWorktreeInUse } from "./process/detect.js";
 import { assertWorktreeSafeForCleanup } from "./process/cleanup-safety.js";
-import {
-  InvalidInputError,
-  LeaseBusyError,
-  LeaseNotFoundError,
-  WorktreeNotManagedError,
-} from "./errors.js";
+import { InvalidInputError, LeaseBusyError, LeaseNotFoundError } from "./errors.js";
 import { buildLeaseHookEnv, recordToGroveLease } from "./lease-view.js";
 import {
   findLease,
   findSlot,
-  findSlotByPath,
-  leaseForSlot,
   loadPoolState,
   reserveSlotOwner,
   savePoolState,
@@ -59,23 +52,6 @@ function assertLeaseDestroyable(lease: { leaseId: string; state: string }, resum
     return;
   }
   throw new LeaseBusyError(`Lease ${lease.leaseId} is busy`);
-}
-
-export async function preflightDestroyAll(
-  poolDir: string,
-  repoRoot: string,
-  options?: { force?: boolean },
-): Promise<void> {
-  await withStateLock(poolDir, async () => {
-    const state = await loadPoolState(poolDir, repoRoot);
-    for (const slot of state.slots) {
-      const lease = leaseForSlot(state, slot.slotName);
-      await assertWorktreeSafeForCleanup(slot.path, slot, lease, {
-        force: options?.force,
-        message: DESTROY_UNSAFE_MESSAGE(slot.path),
-      });
-    }
-  });
 }
 
 async function beginDestroy(
@@ -202,28 +178,6 @@ async function quarantineFailedDestroy(
   });
 }
 
-async function quarantineFailedEphemeralDestroy(
-  poolDir: string,
-  repoRoot: string,
-  slotName: string,
-  reason: string,
-): Promise<void> {
-  await withStateLock(poolDir, async () => {
-    const state = await loadPoolState(poolDir, repoRoot, { heal: false });
-    const slot = findSlot(state, slotName);
-    if (!slot || slot.state === "quarantined") {
-      return;
-    }
-
-    const slotIndex = state.slots.findIndex((entry) => entry.slotName === slot.slotName);
-    state.slots[slotIndex] = transitionSlot(slot, {
-      type: "QUARANTINE",
-      reason,
-    })!;
-    await savePoolState(poolDir, state);
-  });
-}
-
 async function finalizeDestroy(
   poolDir: string,
   repoRoot: string,
@@ -321,124 +275,4 @@ export async function destroyLease(
 ): Promise<void> {
   const context = await beginDestroy(poolDir, config, leaseId, options);
   await completeDestroy(poolDir, config, context, hooks);
-}
-
-type EphemeralDestroyContext = {
-  slotName: string;
-  wtPath: string;
-  force: boolean | undefined;
-};
-
-async function beginEphemeralDestroy(
-  poolDir: string,
-  repoRoot: string,
-  slotPath: string,
-  options?: DestroyLeaseOptions,
-): Promise<EphemeralDestroyContext> {
-  assertDeleteBranchNotRequested(options);
-
-  let context!: EphemeralDestroyContext;
-
-  await withStateLock(poolDir, async () => {
-    const state = await loadPoolState(poolDir, repoRoot);
-    const slot = findSlotByPath(state, slotPath);
-    if (!slot) {
-      throw new WorktreeNotManagedError(`worktree ${slotPath} is not managed by grove`);
-    }
-
-    const resuming = slot.state === "destroying";
-    await assertWorktreeSafeForCleanup(slot.path, slot, undefined, {
-      force: options?.force,
-      message: DESTROY_UNSAFE_MESSAGE(slot.path),
-    });
-
-    if (!resuming) {
-      const slotIndex = state.slots.findIndex((entry) => entry.slotName === slot.slotName);
-      state.slots[slotIndex] = transitionSlot(slot, { type: "DESTROY_START" })!;
-    }
-
-    const slotIndex = state.slots.findIndex((entry) => entry.slotName === slot.slotName);
-    await reserveSlotOwner(state.slots[slotIndex]!);
-    await savePoolState(poolDir, state);
-
-    context = {
-      slotName: slot.slotName,
-      wtPath: slot.path,
-      force: options?.force,
-    };
-  });
-
-  return context;
-}
-
-async function finalizeEphemeralDestroy(
-  poolDir: string,
-  repoRoot: string,
-  context: EphemeralDestroyContext,
-): Promise<void> {
-  await withStateLock(poolDir, async () => {
-    const state = await loadPoolState(poolDir, repoRoot, { heal: false });
-    const slot = findSlot(state, context.slotName);
-    if (!slot || slot.state !== "destroying") {
-      return;
-    }
-
-    const slotIndex = state.slots.findIndex((entry) => entry.slotName === context.slotName);
-    const removedSlot = transitionSlot(slot, { type: "DESTROY_COMPLETE" });
-    if (removedSlot !== null) {
-      throw new Error("Expected slot removal after DESTROY_COMPLETE");
-    }
-    state.slots.splice(slotIndex, 1);
-    await savePoolState(poolDir, state);
-  });
-}
-
-async function completeEphemeralDestroy(
-  poolDir: string,
-  config: GroveConfig,
-  context: EphemeralDestroyContext,
-  hooks: DestroyHooks = {},
-): Promise<void> {
-  try {
-    const state = await loadPoolState(poolDir, config.repoRoot);
-    const slot = findSlot(state, context.slotName);
-    if (!slot || slot.state !== "destroying") {
-      return;
-    }
-
-    await hooks.preDestroy?.(context.wtPath, {});
-
-    const afterHook = await loadPoolState(poolDir, config.repoRoot);
-    const slotAfterHook = findSlot(afterHook, context.slotName);
-    if (!slotAfterHook || slotAfterHook.state !== "destroying") {
-      return;
-    }
-
-    await assertWorktreeSafeForCleanup(slotAfterHook.path, slotAfterHook, undefined, {
-      force: context.force,
-      ignoreOwnerReservation: true,
-      message: DESTROY_UNSAFE_MESSAGE(slotAfterHook.path),
-    });
-
-    await assertPathWithinPool(poolDir, slotAfterHook.path);
-    await removeWorktree(config.repoRoot, slotAfterHook.path);
-    await rm(dirname(slotAfterHook.path), { recursive: true, force: true });
-  } catch (err) {
-    const reason = err instanceof Error ? err.message : "destroy failed";
-    await quarantineFailedEphemeralDestroy(poolDir, config.repoRoot, context.slotName, reason);
-    throw err;
-  }
-
-  await finalizeEphemeralDestroy(poolDir, config.repoRoot, context);
-}
-
-export async function destroyEphemeralSlot(
-  poolDir: string,
-  config: GroveConfig,
-  slotPath: string,
-  options?: DestroyLeaseOptions,
-  hooks: DestroyHooks = {},
-): Promise<void> {
-  const context = await beginEphemeralDestroy(poolDir, config.repoRoot, slotPath, options);
-  await completeEphemeralDestroy(poolDir, config, context, hooks);
 }

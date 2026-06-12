@@ -1350,3 +1350,20 @@ Branch: `feat/lease-first-pr6-cutover`
   - `packages/grove/test/pool.test.ts` (removed)
   - `packages/grove-cli/test/cli.test.ts` (new)
   - `grove-v1-lease-first-implementation-plan.md`
+
+## v1 Release Prep (Completed)
+
+Branch: `chore/v1-release-prep`
+
+- **What was done**
+
+  - Removed dead ephemeral destroy code (`destroyEphemeralSlot`, `preflightDestroyAll`).
+  - Removed unused `findLeaseByIdOrPath`, `findSlotByPath`, `syncLeaseFromWorktreeEntry`.
+  - `releaseLease()` resolves by `leaseId` only (matches destroy contract).
+  - Trimmed `hook-probe.mjs` to lock-probe helpers still used by tests.
+  - Rewrote `README.md`, `AGENTS.md`, `VISION.md`, and package READMEs for v1 lease-first API.
+  - Added integration test: path-based `release()` rejects with `LEASE_NOT_FOUND`.
+
+- **Why it was done**
+
+  - Final hygiene and documentation before merging `feat/lease-first-v1` → `main` as the v1 breaking release.

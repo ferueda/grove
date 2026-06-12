@@ -642,6 +642,24 @@ describe("Grove Lease Mode Integration", () => {
     expect(existsSync(lease.path)).toBe(false);
   });
 
+  it("release rejects physical worktree paths and only accepts leaseId", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "path-release-lease",
+      mode: "branch",
+      branch: "path-release-branch",
+      createBranch: { from: "main" },
+    });
+
+    await expect(
+      grove.release(lease.path, { cleanup: "preserve" }),
+    ).rejects.toMatchObject({ code: "LEASE_NOT_FOUND" });
+    expect(await grove.inspect("path-release-lease")).toMatchObject({ state: "leased" });
+  });
+
   it("destroy rejects physical worktree paths and only accepts leaseId", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
