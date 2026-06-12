@@ -1,5 +1,30 @@
 # @ferueda/grove
 
+## [0.3.0](https://github.com/ferueda/grove/compare/grove-v0.2.0...grove-v0.3.0) (2026-06-12)
+
+
+### Features
+
+* **grove:** update branch.ts for lease mode ([c7fdd9b](https://github.com/ferueda/grove/commit/c7fdd9b1e0f9e768793df652acfdd2cf73c8543c))
+* **grove:** update detect.ts for lease mode ([998d01d](https://github.com/ferueda/grove/commit/998d01dda76b45176cd2340483b66700a12249e6))
+* **grove:** update errors.ts for lease mode ([36dbfc3](https://github.com/ferueda/grove/commit/36dbfc3390a37fe1e7288115d2cf9ce9a24b0a32))
+* **grove:** update hooks.ts for lease mode ([c81a403](https://github.com/ferueda/grove/commit/c81a4036006d3e88665cfe0c66d3692f6da82934))
+* **grove:** update index.ts for lease mode ([2a74eaf](https://github.com/ferueda/grove/commit/2a74eaf1b3ab26cfaebe9c3974ce1f503d9c8628))
+* **grove:** update pool.ts for lease mode ([4b5728d](https://github.com/ferueda/grove/commit/4b5728d340d7f1d90f47c6050e377f8839a28cde))
+* **grove:** update schemas.ts for lease mode ([f6e9eb3](https://github.com/ferueda/grove/commit/f6e9eb332829c2dfe0d0226ef1170054aaf8c064))
+* **grove:** update state.ts for lease mode ([71e7509](https://github.com/ferueda/grove/commit/71e7509d4edbde14d7032f7cf7713bccf860c8f7))
+* **grove:** update terminate.ts for lease mode ([1f55d17](https://github.com/ferueda/grove/commit/1f55d17adcd1a387b0ab0444fac303a6961b5e19))
+* implement lease mode for DaddyBot compatibility ([c2545c0](https://github.com/ferueda/grove/commit/c2545c0cfb1d83acf6bf726fb1485b70e9ff2932))
+
+
+### Bug Fixes
+
+* **grove:** address PR review findings for errors.ts ([683efdf](https://github.com/ferueda/grove/commit/683efdf57b126dc88a1150fe9703db5173ecfdb0))
+* **grove:** address PR review findings for hooks.ts ([4a5dd0a](https://github.com/ferueda/grove/commit/4a5dd0a6c6c5083d3e5e0b73454d3c51b3062dd1))
+* **grove:** address PR review findings for index.ts ([7a1c5cd](https://github.com/ferueda/grove/commit/7a1c5cd6abce43470a92b6b8174c3d6ed7fa508f))
+* **grove:** address PR review findings for pool.ts ([19d5873](https://github.com/ferueda/grove/commit/19d5873488bb1e08d5e5c9c6ea7862ffdda3b6d8))
+* **grove:** address PR review findings for schemas.ts ([8c27e8c](https://github.com/ferueda/grove/commit/8c27e8cfb7a56ff32a1df849ac86fea68a8739f5))
+
 ## [0.2.0](https://github.com/ferueda/grove/compare/grove-v0.1.2...grove-v0.2.0) (2026-06-11)
 
 
