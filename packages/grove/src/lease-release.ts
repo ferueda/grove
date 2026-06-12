@@ -1,5 +1,6 @@
 import type {
   GroveConfig,
+  GroveFailedPhase,
   GroveLeaseRecord,
   GroveSlot,
   LeaseFirstCleanupIntent,
@@ -169,6 +170,7 @@ async function quarantineFailedRelease(
   repoRoot: string,
   leaseId: string,
   reason: string,
+  failedPhase: GroveFailedPhase,
 ): Promise<void> {
   await withStateLock(poolDir, async () => {
     const state = await loadPoolState(poolDir, repoRoot);
@@ -182,6 +184,7 @@ async function quarantineFailedRelease(
     state.leases[leaseIndex] = transitionLease(lease, {
       type: "RELEASE_FAILED",
       reason,
+      failedPhase,
     })!;
 
     if (slot.state !== "quarantined") {
@@ -290,7 +293,7 @@ async function completeRelease(
     await hooks.preRelease?.(context.wtPath, context.leaseEnvVars);
   } catch (err: unknown) {
     const reason = err instanceof Error ? err.message : "preRelease hook failed";
-    await quarantineFailedRelease(poolDir, repoRoot, context.leaseId, reason);
+    await quarantineFailedRelease(poolDir, repoRoot, context.leaseId, reason, "preRelease");
     throw err;
   }
 
@@ -311,7 +314,7 @@ async function completeRelease(
       );
     } catch (err) {
       const reason = err instanceof Error ? err.message : "reset failed";
-      await quarantineFailedRelease(poolDir, repoRoot, context.leaseId, reason);
+      await quarantineFailedRelease(poolDir, repoRoot, context.leaseId, reason, "reset");
       throw new UnsafeCleanupError(`Cleanup failed: ${reason}`);
     }
   }

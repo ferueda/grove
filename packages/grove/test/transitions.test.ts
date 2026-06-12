@@ -99,6 +99,24 @@ describe("transitionLease", () => {
     expect(next?.diagnostics?.quarantineReason).toBe("checkout failed");
   });
 
+  it("records structured acquire failure phase", () => {
+    const lease = createPreparingLease({
+      leaseId: "job-1",
+      slotName: "slot-1",
+      path: "/pool/slot-1",
+      repoRoot: "/repo",
+      pendingAcquire: { target: TARGET, startedAt: NOW },
+      now: NOW,
+    });
+
+    const next = transitionLease(
+      lease,
+      { type: "ACQUIRE_FAILED", reason: "hook failed", failedPhase: "postCreate" },
+      NOW,
+    );
+    expect(next?.diagnostics?.failedPhase).toBe("postCreate");
+  });
+
   it("leased -> releasing on RELEASE_START", () => {
     const next = transitionLease(
       leasedLease(),
@@ -139,6 +157,20 @@ describe("transitionLease", () => {
     const next = transitionLease(lease, { type: "RELEASE_FAILED", reason: "reset failed" }, NOW);
     expect(next?.state).toBe("quarantined");
     expect(next?.pendingCleanup).toEqual(pendingCleanup);
+  });
+
+  it("records structured release failure phase", () => {
+    const pendingCleanup = { cleanup: "reset" as const, resetTo: "origin/main" };
+    const lease = leasedLease({
+      state: "releasing",
+      pendingCleanup,
+    });
+    const next = transitionLease(
+      lease,
+      { type: "RELEASE_FAILED", reason: "reset failed", failedPhase: "reset" },
+      NOW,
+    );
+    expect(next?.diagnostics?.failedPhase).toBe("reset");
   });
 
   it("quarantined after RELEASE_FAILED can resume cleanup via REPAIR_RESUME_CLEANUP", () => {

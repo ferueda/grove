@@ -17,6 +17,7 @@ import { releaseLease } from "./lease-release.js";
 import { repairLease } from "./lease-repair.js";
 import { buildLeaseHookEnv, inspectLeaseRecord, listLeaseRecords } from "./lease-view.js";
 import { loadPoolState } from "./pool-state.js";
+import { HookFailedError } from "./errors.js";
 
 export class Grove {
   constructor(
@@ -38,8 +39,8 @@ export class Grove {
         env,
         onFailure: this.config.onHookFailure,
       });
-    } catch (err: any) {
-      if (err.code === "HOOK_FAILED") {
+    } catch (err: unknown) {
+      if (err instanceof HookFailedError) {
         throw err;
       }
     }

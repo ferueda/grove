@@ -19,6 +19,12 @@ describe("Grove Lease Mode Integration", () => {
     }
   });
 
+  function failOnceHook(counterPath: string): string {
+    const script =
+      "const fs = require('node:fs'); const p = process.argv[1]; const n = fs.existsSync(p) ? Number(fs.readFileSync(p, 'utf8')) : 0; fs.writeFileSync(p, String(n + 1)); if (n === 0) process.exit(1);";
+    return ["node", "-e", JSON.stringify(script), JSON.stringify(counterPath)].join(" ");
+  }
+
   it("reacquire allows commits made inside the leased branch worktree", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
@@ -101,6 +107,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "post-create-fail",
       state: "quarantined",
       pendingAcquire: expect.anything(),
+      diagnostics: { failedPhase: "postCreate" },
     });
   });
 
@@ -109,14 +116,7 @@ describe("Grove Lease Mode Integration", () => {
     tmpDirs.push(tmpDir);
 
     const attemptsPath = join(tmpDir, "post-create-attempts.txt");
-    const hook = [
-      "node",
-      "-e",
-      JSON.stringify(
-        "const fs = require('node:fs'); const p = process.argv[1]; const n = fs.existsSync(p) ? Number(fs.readFileSync(p, 'utf8')) : 0; fs.writeFileSync(p, String(n + 1)); if (n === 0) process.exit(1);",
-      ),
-      JSON.stringify(attemptsPath),
-    ].join(" ");
+    const hook = failOnceHook(attemptsPath);
 
     const grove = await createGrove({
       repoRoot: repoDir,
@@ -179,6 +179,46 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "pre-release-fail",
       state: "quarantined",
       pendingCleanup: { cleanup: "preserve" },
+      diagnostics: { failedPhase: "preRelease" },
+    });
+  });
+
+  it("repair resume-cleanup reruns a failed preRelease hook", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const attemptsPath = join(tmpDir, "pre-release-attempts.txt");
+    const grove = await createGrove({
+      repoRoot: repoDir,
+      groveRoot: groveDir,
+      onHookFailure: "fail",
+      hooks: {
+        preRelease: [failOnceHook(attemptsPath)],
+      },
+    });
+
+    const lease = await grove.acquire({
+      leaseId: "repair-pre-release",
+      mode: "branch",
+      branch: "repair-pre-release-branch",
+      createBranch: { from: "main", ifExists: "fail" },
+    });
+
+    await expect(grove.release(lease.leaseId, { cleanup: "preserve" })).rejects.toThrow(
+      /Hook failed/,
+    );
+    expect(await readFile(attemptsPath, "utf8")).toBe("1");
+
+    const result = await grove.repair({
+      leaseId: "repair-pre-release",
+      action: "resume-cleanup",
+    });
+
+    expect(result).toMatchObject({ status: "preserved", leaseId: "repair-pre-release" });
+    expect(await readFile(attemptsPath, "utf8")).toBe("2");
+    expect(await grove.inspect("repair-pre-release")).toMatchObject({
+      state: "leased",
+      pendingCleanup: undefined,
     });
   });
 
@@ -326,6 +366,31 @@ describe("Grove Lease Mode Integration", () => {
     expect(state.slots.find((slot: { path: string }) => slot.path === lease.path)?.state).toBe(
       "available",
     );
+  });
+
+  it("reset release returns a clean slot for the next acquire", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "reset-reuse-lease",
+      mode: "branch",
+      branch: "reset-reuse-branch",
+      createBranch: { from: "main", ifExists: "fail" },
+    });
+
+    await writeFile(join(lease.path, "dirty.txt"), "remove-me");
+    await grove.release(lease.leaseId, { cleanup: "reset", resetTo: "main", force: true });
+
+    const reused = await grove.acquire({
+      leaseId: "reset-reuse-next",
+      mode: "detached",
+      ref: "main",
+    });
+
+    expect(reused.slotName).toBe(lease.slotName);
+    expect(existsSync(join(reused.path, "dirty.txt"))).toBe(false);
   });
 
   it("reset preserves ignored files by default and removes them with cleanIgnored", async () => {

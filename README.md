@@ -154,7 +154,7 @@ const lease = await grove.acquire({
   ownerId: "my-orchestrator",
   mode: "branch",
   branch: "agent/job_abc123",
-  createBranch: { from: "origin/main", ifExists: "reuse" },
+  createBranch: { from: "origin/main", ifExists: "fail" },
   ifLeased: "return-existing",
 });
 
@@ -272,6 +272,8 @@ interface GroveLease {
 | `quarantined` | Blocked; requires `repair()` or `destroy()` |
 
 Re-acquiring the same `leaseId` with a compatible branch/ref is idempotent. Conflicting targets throw `LEASE_CONFLICT`.
+
+Branch creation defaults should be fail-first for new work. Use `ifExists: "reuse"` only when intentionally resuming or attaching to an existing local branch. `repair({ action: "resume-acquire" })` may reuse a branch created by the interrupted acquire so recovery can complete.
 
 ### Lifecycle hooks
 

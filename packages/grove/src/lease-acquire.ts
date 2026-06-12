@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import type { GroveConfig, GroveLeaseTarget } from "./schemas.js";
+import type { GroveConfig, GroveFailedPhase, GroveLeaseTarget } from "./schemas.js";
 import type { AcquireLeaseOptions, GroveLease } from "./types.js";
 import {
   checkoutBranch,
@@ -88,6 +88,7 @@ export async function quarantineFailedAcquire(
   repoRoot: string,
   leaseId: string,
   reason: string,
+  failedPhase: GroveFailedPhase,
 ): Promise<void> {
   await withStateLock(poolDir, async () => {
     const state = await loadPoolState(poolDir, repoRoot);
@@ -99,6 +100,7 @@ export async function quarantineFailedAcquire(
     state.leases[leaseIndex] = transitionLease(lease, {
       type: "ACQUIRE_FAILED",
       reason,
+      failedPhase,
     })!;
 
     const slotIndex = state.slots.findIndex((entry) => entry.slotName === slot.slotName);
@@ -214,8 +216,8 @@ export async function acquireLease(
   }
 
   let lease: GroveLease;
-  try {
-    if (isNewSlot) {
+  if (isNewSlot) {
+    try {
       const state = await loadPoolState(poolDir, repoRoot, { heal: false });
       const leaseRecord = findLease(state, leaseIdForCheckout);
       const slot = leaseRecord ? findSlot(state, leaseRecord.slotName) : undefined;
@@ -224,10 +226,21 @@ export async function acquireLease(
       }
       const defaultBranch = await getDefaultBranch(repoRoot);
       await materializeSlotWorktree(slot, config, defaultBranch);
-      if (hooks.postCreate) {
-        await hooks.postCreate(targetWtPath);
-      }
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : "checkout failed";
+      await quarantineFailedAcquire(poolDir, repoRoot, leaseIdForCheckout, reason, "checkout");
+      throw err;
     }
+    try {
+      await hooks.postCreate?.(targetWtPath);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : "postCreate hook failed";
+      await quarantineFailedAcquire(poolDir, repoRoot, leaseIdForCheckout, reason, "postCreate");
+      throw err;
+    }
+  }
+
+  try {
     await executeLeaseCheckout(targetWtPath, options);
     lease = await finalizeLeaseCheckout(
       poolDir,
@@ -238,11 +251,12 @@ export async function acquireLease(
     );
   } catch (err) {
     const reason = err instanceof Error ? err.message : "checkout failed";
-    await quarantineFailedAcquire(poolDir, repoRoot, leaseIdForCheckout, reason);
+    await quarantineFailedAcquire(poolDir, repoRoot, leaseIdForCheckout, reason, "checkout");
     throw err;
   }
 
   if (hooks.postAcquire) {
+    // postAcquire runs after the lease is usable; hook failures are surfaced without quarantine.
     await hooks.postAcquire(targetWtPath, lease);
   }
   return lease;
@@ -290,14 +304,14 @@ export async function resumeAcquireLease(
     await savePoolState(poolDir, state);
     wtPath = lease.path;
     slotName = lease.slotName;
-    runPostCreate = lease.diagnostics?.quarantineReason?.startsWith("Hook failed:") ?? false;
+    runPostCreate = lease.diagnostics?.failedPhase === "postCreate";
     pendingTarget = lease.pendingAcquire.target;
   });
 
   const options = targetToAcquireOptions(pendingTarget, leaseId);
   let lease: GroveLease;
-  try {
-    if (!existsSync(wtPath)) {
+  if (!existsSync(wtPath)) {
+    try {
       const state = await loadPoolState(poolDir, repoRoot, { heal: false });
       const slot = findSlot(state, slotName);
       if (!slot) {
@@ -305,19 +319,33 @@ export async function resumeAcquireLease(
       }
       await materializeSlotWorktree(slot, config, await getDefaultBranch(repoRoot));
       runPostCreate = true;
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : "resume acquire failed";
+      await quarantineFailedAcquire(poolDir, repoRoot, leaseId, reason, "checkout");
+      throw err;
     }
-    if (runPostCreate && hooks.postCreate) {
-      await hooks.postCreate(wtPath);
+  }
+  if (runPostCreate) {
+    try {
+      await hooks.postCreate?.(wtPath);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : "postCreate hook failed";
+      await quarantineFailedAcquire(poolDir, repoRoot, leaseId, reason, "postCreate");
+      throw err;
     }
+  }
+
+  try {
     await executeLeaseCheckout(wtPath, options);
     lease = await finalizeLeaseCheckout(poolDir, repoRoot, leaseId, wtPath, pendingTarget);
   } catch (err) {
     const reason = err instanceof Error ? err.message : "resume acquire failed";
-    await quarantineFailedAcquire(poolDir, repoRoot, leaseId, reason);
+    await quarantineFailedAcquire(poolDir, repoRoot, leaseId, reason, "checkout");
     throw err;
   }
 
   if (hooks.postAcquire) {
+    // postAcquire runs after the lease is usable; hook failures are surfaced without quarantine.
     await hooks.postAcquire(wtPath, lease);
   }
   return lease;

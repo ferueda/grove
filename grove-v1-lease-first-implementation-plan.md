@@ -466,6 +466,11 @@ For branch creation:
 - `ifExists: "reuse"` must be explicit;
 - `ifExists: "fail"` throws `BRANCH_EXISTS` if the branch exists.
 
+Repair note: `repair({ action: "resume-acquire" })` uses branch reuse when
+replaying an interrupted branch creation. The original acquire should remain
+fail-first unless the caller explicitly opts into reuse; repair is allowed to
+reuse the partially created local branch so recovery can finish.
+
 Branch reuse must reject unsafe ambiguity:
 
 - branch already belongs to another active lease;
