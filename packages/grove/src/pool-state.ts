@@ -105,15 +105,32 @@ export function applyLeaseSlotQuarantine(
   reason: string,
 ): void {
   const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === lease.leaseId);
-  state.leases[leaseIndex] = transitionLease(lease, {
-    type: "QUARANTINE",
-    reason,
-  })!;
+  if (lease.state !== "quarantined") {
+    state.leases[leaseIndex] = transitionLease(lease, {
+      type: "QUARANTINE",
+      reason,
+    })!;
+  }
 
   const slot = findSlot(state, lease.slotName);
-  if (slot && slot.state !== "quarantined") {
+  if (!slot) {
+    return;
+  }
+
+  if (slot.state !== "quarantined") {
     const slotIndex = state.slots.findIndex((entry) => entry.slotName === slot.slotName);
     state.slots[slotIndex] = transitionSlot(slot, { type: "QUARANTINE", reason })!;
+    return;
+  }
+
+  if (slot.ownerPid !== undefined || slot.ownerStartedAt !== undefined) {
+    const slotIndex = state.slots.findIndex((entry) => entry.slotName === slot.slotName);
+    state.slots[slotIndex] = {
+      ...slot,
+      ownerPid: undefined,
+      ownerStartedAt: undefined,
+      updatedAt: new Date().toISOString(),
+    };
   }
 }
 

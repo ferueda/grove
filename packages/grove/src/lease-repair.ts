@@ -36,10 +36,8 @@ async function repairQuarantine(
       throw new LeaseNotFoundError(`Lease ${leaseId} not found`);
     }
 
-    if (record.state !== "quarantined") {
-      applyLeaseSlotQuarantine(state, record, "repair quarantine");
-      await savePoolState(poolDir, state);
-    }
+    applyLeaseSlotQuarantine(state, record, "repair quarantine");
+    await savePoolState(poolDir, state);
 
     const inspected = await inspectLeaseRecord(state, leaseId);
     if (!inspected) {

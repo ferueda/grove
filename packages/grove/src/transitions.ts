@@ -233,7 +233,12 @@ export function transitionSlot(
       ) {
         throw new InvalidTransitionError(`QUARANTINE invalid from slot state ${slot.state}`);
       }
-      return { ...base, state: "quarantined" };
+      return {
+        ...base,
+        state: "quarantined",
+        ownerPid: undefined,
+        ownerStartedAt: undefined,
+      };
     }
     case "DESTROY_START": {
       if (

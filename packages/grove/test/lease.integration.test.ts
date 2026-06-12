@@ -444,6 +444,58 @@ describe("Grove Lease Mode Integration", () => {
     });
   });
 
+  it("repair quarantine clears active slot owner fields", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    await grove.acquire({
+      leaseId: "owner-lease",
+      mode: "branch",
+      branch: "owner-branch",
+      createBranch: { from: "main" },
+    });
+
+    const statePath = join(grove.poolDir, "grove-state.json");
+    let state = JSON.parse(await readFile(statePath, "utf8"));
+    expect(state.slots[0].ownerPid).toBeDefined();
+    expect(state.slots[0].ownerStartedAt).toBeDefined();
+
+    await grove.repair({ leaseId: "owner-lease", action: "quarantine" });
+
+    state = JSON.parse(await readFile(statePath, "utf8"));
+    expect(state.slots[0].state).toBe("quarantined");
+    expect(state.slots[0].ownerPid).toBeUndefined();
+    expect(state.slots[0].ownerStartedAt).toBeUndefined();
+    expect(state.leases[0].ownerId).toBeUndefined();
+  });
+
+  it("repair quarantine on already-quarantined lease clears stale slot owner fields", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    await grove.acquire({
+      leaseId: "stale-owner-lease",
+      mode: "branch",
+      branch: "stale-owner-branch",
+      createBranch: { from: "main" },
+    });
+    await grove.release("stale-owner-lease", { cleanup: "quarantine" });
+
+    const statePath = join(grove.poolDir, "grove-state.json");
+    let state = JSON.parse(await readFile(statePath, "utf8"));
+    state.slots[0].ownerPid = process.pid;
+    state.slots[0].ownerStartedAt = Date.now();
+    await writeFile(statePath, JSON.stringify(state));
+
+    await grove.repair({ leaseId: "stale-owner-lease", action: "quarantine" });
+
+    state = JSON.parse(await readFile(statePath, "utf8"));
+    expect(state.slots[0].ownerPid).toBeUndefined();
+    expect(state.slots[0].ownerStartedAt).toBeUndefined();
+  });
+
   it("repair resume-acquire without pendingAcquire throws REPAIR_NOT_AVAILABLE", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);

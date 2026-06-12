@@ -288,9 +288,15 @@ describe("transitionSlot", () => {
     expect(next?.state).toBe("available");
   });
 
-  it("leased -> quarantined on QUARANTINE", () => {
-    const next = transitionSlot(leasedSlot(), { type: "QUARANTINE", reason: "manual" }, NOW);
+  it("leased -> quarantined on QUARANTINE and clears owner fields", () => {
+    const next = transitionSlot(
+      leasedSlot({ ownerPid: 1234, ownerStartedAt: 1_700_000_000 }),
+      { type: "QUARANTINE", reason: "manual" },
+      NOW,
+    );
     expect(next?.state).toBe("quarantined");
+    expect(next?.ownerPid).toBeUndefined();
+    expect(next?.ownerStartedAt).toBeUndefined();
   });
 
   it("leased -> destroying on DESTROY_START", () => {
