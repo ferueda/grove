@@ -29,6 +29,7 @@ Felipe owns this. Work style: telegraph; noun-phrases ok; drop grammar; min toke
 - **Spec:** Lease integration tests in `packages/grove/test/lease-*.integration.test.ts` (acquire, hooks, release, repair, destroy). Use **test-first** for behavior changes.
 - **Module Size:** Split files if they grow >700 LOC.
 - **Mocks:** DO NOT mock `git` in pool/integration tests. Use `setupRepo()` from `packages/grove/test/helpers/git-repo.ts`.
+- **CLI tests:** Seed pool state via SDK (`packages/grove-cli/test/helpers/seed-lease.ts`) when exercising `list`, `release`, or error envelopes; keep full `dist/cli.js` subprocess paths for acquire happy path, acquire errors, branch reuse, and human mode.
 - **Config:** Programmatic `createGrove()` config only; no config files (TOML/YAML) loader.
 - **Errors:** Throw explicit subclassed errors from `packages/grove/src/errors.ts` with stable `code` properties.
 - **State changes:** Route lease/slot mutations through `packages/grove/src/transitions.ts` — no direct `.state =` in mutator modules.
