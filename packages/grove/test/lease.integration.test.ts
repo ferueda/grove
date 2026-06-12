@@ -441,6 +441,58 @@ describe("Grove Lease Mode Integration", () => {
     expect((await grove.inspect("repair-lease"))?.state).toBe("quarantined");
   });
 
+  it("destroy rejects paths outside the pool boundary and quarantines the lease", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "boundary-lease",
+      mode: "branch",
+      branch: "boundary-branch",
+      createBranch: { from: "main" },
+    });
+
+    const outsidePath = join(tmpDir, "outside-pool", "repo");
+    await mkdir(outsidePath, { recursive: true });
+    const statePath = join(grove.poolDir, "grove-state.json");
+    const state = JSON.parse(await readFile(statePath, "utf8"));
+    state.slots[0].path = outsidePath;
+    state.leases[0].path = outsidePath;
+    await writeFile(statePath, JSON.stringify(state));
+
+    await expect(grove.destroy(lease.leaseId, { force: true })).rejects.toThrow(
+      /outside the pool boundary/,
+    );
+
+    const quarantined = await grove.inspect("boundary-lease");
+    expect(quarantined?.state).toBe("quarantined");
+  });
+
+  it("idempotent destroy resumes an in-progress destroying lease", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "resume-destroy",
+      mode: "branch",
+      branch: "resume-destroy-branch",
+      createBranch: { from: "main" },
+    });
+
+    const statePath = join(grove.poolDir, "grove-state.json");
+    const state = JSON.parse(await readFile(statePath, "utf8"));
+    state.leases[0].state = "destroying";
+    state.slots[0].state = "destroying";
+    state.slots[0].ownerPid = process.pid;
+    await writeFile(statePath, JSON.stringify(state));
+
+    await grove.destroy(lease.leaseId, { force: true });
+    expect(await grove.inspect("resume-destroy")).toBeNull();
+    expect(existsSync(lease.path)).toBe(false);
+  });
+
   it("safe delete branches", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);

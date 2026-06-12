@@ -832,8 +832,8 @@ main (stable, current semver — releasable)
 - Integration branch: `feat/lease-first-v1` (created from `main`).
 - PR 1: merged — `feat/lease-first-pr1-schemas-transitions` → `feat/lease-first-v1`.
 - PR 2: merged — `feat/lease-first-pr2-acquire` → `feat/lease-first-v1`.
-- PR 3: in review — `feat/lease-first-pr3-release` → `feat/lease-first-v1` (PR #34).
-- PR 4: next after PR 3 — `feat/lease-first-pr4-destroy` → `feat/lease-first-v1`.
+- PR 3: merged — `feat/lease-first-pr3-release` → `feat/lease-first-v1`.
+- PR 4: in progress — `feat/lease-first-pr4-destroy` → `feat/lease-first-v1`.
 
 ## PR Split
 

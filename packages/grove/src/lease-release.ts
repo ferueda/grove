@@ -2,7 +2,8 @@ import type { GroveConfig, GroveLeaseRecord, GroveSlot, LeaseFirstCleanupIntent 
 import type { ReleaseLeaseOptions, ReleaseResult } from "./types.js";
 import { getDefaultBranch, resetWorktree } from "./git/index.js";
 import { withStateLock } from "./lock.js";
-import { isWorktreeInUse, ownerAlive } from "./process/detect.js";
+import { isWorktreeInUse } from "./process/detect.js";
+import { assertWorktreeSafeForCleanup } from "./process/cleanup-safety.js";
 import {
   LeaseBusyError,
   LeaseNotFoundError,
@@ -14,10 +15,10 @@ import { buildLeaseHookEnv, enrichLeaseReadOnly, recordToGroveLease } from "./le
 import {
   clearSlotOwner,
   findLease,
+  findLeaseByIdOrPath,
   findSlot,
   loadPoolState,
   savePoolState,
-  slotToWorktreeEntry,
 } from "./pool-state.js";
 import { transitionLease, transitionSlot } from "./transitions.js";
 
@@ -66,25 +67,6 @@ function assertLeaseReleasable(lease: GroveLeaseRecord): void {
   throw new LeaseBusyError(`Lease ${lease.leaseId} is not releasable from ${lease.state}`);
 }
 
-async function scanProcessSafety(
-  slotPath: string,
-  slot: GroveSlot,
-  lease: GroveLeaseRecord,
-  force: boolean | undefined,
-): Promise<{ unverified: boolean }> {
-  const { inUse, unverified } = await isWorktreeInUse(slotPath);
-  if (force) {
-    return { unverified };
-  }
-  const alive = await ownerAlive(slotToWorktreeEntry(slot, lease));
-  if (inUse || alive || unverified) {
-    throw new UnsafeCleanupError(
-      "Unsafe cleanup: active processes or unverified safety. Use force: true.",
-    );
-  }
-  return { unverified };
-}
-
 async function assertFreshResetProcessSafety(
   poolDir: string,
   repoRoot: string,
@@ -97,7 +79,7 @@ async function assertFreshResetProcessSafety(
   if (!lease || !slot) {
     throw new LeaseNotFoundError(`Lease ${leaseId} not found during reset safety check`);
   }
-  await scanProcessSafety(slot.path, slot, lease, force);
+  await assertWorktreeSafeForCleanup(slot.path, slot, lease, force);
 }
 
 function buildReleaseContext(
@@ -125,23 +107,17 @@ async function beginRelease(
 
   await withStateLock(poolDir, async () => {
     const state = await loadPoolState(poolDir, repoRoot);
-    const lease =
-      findLease(state, leaseIdOrPath) ??
-      state.leases.find((entry) => entry.path === leaseIdOrPath);
-    if (!lease) {
+    const resolved = findLeaseByIdOrPath(state, leaseIdOrPath);
+    if (!resolved) {
       throw new LeaseNotFoundError(`Lease ${leaseIdOrPath} not found`);
     }
-
-    const slot = findSlot(state, lease.slotName);
-    if (!slot) {
-      throw new LeaseNotFoundError(`Lease ${leaseIdOrPath} slot not found`);
-    }
+    const { lease, slot } = resolved;
 
     assertLeaseReleasable(lease);
 
     const { unverified } =
       cleanup.cleanup === "reset"
-        ? await scanProcessSafety(slot.path, slot, lease, cleanup.force)
+        ? await assertWorktreeSafeForCleanup(slot.path, slot, lease, cleanup.force)
         : await isWorktreeInUse(slot.path).then(({ unverified: u }) => ({ unverified: u }));
 
     const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === lease.leaseId);

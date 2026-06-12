@@ -279,6 +279,11 @@ describe("transitionSlot", () => {
     expect(transitionSlot(slot, { type: "DESTROY_COMPLETE" }, NOW)).toBeNull();
   });
 
+  it("destroying -> quarantined on QUARANTINE", () => {
+    const next = transitionSlot(leasedSlot({ state: "destroying" }), { type: "QUARANTINE" }, NOW);
+    expect(next?.state).toBe("quarantined");
+  });
+
   const invalidSlotTransitions: Array<{
     name: string;
     slot: GroveSlot;
@@ -298,11 +303,6 @@ describe("transitionSlot", () => {
       name: "DESTROY_COMPLETE from leased",
       slot: leasedSlot(),
       event: { type: "DESTROY_COMPLETE" },
-    },
-    {
-      name: "QUARANTINE from destroying",
-      slot: leasedSlot({ state: "destroying" }),
-      event: { type: "QUARANTINE" },
     },
   ];
 
