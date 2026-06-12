@@ -1,3 +1,4 @@
+import { isReleaseResult } from "@ferueda/grove";
 import { Command } from "commander";
 import { loadGrove } from "../utils.js";
 import { handleError } from "../error-handler.js";
@@ -33,7 +34,7 @@ export const repairCmd = new Command("repair")
 
       if (options.json) {
         process.stdout.write(JSON.stringify(result, null, 2) + "\n");
-      } else if ("status" in result) {
+      } else if (isReleaseResult(result)) {
         const state = result.status === "released" ? "released" : result.lease.state;
         console.error(
           pc.green(`🌳 Lease ${result.leaseId} repaired with action ${options.action}. Result: ${result.status} (${state}).`),

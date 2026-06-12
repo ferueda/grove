@@ -48,6 +48,17 @@ export type ReleaseResult =
   | { status: "released"; leaseId: string; slotName: string; path: string }
   | { status: "quarantined"; leaseId: string; lease: GroveLease };
 
+export function isReleaseResult(value: unknown): value is ReleaseResult {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "status" in value &&
+    (value.status === "preserved" ||
+      value.status === "released" ||
+      value.status === "quarantined")
+  );
+}
+
 export interface DestroyLeaseOptions {
   force?: boolean;
   deleteBranch?: boolean;

@@ -1,4 +1,4 @@
-import type { GroveConfig, GroveLeaseRecord, LeaseFirstCleanupIntent } from "./schemas.js";
+import type { GroveConfig, GroveLeaseRecord, GroveSlot, LeaseFirstCleanupIntent } from "./schemas.js";
 import type { ReleaseLeaseOptions, ReleaseResult } from "./types.js";
 import { getDefaultBranch, resetWorktree } from "./git/index.js";
 import { withStateLock } from "./lock.js";
@@ -10,7 +10,7 @@ import {
   RepairNotAvailableError,
   UnsafeCleanupError,
 } from "./errors.js";
-import { enrichLeaseReadOnly, recordToGroveLease } from "./lease-view.js";
+import { buildLeaseHookEnv, enrichLeaseReadOnly, recordToGroveLease } from "./lease-view.js";
 import {
   clearSlotOwner,
   findLease,
@@ -34,10 +34,10 @@ type ReleaseContext = {
   leaseEnvVars: Record<string, string>;
 };
 
-export async function toLeaseFirstCleanupIntent(
+export function toLeaseFirstCleanupIntent(
   options: ReleaseLeaseOptions,
   defaultBranch: string,
-): Promise<LeaseFirstCleanupIntent> {
+): LeaseFirstCleanupIntent {
   if (options.cleanup === "reset") {
     return {
       cleanup: "reset",
@@ -66,21 +66,23 @@ function assertLeaseReleasable(lease: GroveLeaseRecord): void {
   throw new LeaseBusyError(`Lease ${lease.leaseId} is not releasable from ${lease.state}`);
 }
 
-async function assertResetProcessSafety(
+async function scanProcessSafety(
   slotPath: string,
-  slot: Parameters<typeof slotToWorktreeEntry>[0],
-  lease: Parameters<typeof slotToWorktreeEntry>[1],
+  slot: GroveSlot,
+  lease: GroveLeaseRecord,
   force: boolean | undefined,
-): Promise<void> {
-  if (force) return;
-
+): Promise<{ unverified: boolean }> {
   const { inUse, unverified } = await isWorktreeInUse(slotPath);
+  if (force) {
+    return { unverified };
+  }
   const alive = await ownerAlive(slotToWorktreeEntry(slot, lease));
   if (inUse || alive || unverified) {
     throw new UnsafeCleanupError(
       "Unsafe cleanup: active processes or unverified safety. Use force: true.",
     );
   }
+  return { unverified };
 }
 
 async function assertFreshResetProcessSafety(
@@ -95,7 +97,22 @@ async function assertFreshResetProcessSafety(
   if (!lease || !slot) {
     throw new LeaseNotFoundError(`Lease ${leaseId} not found during reset safety check`);
   }
-  await assertResetProcessSafety(slot.path, slot, lease, force);
+  await scanProcessSafety(slot.path, slot, lease, force);
+}
+
+function buildReleaseContext(
+  lease: GroveLeaseRecord,
+  slot: GroveSlot,
+  pendingCleanup: LeaseFirstCleanupIntent,
+  unverified: boolean,
+): ReleaseContext {
+  return {
+    leaseId: lease.leaseId,
+    slotName: slot.slotName,
+    wtPath: slot.path,
+    pendingCleanup,
+    leaseEnvVars: buildLeaseHookEnv(recordToGroveLease(lease, unverified ? "unverified" : "verified")),
+  };
 }
 
 async function beginRelease(
@@ -122,9 +139,10 @@ async function beginRelease(
 
     assertLeaseReleasable(lease);
 
-    if (cleanup.cleanup === "reset") {
-      await assertResetProcessSafety(slot.path, slot, lease, cleanup.force);
-    }
+    const { unverified } =
+      cleanup.cleanup === "reset"
+        ? await scanProcessSafety(slot.path, slot, lease, cleanup.force)
+        : await isWorktreeInUse(slot.path).then(({ unverified: u }) => ({ unverified: u }));
 
     const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === lease.leaseId);
     state.leases[leaseIndex] = transitionLease(lease, {
@@ -134,15 +152,7 @@ async function beginRelease(
 
     await savePoolState(poolDir, state);
 
-    const { inUse, unverified } = await isWorktreeInUse(slot.path);
-    context = {
-      leaseId: lease.leaseId,
-      slotName: slot.slotName,
-      wtPath: slot.path,
-      pendingCleanup: cleanup,
-      leaseEnvVars: leaseEnv(recordToGroveLease(lease, unverified ? "unverified" : "verified")),
-    };
-    void inUse;
+    context = buildReleaseContext(lease, slot, cleanup, unverified);
   });
 
   return context;
@@ -172,41 +182,11 @@ async function loadReleasingContext(
       throw new LeaseNotFoundError(`Lease ${leaseId} slot not found`);
     }
 
-    const { inUse, unverified } = await isWorktreeInUse(slot.path);
-    context = {
-      leaseId: lease.leaseId,
-      slotName: slot.slotName,
-      wtPath: slot.path,
-      pendingCleanup: lease.pendingCleanup,
-      leaseEnvVars: leaseEnv(recordToGroveLease(lease, unverified ? "unverified" : "verified")),
-    };
-    void inUse;
+    const { unverified } = await isWorktreeInUse(slot.path);
+    context = buildReleaseContext(lease, slot, lease.pendingCleanup, unverified);
   });
 
   return context;
-}
-
-function leaseEnv(lease: ReturnType<typeof recordToGroveLease>): Record<string, string> {
-  return {
-    GROVE_LEASE_ID: lease.leaseId,
-    ...(lease.ownerId ? { GROVE_OWNER_ID: lease.ownerId } : {}),
-    ...(lease.branch ? { GROVE_BRANCH: lease.branch } : {}),
-    ...(lease.baseRef ? { GROVE_BASE_REF: lease.baseRef } : {}),
-    ...(lease.baseSha ? { GROVE_BASE_SHA: lease.baseSha } : {}),
-  };
-}
-
-async function executeResetCleanup(
-  wtPath: string,
-  pendingCleanup: Extract<LeaseFirstCleanupIntent, { cleanup: "reset" }>,
-): Promise<void> {
-  await resetWorktree(
-    wtPath,
-    pendingCleanup.resetTo,
-    pendingCleanup.cleanIgnored === undefined
-      ? undefined
-      : { cleanIgnored: pendingCleanup.cleanIgnored },
-  );
 }
 
 async function quarantineFailedRelease(
@@ -219,7 +199,9 @@ async function quarantineFailedRelease(
     const state = await loadPoolState(poolDir, repoRoot);
     const lease = findLease(state, leaseId);
     const slot = lease ? findSlot(state, lease.slotName) : undefined;
-    if (!lease || !slot) return;
+    if (!lease || !slot) {
+      throw new LeaseNotFoundError(`Lease ${leaseId} missing during failed-release quarantine`);
+    }
 
     const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === lease.leaseId);
     state.leases[leaseIndex] = transitionLease(lease, {
@@ -244,7 +226,9 @@ async function finalizeRelease(
   repoRoot: string,
   context: ReleaseContext,
 ): Promise<ReleaseResult> {
-  let result!: ReleaseResult;
+  let preservedLease: GroveLeaseRecord | undefined;
+  let quarantinedLease: GroveLeaseRecord | undefined;
+  let releasedResult: Extract<ReleaseResult, { status: "released" }> | undefined;
 
   await withStateLock(poolDir, async () => {
     const state = await loadPoolState(poolDir, repoRoot);
@@ -261,11 +245,7 @@ async function finalizeRelease(
       const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === lease.leaseId);
       state.leases[leaseIndex] = transitionLease(lease, { type: "RELEASE_PRESERVE_COMPLETE" })!;
       await savePoolState(poolDir, state);
-      result = {
-        status: "preserved",
-        leaseId: lease.leaseId,
-        lease: await enrichLeaseReadOnly(state.leases[leaseIndex]!),
-      };
+      preservedLease = state.leases[leaseIndex]!;
       return;
     }
 
@@ -281,7 +261,7 @@ async function finalizeRelease(
       state.slots[slotIndex] = transitionSlot(slot, { type: "RELEASE_TO_POOL" })!;
 
       await savePoolState(poolDir, state);
-      result = {
+      releasedResult = {
         status: "released",
         leaseId: context.leaseId,
         slotName: context.slotName,
@@ -302,14 +282,27 @@ async function finalizeRelease(
     }
 
     await savePoolState(poolDir, state);
-    result = {
-      status: "quarantined",
-      leaseId: lease.leaseId,
-      lease: await enrichLeaseReadOnly(state.leases[leaseIndex]!),
-    };
+    quarantinedLease = state.leases[leaseIndex]!;
   });
 
-  return result;
+  if (releasedResult) {
+    return releasedResult;
+  }
+  if (preservedLease) {
+    return {
+      status: "preserved",
+      leaseId: preservedLease.leaseId,
+      lease: await enrichLeaseReadOnly(preservedLease),
+    };
+  }
+  if (quarantinedLease) {
+    return {
+      status: "quarantined",
+      leaseId: quarantinedLease.leaseId,
+      lease: await enrichLeaseReadOnly(quarantinedLease),
+    };
+  }
+  throw new LeaseNotFoundError(`Lease ${context.leaseId} missing during finalize`);
 }
 
 async function completeRelease(
@@ -328,7 +321,13 @@ async function completeRelease(
       context.pendingCleanup.force,
     );
     try {
-      await executeResetCleanup(context.wtPath, context.pendingCleanup);
+      await resetWorktree(
+        context.wtPath,
+        context.pendingCleanup.resetTo,
+        context.pendingCleanup.cleanIgnored === undefined
+          ? undefined
+          : { cleanIgnored: context.pendingCleanup.cleanIgnored },
+      );
     } catch (err) {
       const reason = err instanceof Error ? err.message : "reset failed";
       await quarantineFailedRelease(poolDir, repoRoot, context.leaseId, reason);
@@ -348,8 +347,11 @@ export async function releaseLease(
   options: ReleaseLeaseOptions,
   hooks: ReleaseHooks = {},
 ): Promise<ReleaseResult> {
-  const defaultBranch = await getDefaultBranch(config.repoRoot);
-  const cleanup = await toLeaseFirstCleanupIntent(options, defaultBranch);
+  const defaultBranch =
+    options.cleanup === "reset" && options.resetTo === undefined
+      ? await getDefaultBranch(config.repoRoot)
+      : "";
+  const cleanup = toLeaseFirstCleanupIntent(options, defaultBranch);
   const context = await beginRelease(poolDir, config.repoRoot, leaseIdOrPath, cleanup);
   return completeRelease(poolDir, config.repoRoot, context, hooks);
 }

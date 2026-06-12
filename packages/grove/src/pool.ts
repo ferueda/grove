@@ -32,7 +32,12 @@ import type {
 } from "./types.js";
 import { acquireLease, resumeAcquireLease } from "./lease-acquire.js";
 import { releaseLease, resumeCleanupLease } from "./lease-release.js";
-import { inspectLeaseRecord, listLeaseRecords, recordToGroveLease } from "./lease-view.js";
+import {
+  buildLeaseHookEnv,
+  inspectLeaseRecord,
+  listLeaseRecords,
+  recordToGroveLease,
+} from "./lease-view.js";
 import {
   clearSlotOwner,
   findLease,
@@ -416,13 +421,6 @@ export class Grove {
   }
 
   private leaseEnv(lease: GroveLease): Record<string, string> {
-    const e: Record<string, string> = {
-      GROVE_LEASE_ID: lease.leaseId,
-      GROVE_SLOT_NAME: lease.slotName,
-      GROVE_REPO_ROOT: lease.repoRoot,
-      GROVE_WORKTREE_PATH: lease.path,
-    };
-    if (lease.branch) e.GROVE_BRANCH = lease.branch;
-    return e;
+    return buildLeaseHookEnv(lease);
   }
 }
