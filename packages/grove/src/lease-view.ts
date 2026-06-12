@@ -71,9 +71,7 @@ export async function enrichLeaseReadOnly(lease: GroveLeaseRecord): Promise<Grov
     }
   }
 
-  const { unverified } = missingPath
-    ? { unverified: true }
-    : await findInWorktree(lease.path);
+  const { unverified } = missingPath ? { unverified: true } : await findInWorktree(lease.path);
 
   if (unverified) {
     lease.diagnostics = {
