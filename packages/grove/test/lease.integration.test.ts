@@ -299,6 +299,87 @@ describe("Grove Lease Mode Integration", () => {
     });
   });
 
+  it("reset performs fresh process safety scan immediately before destructive cleanup", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "fresh-safety",
+      mode: "branch",
+      branch: "fresh-safety-branch",
+      createBranch: { from: "main" },
+    });
+
+    await grove.release(lease.leaseId, { cleanup: "preserve" });
+
+    const statePath = join(grove.poolDir, "grove-state.json");
+    const state = JSON.parse(await readFile(statePath, "utf8"));
+    state.leases[0].state = "releasing";
+    state.leases[0].pendingCleanup = { cleanup: "reset", resetTo: "main" };
+    await writeFile(statePath, JSON.stringify(state));
+
+    const scriptPath = join(tmpDir, "sleep.mjs");
+    await writeFile(scriptPath, "setInterval(() => {}, 1000);");
+    const child = execa("node", [scriptPath], { cwd: lease.path });
+    await new Promise((r) => setTimeout(r, 500));
+
+    try {
+      await expect(
+        grove.repair({ leaseId: "fresh-safety", action: "resume-cleanup" }),
+      ).rejects.toThrow(/Unsafe cleanup: active processes/);
+    } finally {
+      child.kill();
+      await child.catch(() => {});
+    }
+
+    const stuck = await grove.inspect("fresh-safety");
+    expect(stuck?.state).toBe("releasing");
+    expect(stuck?.pendingCleanup).toMatchObject({ cleanup: "reset", resetTo: "main" });
+  });
+
+  it("release on quarantined lease throws LEASE_QUARANTINED", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "quarantined-release",
+      mode: "branch",
+      branch: "quarantined-release-branch",
+      createBranch: { from: "main" },
+    });
+
+    await grove.release(lease.leaseId, { cleanup: "quarantine" });
+
+    await expect(
+      grove.release(lease.leaseId, { cleanup: "preserve" }),
+    ).rejects.toMatchObject({ code: "LEASE_QUARANTINED" });
+  });
+
+  it("release on busy releasing lease throws LEASE_BUSY", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "busy-release",
+      mode: "branch",
+      branch: "busy-release-branch",
+      createBranch: { from: "main" },
+    });
+
+    const statePath = join(grove.poolDir, "grove-state.json");
+    const state = JSON.parse(await readFile(statePath, "utf8"));
+    state.leases[0].state = "releasing";
+    state.leases[0].pendingCleanup = { cleanup: "preserve" };
+    await writeFile(statePath, JSON.stringify(state));
+
+    await expect(
+      grove.release(lease.leaseId, { cleanup: "preserve" }),
+    ).rejects.toMatchObject({ code: "LEASE_BUSY" });
+  });
+
   it("resume-cleanup completes interrupted preserve release", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
