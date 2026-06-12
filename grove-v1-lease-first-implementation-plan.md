@@ -1218,3 +1218,45 @@ Branch: `feat/lease-first-pr3-release`
   - `packages/grove-cli/src/commands/release.ts`, `repair.ts`
   - `packages/grove/test/lease.integration.test.ts`
   - `grove-v1-lease-first-implementation-plan.md`
+
+## PR 4 Implementation Summary (Completed)
+
+Branch: `feat/lease-first-pr4-destroy`
+
+- **What was done**
+
+  - Implemented `lease-destroy.ts` with transition-driven destroy: `DESTROY_START`,
+    physical removal, `DESTROY_COMPLETE`, and `DESTROY_FAILED` quarantine.
+  - Fresh process safety scan before destructive removal (after `preDestroy`);
+    `ignoreOwnerReservation` for Grove's own destroy reservation.
+  - `realpath` pool boundary check via `assertPathWithinPool()` before removal.
+  - Idempotent resume when lease and slot are already `destroying`.
+  - Failed destroy quarantines lease (`DESTROY_FAILED`) and slot (`QUARANTINE`).
+  - Extracted `assertWorktreeSafeForCleanup()`, `findLeaseByIdOrPath()`,
+    `applyLeaseSlotQuarantine()`, and `assertPathWithinPool()`.
+  - `loadPoolState({ heal: false })` for finalize paths after physical delete.
+
+- **How it was done**
+
+  - `destroyLease()` / `destroyEphemeralSlot()` share begin/complete destroy flow.
+  - `pool.ts` delegates destroy and `destroyAll` to lease-destroy module.
+  - `lease-release.ts` uses shared cleanup safety and lease lookup helpers.
+  - Slot `QUARANTINE` allowed from `destroying` for failed-destroy recovery.
+
+- **Why it was done**
+
+  - PR 4 delivers path-safe, process-safe destroy with crash-recoverable
+    `destroying` state before repair enforcement in PR 5.
+
+- **Files worked on**
+
+  - `packages/grove/src/lease-destroy.ts` (new)
+  - `packages/grove/src/process/cleanup-safety.ts` (new)
+  - `packages/grove/src/path-boundary.ts` (new)
+  - `packages/grove/src/pool-state.ts`
+  - `packages/grove/src/pool.ts`
+  - `packages/grove/src/lease-release.ts`
+  - `packages/grove/src/transitions.ts`
+  - `packages/grove/test/lease.integration.test.ts`
+  - `packages/grove/test/transitions.test.ts`
+  - `grove-v1-lease-first-implementation-plan.md`
