@@ -4,10 +4,12 @@ import { GroveConfigSchema } from "./schemas.js";
 import type { GroveConfig } from "./schemas.js";
 
 export { Grove } from "./pool.js";
+export { isReleaseResult } from "./types.js";
 export type {
   AcquiredSlot,
   AcquireLeaseOptions,
   ReleaseLeaseOptions,
+  ReleaseResult,
   DestroyLeaseOptions,
   RepairLeaseOptions,
   GroveLease,

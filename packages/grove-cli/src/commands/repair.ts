@@ -1,3 +1,4 @@
+import { isReleaseResult } from "@ferueda/grove";
 import { Command } from "commander";
 import { loadGrove } from "../utils.js";
 import { handleError } from "../error-handler.js";
@@ -17,12 +18,12 @@ export const repairCmd = new Command("repair")
       }
 
       const grove = await loadGrove({ repo: options.repo });
-      const lease = await grove.repair({
+      const result = await grove.repair({
         leaseId,
         action: options.action as any,
         force: options.force,
       });
-      if (!lease) {
+      if (!result) {
         if (options.json) {
           process.stdout.write(JSON.stringify({ status: "destroyed", leaseId }) + "\n");
         } else {
@@ -32,9 +33,16 @@ export const repairCmd = new Command("repair")
       }
 
       if (options.json) {
-        process.stdout.write(JSON.stringify(lease, null, 2) + "\n");
+        process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+      } else if (isReleaseResult(result)) {
+        const state = result.status === "released" ? "released" : result.lease.state;
+        console.error(
+          pc.green(`🌳 Lease ${result.leaseId} repaired with action ${options.action}. Result: ${result.status} (${state}).`),
+        );
       } else {
-        console.error(pc.green(`🌳 Lease ${lease.leaseId} repaired with action ${options.action}. New state: ${lease.state}`));
+        console.error(
+          pc.green(`🌳 Lease ${result.leaseId} repaired with action ${options.action}. New state: ${result.state}`),
+        );
       }
     } catch (err: unknown) {
       handleError(err);

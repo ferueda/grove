@@ -17,6 +17,21 @@ export function targetBaseSha(target: GroveLeaseTarget | undefined): string | un
   return target?.resolvedRefSha;
 }
 
+/** Hook env vars passed to pre/post acquire, release, and destroy hooks. */
+export function buildLeaseHookEnv(lease: GroveLease): Record<string, string> {
+  const env: Record<string, string> = {
+    GROVE_LEASE_ID: lease.leaseId,
+    GROVE_SLOT_NAME: lease.slotName,
+    GROVE_REPO_ROOT: lease.repoRoot,
+    GROVE_WORKTREE_PATH: lease.path,
+  };
+  if (lease.ownerId) env.GROVE_OWNER_ID = lease.ownerId;
+  if (lease.branch) env.GROVE_BRANCH = lease.branch;
+  if (lease.baseRef) env.GROVE_BASE_REF = lease.baseRef;
+  if (lease.baseSha) env.GROVE_BASE_SHA = lease.baseSha;
+  return env;
+}
+
 export function recordToGroveLease(
   lease: GroveLeaseRecord,
   processSafety: "verified" | "unverified" = "verified",

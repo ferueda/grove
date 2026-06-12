@@ -37,14 +37,16 @@ export const releaseCmd = new Command("release")
           }
         }
 
-        const lease = await grove.release(targetPath, releaseOpts);
+        const result = await grove.release(targetPath, releaseOpts);
 
         if (options.json) {
-          process.stdout.write(JSON.stringify(lease, null, 2) + "\n");
+          process.stdout.write(JSON.stringify(result, null, 2) + "\n");
           return;
         }
 
-        console.error(pc.green(`🌳 Lease ${lease.leaseId} released with action ${options.cleanup}.`));
+        console.error(
+          pc.green(`🌳 Lease ${result.leaseId} released with action ${options.cleanup} (${result.status}).`),
+        );
         return;
       }
 

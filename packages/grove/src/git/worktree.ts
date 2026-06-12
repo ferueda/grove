@@ -10,7 +10,11 @@ export async function removeWorktree(repoRoot: string, path: string): Promise<vo
   await runGit(repoRoot, ["worktree", "remove", "--force", "--", path]);
 }
 
-export async function resetWorktree(path: string, branch: string): Promise<void> {
+export async function resetWorktree(
+  path: string,
+  branch: string,
+  options?: { cleanIgnored?: boolean },
+): Promise<void> {
   let repoRoot = path;
   try {
     repoRoot = await runGit(path, ["rev-parse", "--show-toplevel"]);
@@ -18,7 +22,7 @@ export async function resetWorktree(path: string, branch: string): Promise<void>
   const ref = await branchRef(repoRoot, branch);
   await runGit(path, ["checkout", "--detach", "--force", ref]);
   await runGit(path, ["reset", "--hard", ref]);
-  await runGit(path, ["clean", "-fd"]);
+  await runGit(path, options?.cleanIgnored ? ["clean", "-fdx"] : ["clean", "-fd"]);
 }
 
 export async function detachWorktree(path: string): Promise<void> {

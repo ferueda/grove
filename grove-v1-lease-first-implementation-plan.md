@@ -831,7 +831,9 @@ main (stable, current semver — releasable)
 
 - Integration branch: `feat/lease-first-v1` (created from `main`).
 - PR 1: merged — `feat/lease-first-pr1-schemas-transitions` → `feat/lease-first-v1`.
-- PR 2: in progress — `feat/lease-first-pr2-acquire` → `feat/lease-first-v1`.
+- PR 2: merged — `feat/lease-first-pr2-acquire` → `feat/lease-first-v1`.
+- PR 3: in review — `feat/lease-first-pr3-release` → `feat/lease-first-v1` (PR #34).
+- PR 4: next after PR 3 — `feat/lease-first-pr4-destroy` → `feat/lease-first-v1`.
 
 ## PR Split
 
@@ -922,6 +924,31 @@ PR1 (schemas + transitions)
 - Failed destroy quarantines both lease and slot.
 - Integration tests: path boundary, worktree removal, process safety, idempotent
   destroy.
+
+**Carried over from PR 3 review (dedup refactors — do here, not in PR 3):**
+
+- `assertWorktreeSafeForCleanup()` — consolidate `isWorktreeInUse` +
+  `ownerAlive` + `UnsafeCleanupError` checks currently duplicated in
+  `lease-release.ts` (`scanProcessSafety`), `pool.ts` (`destroy`, `destroyAll`,
+  `repair` force-destroy). PR 4 rewrites destroy paths; one helper avoids a
+  third copy and keeps release/destroy safety semantics aligned.
+- `findLeaseByIdOrPath()` in `pool-state.ts` — same lookup in
+  `lease-release.ts` `beginRelease()` and `pool.ts` `destroy()`. Extract when
+  destroy is touched.
+- `applyLeaseSlotQuarantine()` (or equivalent) — quarantine lease + slot
+  transition pattern appears in `lease-acquire.ts`, `lease-release.ts`
+  (`quarantineFailedRelease`, quarantine finalize), `pool.ts` repair, and will
+  appear again on failed destroy. Single helper reduces drift across lifecycle
+  stages.
+- Merge `resumeCleanupLease()` repair transition + `loadReleasingContext()` into
+  one locked pass (mirrors `resumeAcquireLease()`). Correct today; cosmetic only.
+  Low priority unless PR 4 touches `resume-cleanup` again.
+
+**Why deferred from PR 3:** PR 3 scope was release WAL + `ReleaseResult` only.
+These refactors are cross-cutting (touch `pool.ts` destroy/repair as well as
+`lease-release.ts`), widen the diff, and raise merge-conflict risk with PR 4's
+destroy rewrite. No known behavioral bug once PR 3 post-review fixes land (hook
+env, enrichment outside lock).
 
 **Defer:** `deleteBranch` on destroy (already in codebase; out of MVP scope).
 
@@ -1126,4 +1153,68 @@ Branch: `feat/lease-first-pr2-acquire`
   - `packages/grove/test/lease.integration.test.ts`
   - `packages/grove/test/pool.test.ts`, `grove.integration.test.ts`
   - `packages/grove/test/helpers/hook-probe.mjs`
+  - `grove-v1-lease-first-implementation-plan.md`
+
+## PR 3 Implementation Summary (Completed)
+
+Branch: `feat/lease-first-pr3-release`
+
+- **What was done**
+
+  - Added `ReleaseResult` discriminated union (`preserved`, `released`, `quarantined`).
+  - Implemented `lease-release.ts` with WAL release: all policies enter `releasing`
+    and persist `pendingCleanup` before side effects.
+  - Reset: fresh process scan, `git reset --hard`, `git clean -fd` (or `-fdx` with
+    `cleanIgnored: true`), `RELEASE_RESET_COMPLETE`, slot `RELEASE_TO_POOL`.
+  - Preserve: clears owner only via `RELEASE_PRESERVE_COMPLETE`; no git reset/clean.
+  - Quarantine cleanup policy via `RELEASE_START` + `QUARANTINE` finalize.
+  - Failed reset quarantines lease and slot; preserves `pendingCleanup` for repair.
+  - `repair({ action: "resume-cleanup" })` via `resumeCleanupLease()` (handles
+    quarantined and interrupted `releasing` states).
+  - CLI release/repair commands updated for `ReleaseResult` return type.
+  - Post-review fixes: shared `buildLeaseHookEnv()` (README hook contract for all
+    lifecycle hooks), `enrichLeaseReadOnly()` moved outside the state lock in
+    finalize, single process scan on reset `beginRelease`, lazy `getDefaultBranch`
+    only when reset omits `resetTo`, `isReleaseResult()` for CLI narrowing,
+    `quarantineFailedRelease` throws instead of silent no-op.
+
+- **How it was done**
+
+  - `releaseLease()` and `resumeCleanupLease()` share `completeRelease()` for
+    hooks, reset side effects, and transition-driven finalize.
+  - `toLeaseFirstCleanupIntent()` normalizes reset options with default branch.
+  - `pool.ts` delegates lease release and resume-cleanup to `lease-release.ts`.
+  - `buildLeaseHookEnv()` in `lease-view.ts` is the single hook env builder for
+    acquire, release, and destroy.
+
+- **Why it was done**
+
+  - PR 3 delivers durable release with crash-recoverable cleanup intent and typed
+    results orchestrators need before destroy/repair enforcement in PR 4–5.
+
+- **Deferred to PR 4 (and why)**
+
+  - **Process-safety helper** (`assertWorktreeSafeForCleanup`) — duplicated across
+    release and destroy paths; extract when PR 4 rewrites destroy (see PR 4
+    section).
+  - **Lease lookup helper** (`findLeaseByIdOrPath`) — same id-or-path lookup in
+    release and destroy; extract alongside destroy.
+  - **Quarantine transition helper** — four similar call sites today; PR 4 adds a
+    fifth on failed destroy — better to dedupe once destroy lands.
+  - **`resume-cleanup` double lock** — repair transition and context load are two
+    locked sections; merge is cosmetic, not a correctness gap.
+  - **`repair()` return union** (`GroveLease | ReleaseResult | void`) — defer typed
+    `RepairResult` or action overloads to **PR 5** (repair matrix + mutator
+    enforcement); `isReleaseResult()` is sufficient for CLI until then.
+
+- **Files worked on**
+
+  - `packages/grove/src/lease-release.ts` (new)
+  - `packages/grove/src/lease-view.ts` — `buildLeaseHookEnv`
+  - `packages/grove/src/types.ts` — `ReleaseResult`, `isReleaseResult`
+  - `packages/grove/src/git/worktree.ts` — `cleanIgnored` on reset
+  - `packages/grove/src/pool.ts` — delegate release/repair cleanup
+  - `packages/grove/src/index.ts` — export `ReleaseResult`, `isReleaseResult`
+  - `packages/grove-cli/src/commands/release.ts`, `repair.ts`
+  - `packages/grove/test/lease.integration.test.ts`
   - `grove-v1-lease-first-implementation-plan.md`
