@@ -1,5 +1,6 @@
 export type GroveErrorCode =
   | "GROVE_EXHAUSTED"
+  | "POOL_EXHAUSTED"
   | "WORKTREE_DESTROYING"
   | "WORKTREE_NOT_MANAGED"
   | "WORKTREE_IN_USE"
@@ -11,11 +12,17 @@ export type GroveErrorCode =
   | "LEASE_CONFLICT"
   | "LEASE_ALREADY_EXISTS"
   | "LEASE_QUARANTINED"
+  | "LEASE_BUSY"
+  | "ACQUIRE_IN_PROGRESS"
   | "UNSAFE_CLEANUP"
+  | "PROCESS_SAFETY_UNVERIFIED"
   | "BRANCH_EXISTS"
   | "BRANCH_NOT_FOUND"
   | "REF_NOT_FOUND"
   | "PATH_OUTSIDE_POOL"
+  | "INVALID_INPUT"
+  | "INVALID_TRANSITION"
+  | "REPAIR_NOT_AVAILABLE"
   | "BRANCH_DELETE_FAILED"
   | "HOOK_FAILED";
 
@@ -31,6 +38,12 @@ export class GroveError extends Error {
 export class GroveExhaustedError extends GroveError {
   constructor(message: string = "Grove exhausted") {
     super(message, "GROVE_EXHAUSTED");
+  }
+}
+
+export class PoolExhaustedError extends GroveError {
+  constructor(message: string = "Pool exhausted") {
+    super(message, "POOL_EXHAUSTED");
   }
 }
 
@@ -102,9 +115,27 @@ export class LeaseQuarantinedError extends GroveError {
   }
 }
 
+export class LeaseBusyError extends GroveError {
+  constructor(message: string = "Lease is busy") {
+    super(message, "LEASE_BUSY");
+  }
+}
+
+export class AcquireInProgressError extends GroveError {
+  constructor(message: string = "Acquire in progress") {
+    super(message, "ACQUIRE_IN_PROGRESS");
+  }
+}
+
 export class UnsafeCleanupError extends GroveError {
   constructor(message: string = "Unsafe cleanup") {
     super(message, "UNSAFE_CLEANUP");
+  }
+}
+
+export class ProcessSafetyUnverifiedError extends GroveError {
+  constructor(message: string = "Process safety unverified") {
+    super(message, "PROCESS_SAFETY_UNVERIFIED");
   }
 }
 
@@ -129,6 +160,24 @@ export class RefNotFoundError extends GroveError {
 export class PathOutsidePoolError extends GroveError {
   constructor(message: string = "Path outside pool boundary") {
     super(message, "PATH_OUTSIDE_POOL");
+  }
+}
+
+export class InvalidInputError extends GroveError {
+  constructor(message: string = "Invalid input") {
+    super(message, "INVALID_INPUT");
+  }
+}
+
+export class InvalidTransitionError extends GroveError {
+  constructor(message: string = "Invalid transition") {
+    super(message, "INVALID_TRANSITION");
+  }
+}
+
+export class RepairNotAvailableError extends GroveError {
+  constructor(message: string = "Repair not available") {
+    super(message, "REPAIR_NOT_AVAILABLE");
   }
 }
 

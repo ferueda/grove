@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { setupRepo } from "./helpers/git-repo.js";
+import { setupPathFixture } from "./helpers/git-repo.js";
 import { readState, writeState, healState } from "../src/state.js";
 import { withStateLock } from "../src/lock.js";
 import type { GroveState } from "../src/schemas.js";
@@ -14,7 +14,7 @@ describe("State & Locking", () => {
   let groveDir: string;
 
   beforeEach(async () => {
-    const setup = await setupRepo();
+    const setup = await setupPathFixture();
     tmpDir = setup.tmpDir;
     groveDir = setup.groveDir;
   });

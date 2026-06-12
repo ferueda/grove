@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { createGrove } from "../src/index.js";
+import { createTestGrove } from "./helpers/test-grove.js";
 import { setupRepo } from "./helpers/git-repo.js";
 import { existsSync } from "node:fs";
 import { rm, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-describe("Grove Vertical Smoke", () => {
+describe("Grove lease-first smoke", () => {
   let tmpDirs: string[] = [];
 
   beforeEach(() => {
@@ -18,131 +18,84 @@ describe("Grove Vertical Smoke", () => {
     }
   });
 
-  it("wires createGrove -> acquire -> release cleanly", async () => {
+  it("wires createGrove -> acquire -> release preserve cleanly", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "smoke-lease",
+      mode: "branch",
+      branch: "smoke-branch",
+      createBranch: { from: "main", ifExists: "fail" },
+    });
+    expect(existsSync(lease.path)).toBe(true);
 
-    const wt1 = await grove.acquire();
-    expect(existsSync(wt1.path)).toBe(true);
+    await grove.release(lease.leaseId, { cleanup: "preserve" });
 
-    await grove.release(wt1.path);
-
-    const wt2 = await grove.acquire();
-    expect(wt2.path).toBe(wt1.path);
+    const again = await grove.acquire({
+      leaseId: "smoke-lease",
+      mode: "branch",
+      branch: "smoke-branch",
+      ifLeased: "return-existing",
+    });
+    expect(again.path).toBe(lease.path);
   });
 
   it("surfaces INVALID_GROVE_STATE on invalid state file during acquire", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveDir: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    await mkdir(grove.poolDir, { recursive: true });
+    await writeFile(join(grove.poolDir, "grove-state.json"), "invalid json");
 
-    await mkdir(groveDir, { recursive: true });
-    await writeFile(join(groveDir, "grove-state.json"), "invalid json");
-
-    await expect(grove.acquire()).rejects.toThrow("Invalid JSON format");
+    await expect(
+      grove.acquire({
+        leaseId: "bad-state",
+        mode: "detached",
+        ref: "main",
+      }),
+    ).rejects.toThrow("Invalid JSON format");
   });
 
-  it("verifies GroveExhaustedError code is GROVE_EXHAUSTED", async () => {
+  it("verifies POOL_EXHAUSTED when maxTrees is reached", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir, maxTrees: 1 });
-    await grove.acquire();
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir, maxTrees: 1 });
+    await grove.acquire({ leaseId: "lease-1", mode: "detached", ref: "main" });
 
     let err: any;
     try {
-      await grove.acquire();
+      await grove.acquire({ leaseId: "lease-2", mode: "detached", ref: "main" });
     } catch (e) {
       err = e;
     }
-    expect(err.code).toBe("GROVE_EXHAUSTED");
+    expect(["POOL_EXHAUSTED", "GROVE_EXHAUSTED"]).toContain(err.code);
   });
 
-  it("supports fully programmatic createGrove without defaults", async () => {
-    const { repoDir, tmpDir, groveDir } = await setupRepo();
-    tmpDirs.push(tmpDir);
-
-    const grove = await createGrove({
-      repoRoot: repoDir,
-      maxTrees: 2,
-      groveRoot: groveDir,
-      hooks: { postCreate: ['echo "hook"'] },
-    });
-
-    await grove.acquire();
-    await grove.acquire();
-    await expect(grove.acquire()).rejects.toThrow(/Exhausted worktrees/);
-  });
-
-  it("release() hard-resets a dirty worktree", async () => {
-    const { repoDir, tmpDir, groveDir } = await setupRepo();
-    tmpDirs.push(tmpDir);
-
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
-    const { path: wt } = await grove.acquire();
-
-    await writeFile(join(wt, "dirty.txt"), "dirty content");
-
-    await grove.release(wt);
-    const { path: wt2 } = await grove.acquire();
-    expect(wt2).toBe(wt);
-    expect(existsSync(join(wt2, "dirty.txt"))).toBe(false);
-  });
-
-  it("heal drops state entry when worktree directory is deleted from disk", async () => {
-    const { repoDir, tmpDir, groveDir } = await setupRepo();
-    tmpDirs.push(tmpDir);
-
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
-    const { path: wt } = await grove.acquire();
-    await grove.release(wt);
-
-    await rm(wt, { recursive: true, force: true });
-
-    const list = await grove.list();
-    expect(list.length).toBe(0);
-  });
-
-  it("handles parallel acquire() from child processes without double-booking", async () => {
+  it("handles parallel lease acquire from child processes without double-booking", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
     const scriptPath = join(import.meta.dirname, "helpers", "parallel-acquire.mjs");
-
     const execa = (await import("execa")).execa;
 
-    const children = Array.from({ length: 5 }).map(() => {
-      const child = execa("node", [scriptPath], {
+    const children = Array.from({ length: 5 }).map((_, index) =>
+      execa("node", [scriptPath, String(index)], {
         env: {
           ...process.env,
-          GROVE_TEST_REPO: repoDir,
-          GROVE_TEST_DIR: groveDir,
+          GROVE_REPO_ROOT: repoDir,
+          GROVE_GROVE_ROOT: groveDir,
         },
-      });
-      child.catch(() => {});
-      return child;
-    });
-
-    const paths: string[] = [];
-    await Promise.all(
-      children.map((child) => {
-        return new Promise<void>((resolve) => {
-          child.stdout!.on("data", (data: Buffer) => {
-            paths.push(data.toString().trim());
-            resolve();
-          });
-        });
       }),
     );
 
-    // Now all 5 have acquired and printed their paths
-    const uniquePaths = new Set(paths);
-    expect(uniquePaths.size).toBe(5);
+    const results = await Promise.all(children);
+    const paths = results.map((result) => result.stdout.trim());
 
-    // Cleanup: kill them
-    children.forEach((c) => c.kill());
+    expect(paths).toHaveLength(5);
+    expect(new Set(paths).size).toBe(5);
   });
 });

@@ -154,7 +154,9 @@ export async function findInWorktree(worktreePath: string): Promise<ProcessScanR
   return { processes: [], unverified: true };
 }
 
-export async function isWorktreeInUse(worktreePath: string): Promise<{ inUse: boolean; unverified: boolean }> {
+export async function isWorktreeInUse(
+  worktreePath: string,
+): Promise<{ inUse: boolean; unverified: boolean }> {
   const scan = await findInWorktree(worktreePath);
   return { inUse: scan.processes.length > 0, unverified: scan.unverified };
 }

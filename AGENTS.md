@@ -6,14 +6,15 @@ Felipe owns this. Work style: telegraph; noun-phrases ok; drop grammar; min toke
 
 `Grove` is a standalone TypeScript SDK (+ CLI) for managing git worktree pools programmatically.
 
-**Core Mission:** Provide a robust and reliable git worktree pool implementation.
+**Core Mission:** Provide a robust and reliable lease-first git worktree pool implementation.
 
 **What it does:**
 
-- **Acquire (ephemeral):** Instantly allocate clean, detached-HEAD git worktrees.
 - **Acquire (lease):** Durable branch-aware reservations with stable `leaseId`, idempotent re-acquire, and persisted state.
-- **Release:** Reset and return worktrees to the pool (ephemeral) or apply cleanup policy (`preserve` / `reset` / `quarantine`) for leases.
-- **Protect:** Serialize state updates with file locks; prevent allocating or destructively cleaning in-use directories via PID reservations and CWD scans.
+- **Release:** Apply cleanup policy (`preserve` / `reset` / `quarantine`) with write-ahead `releasing` state.
+- **Destroy:** Path-safe, process-safe removal with crash-resumable `destroying` state.
+- **Repair:** Explicit recovery (`quarantine`, `resume-acquire`, `resume-cleanup`, `force-destroy`).
+- **Protect:** Serialize state updates with file locks; prevent destructive cleanup in-use via PID reservations and CWD scans.
 
 **Architecture:**
 
@@ -25,11 +26,13 @@ Felipe owns this. Work style: telegraph; noun-phrases ok; drop grammar; min toke
 
 ## Agent Protocol
 
-- **Port Strategy:** Go behavior is spec for ephemeral pool. Lease mode spec: `packages/grove/test/lease.integration.test.ts`. Use **test-first port** (port tests to vitest, run, fail, then implement until green).
+- **Spec:** Lease integration tests in `packages/grove/test/lease-*.integration.test.ts` (acquire, hooks, release, repair, destroy). Use **test-first** for behavior changes.
 - **Module Size:** Split files if they grow >700 LOC.
 - **Mocks:** DO NOT mock `git` in pool/integration tests. Use `setupRepo()` from `packages/grove/test/helpers/git-repo.ts`.
+- **CLI tests:** Seed pool state via SDK (`packages/grove-cli/test/helpers/seed-lease.ts`) when exercising `list`, `release`, or error envelopes; keep full `dist/cli.js` subprocess paths for acquire happy path, acquire errors, branch reuse, and human mode.
 - **Config:** Programmatic `createGrove()` config only; no config files (TOML/YAML) loader.
-- **Errors:** Throw explicit subclassed errors from `packages/grove/src/errors.ts` with stable `code` properties (e.g. `GROVE_EXHAUSTED`, `LEASE_CONFLICT`, `UNSAFE_CLEANUP`).
+- **Errors:** Throw explicit subclassed errors from `packages/grove/src/errors.ts` with stable `code` properties.
+- **State changes:** Route lease/slot mutations through `packages/grove/src/transitions.ts` — no direct `.state =` in mutator modules.
 
 ### Naming Conventions
 
@@ -39,18 +42,17 @@ Felipe owns this. Work style: telegraph; noun-phrases ok; drop grammar; min toke
 
 ### General Engineering Rules
 
-- **Rule 1 — Simplicity First:** Minimum code that solves the problem. Match existing Go style for ephemeral pool. Don't add speculative features.
+- **Rule 1 — Simplicity First:** Minimum code that solves the problem. Don't add speculative features.
 - **Rule 2 — Surgical Changes:** Touch only what you must. If you modify core pool logic, run `vitest` immediately.
-- **Rule 3 — Validation at Boundaries:** Use `zod` to validate `GroveConfig` input and `GroveState` from disk. Once parsed, operate on trusted shapes. `leaseId` must match `LeaseIdSchema` regex.
-- **Rule 4 — Read before you write:** Ephemeral pool → Go port plan. Lease mode → `lease.integration.test.ts`.
+- **Rule 3 — Validation at Boundaries:** Use `zod` to validate `GroveConfig` input and `GroveState` from disk. `leaseId` must match `LeaseIdSchema` regex.
+- **Rule 4 — Read before you write:** Lease behavior → `lease-*.integration.test.ts` buckets under `packages/grove/test/`. Transition rules → `transitions.test.ts`.
 
 ## Commit & Release Guidelines
 
 - **Branching:** All feature work on branches; merge via PR to `main`. No direct push to `main`.
 - **Commit Formatting:** Strict Conventional Commits (`feat:`, `fix:`, `refactor:`, `build:`, `ci:`, `chore:`, `docs:`, `style:`, `test:`).
-- **Automated Versioning:** Do NOT run `pnpm version` or changesets. CI uses `release-please` for semver bumps. Publishing on Release PR merge.
+- **Automated Versioning:** Do NOT run `pnpm version` or changesets. CI uses `release-please` for semver bumps.
 - Keep commits atomic and scoped.
-- E.g.: `feat: implement lease acquire with branch creation`
 
 ## Core Commands
 
@@ -60,21 +62,26 @@ Felipe owns this. Work style: telegraph; noun-phrases ok; drop grammar; min toke
 - **Test:** `pnpm test` (vitest)
 - **Build:** `pnpm build`
 - **Typecheck:** `pnpm typecheck`
-- **All Checks:** `pnpm check`
+- **All Checks:** `pnpm check` or `make check`
 
 ## Key Source Locations
 
 | Area | Path |
 |------|------|
-| Pool + lease logic | `packages/grove/src/pool.ts` |
-| Lease queries | `packages/grove/src/queries.ts` |
+| Pool facade | `packages/grove/src/pool.ts` |
+| Acquire | `packages/grove/src/lease-acquire.ts` |
+| Release | `packages/grove/src/lease-release.ts` |
+| Destroy | `packages/grove/src/lease-destroy.ts` |
+| Repair | `packages/grove/src/lease-repair.ts` |
+| Transitions | `packages/grove/src/transitions.ts` |
 | Schemas / config | `packages/grove/src/schemas.ts` |
-| Types | `packages/grove/src/types.ts` |
 | Errors | `packages/grove/src/errors.ts` |
 | CLI commands | `packages/grove-cli/src/commands/` |
-| Lease integration tests | `packages/grove/test/lease.integration.test.ts` |
+| Lease integration tests | `packages/grove/test/lease-{acquire,hooks,release,repair,destroy}.integration.test.ts` |
+| CLI JSON tests | `packages/grove-cli/test/cli.test.ts` |
 
 ## Source of Truth Docs
 
 - Product Vision: `VISION.md`
 - User-facing API docs: `README.md`
+- v1 implementation plan: `grove-v1-lease-first-implementation-plan.md`

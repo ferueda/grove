@@ -5,6 +5,7 @@
   "scripts": {
     "build": "pnpm -r build",
     "test": "vitest run",
+    "test:timed": "node scripts/test-timed.mjs",
     "test:watch": "vitest",
     "lint": "oxlint packages/*/src packages/*/test scripts --deny-warnings",
     "format": "oxfmt --write packages/*/src packages/*/test scripts",

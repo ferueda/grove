@@ -1,18 +1,23 @@
 import { createGrove } from "../../dist/index.js";
 
-const repoRoot = process.env.GROVE_TEST_REPO;
-const groveDir = process.env.GROVE_TEST_DIR;
+const leaseIndex = process.argv[2] ?? "0";
+const repoRoot = process.env.GROVE_REPO_ROOT;
+const groveRoot = process.env.GROVE_GROVE_ROOT;
 
-async function main() {
-  try {
-    const grove = await createGrove({ repoRoot, groveDir });
-    const wt = await grove.acquire();
-    console.log(wt.path);
-    setInterval(() => {}, 1000000);
-  } catch (err) {
-    console.error(err);
-    process.exit(1);
-  }
+if (!repoRoot || !groveRoot) {
+  console.error("GROVE_REPO_ROOT and GROVE_GROVE_ROOT are required");
+  process.exit(1);
 }
 
-main();
+try {
+  const grove = await createGrove({ repoRoot, groveRoot, maxTrees: 8, fetchOnAcquire: false });
+  const lease = await grove.acquire({
+    leaseId: `parallel-${leaseIndex}`,
+    mode: "detached",
+    ref: "main",
+  });
+  process.stdout.write(lease.path);
+} catch (err) {
+  console.error(err);
+  process.exit(1);
+}
