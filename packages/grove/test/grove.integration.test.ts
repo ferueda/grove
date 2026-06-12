@@ -27,7 +27,7 @@ describe("Grove lease-first smoke", () => {
       leaseId: "smoke-lease",
       mode: "branch",
       branch: "smoke-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
     expect(existsSync(lease.path)).toBe(true);
 

@@ -1,5 +1,11 @@
 import type { GroveConfig } from "./schemas.js";
-import type { DestroyLeaseOptions, GroveLease, ReleaseResult, RepairLeaseOptions, RepairResult } from "./types.js";
+import type {
+  DestroyLeaseOptions,
+  GroveLease,
+  ReleaseResult,
+  RepairLeaseOptions,
+  RepairResult,
+} from "./types.js";
 import { assertWorktreeSafeForCleanup } from "./process/cleanup-safety.js";
 import { withStateLock } from "./lock.js";
 import { LeaseNotFoundError } from "./errors.js";
@@ -16,6 +22,7 @@ import {
 } from "./pool-state.js";
 
 type RepairHooks = {
+  postCreate?: (path: string) => Promise<void>;
   postAcquire?: (path: string, lease: GroveLease) => Promise<void>;
   preRelease?: (path: string, env: Record<string, string>) => Promise<void>;
   postRelease?: (path: string, env: Record<string, string>) => Promise<void>;
@@ -67,8 +74,7 @@ async function repairForceDestroy(
     if (slot) {
       await assertWorktreeSafeForCleanup(slot.path, slot, record, {
         force: options.force,
-        message:
-          "Cannot force-destroy: processes running or unverified. Use force: true",
+        message: "Cannot force-destroy: processes running or unverified. Use force: true",
       });
     }
   });
@@ -88,7 +94,12 @@ export async function repairLease(
 ): Promise<GroveLease | ReleaseResult | RepairResult> {
   switch (options.action) {
     case "resume-acquire": {
-      const acquireHooks = hooks.postAcquire ? { postAcquire: hooks.postAcquire } : {};
+      const acquireHooks: {
+        postCreate?: (path: string) => Promise<void>;
+        postAcquire?: (path: string, lease: GroveLease) => Promise<void>;
+      } = {};
+      if (hooks.postCreate) acquireHooks.postCreate = hooks.postCreate;
+      if (hooks.postAcquire) acquireHooks.postAcquire = hooks.postAcquire;
       return resumeAcquireLease(poolDir, config, options.leaseId, acquireHooks);
     }
     case "resume-cleanup": {

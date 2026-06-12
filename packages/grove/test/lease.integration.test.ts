@@ -19,6 +19,12 @@ describe("Grove Lease Mode Integration", () => {
     }
   });
 
+  function failOnceHook(counterPath: string): string {
+    const script =
+      "const fs = require('node:fs'); const p = process.argv[1]; const n = fs.existsSync(p) ? Number(fs.readFileSync(p, 'utf8')) : 0; fs.writeFileSync(p, String(n + 1)); if (n === 0) process.exit(1);";
+    return ["node", "-e", JSON.stringify(script), JSON.stringify(counterPath)].join(" ");
+  }
+
   it("reacquire allows commits made inside the leased branch worktree", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
@@ -29,7 +35,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "commit-lease",
       mode: "branch",
       branch: "work-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     await execa("git", ["commit", "--allow-empty", "-m", "work"], { cwd: lease1.path });
@@ -64,7 +70,7 @@ describe("Grove Lease Mode Integration", () => {
         leaseId: "hook-fail-lease",
         mode: "branch",
         branch: "hook-branch",
-        createBranch: { from: "main" },
+        createBranch: { from: "main", ifExists: "fail" },
       }),
     ).rejects.toThrow(/Hook failed/);
 
@@ -72,6 +78,148 @@ describe("Grove Lease Mode Integration", () => {
     expect(leases).toHaveLength(1);
     expect(leases[0]?.leaseId).toBe("hook-fail-lease");
     expect(leases[0]?.state).toBe("leased");
+  });
+
+  it("postCreate hook failure quarantines a pending acquire", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({
+      repoRoot: repoDir,
+      groveRoot: groveDir,
+      onHookFailure: "fail",
+      hooks: {
+        postCreate: ["exit 1"],
+      },
+    });
+
+    await expect(
+      grove.acquire({
+        leaseId: "post-create-fail",
+        mode: "branch",
+        branch: "post-create-fail-branch",
+        createBranch: { from: "main", ifExists: "fail" },
+      }),
+    ).rejects.toThrow(/Hook failed/);
+
+    const lease = await grove.inspect("post-create-fail");
+    expect(lease).toMatchObject({
+      leaseId: "post-create-fail",
+      state: "quarantined",
+      pendingAcquire: expect.anything(),
+      diagnostics: { failedPhase: "postCreate" },
+    });
+  });
+
+  it("repair resume-acquire reruns a failed postCreate hook", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const attemptsPath = join(tmpDir, "post-create-attempts.txt");
+    const hook = failOnceHook(attemptsPath);
+
+    const grove = await createGrove({
+      repoRoot: repoDir,
+      groveRoot: groveDir,
+      onHookFailure: "fail",
+      hooks: {
+        postCreate: [hook],
+      },
+    });
+
+    await expect(
+      grove.acquire({
+        leaseId: "repair-post-create",
+        mode: "branch",
+        branch: "repair-post-create-branch",
+        createBranch: { from: "main", ifExists: "fail" },
+      }),
+    ).rejects.toThrow(/Hook failed/);
+    expect(await readFile(attemptsPath, "utf8")).toBe("1");
+
+    const repaired = await grove.repair({
+      leaseId: "repair-post-create",
+      action: "resume-acquire",
+    });
+
+    expect(repaired).toMatchObject({
+      leaseId: "repair-post-create",
+      state: "leased",
+      branch: "repair-post-create-branch",
+    });
+    expect(await readFile(attemptsPath, "utf8")).toBe("2");
+  });
+
+  it("preRelease hook failure quarantines the pending cleanup", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({
+      repoRoot: repoDir,
+      groveRoot: groveDir,
+      onHookFailure: "fail",
+      hooks: {
+        preRelease: ["exit 1"],
+      },
+    });
+
+    const lease = await grove.acquire({
+      leaseId: "pre-release-fail",
+      mode: "branch",
+      branch: "pre-release-fail-branch",
+      createBranch: { from: "main", ifExists: "fail" },
+    });
+
+    await expect(grove.release(lease.leaseId, { cleanup: "preserve" })).rejects.toThrow(
+      /Hook failed/,
+    );
+
+    const inspected = await grove.inspect("pre-release-fail");
+    expect(inspected).toMatchObject({
+      leaseId: "pre-release-fail",
+      state: "quarantined",
+      pendingCleanup: { cleanup: "preserve" },
+      diagnostics: { failedPhase: "preRelease" },
+    });
+  });
+
+  it("repair resume-cleanup reruns a failed preRelease hook", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const attemptsPath = join(tmpDir, "pre-release-attempts.txt");
+    const grove = await createGrove({
+      repoRoot: repoDir,
+      groveRoot: groveDir,
+      onHookFailure: "fail",
+      hooks: {
+        preRelease: [failOnceHook(attemptsPath)],
+      },
+    });
+
+    const lease = await grove.acquire({
+      leaseId: "repair-pre-release",
+      mode: "branch",
+      branch: "repair-pre-release-branch",
+      createBranch: { from: "main", ifExists: "fail" },
+    });
+
+    await expect(grove.release(lease.leaseId, { cleanup: "preserve" })).rejects.toThrow(
+      /Hook failed/,
+    );
+    expect(await readFile(attemptsPath, "utf8")).toBe("1");
+
+    const result = await grove.repair({
+      leaseId: "repair-pre-release",
+      action: "resume-cleanup",
+    });
+
+    expect(result).toMatchObject({ status: "preserved", leaseId: "repair-pre-release" });
+    expect(await readFile(attemptsPath, "utf8")).toBe("2");
+    expect(await grove.inspect("repair-pre-release")).toMatchObject({
+      state: "leased",
+      pendingCleanup: undefined,
+    });
   });
 
   it("acquire idempotency for leases", async () => {
@@ -84,7 +232,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "test-lease",
       mode: "branch",
       branch: "test-branch-1",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     expect(lease1.leaseId).toBe("test-lease");
@@ -107,16 +255,16 @@ describe("Grove Lease Mode Integration", () => {
         mode: "branch",
         branch: "other",
         ifLeased: "return-existing",
-      })
+      }),
     ).rejects.toThrow("Lease conflict");
 
     await expect(
       grove.acquire({
         leaseId: "test-lease",
-      mode: "branch",
-      branch: "test-branch-1",
-      ifLeased: "fail",
-      })
+        mode: "branch",
+        branch: "test-branch-1",
+        ifLeased: "fail",
+      }),
     ).rejects.toThrow("already exists");
   });
 
@@ -130,7 +278,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "safety-lease",
       mode: "branch",
       branch: "safety-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     const scriptPath = join(tmpDir, "sleep.mjs");
@@ -141,7 +289,7 @@ describe("Grove Lease Mode Integration", () => {
 
     try {
       await expect(
-        grove.release(lease.leaseId, { cleanup: "reset", resetTo: "main" })
+        grove.release(lease.leaseId, { cleanup: "reset", resetTo: "main" }),
       ).rejects.toThrow(/Unsafe cleanup: active processes/);
 
       await expect(grove.destroy(lease.leaseId)).rejects.toThrow(/is in use/);
@@ -163,7 +311,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "preserve-lease",
       mode: "branch",
       branch: "preserve-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     const dirtyPath = join(lease.path, "dirty.txt");
@@ -195,7 +343,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "reset-lease",
       mode: "branch",
       branch: "reset-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     await writeFile(join(lease.path, "untracked.txt"), "remove-me");
@@ -220,6 +368,31 @@ describe("Grove Lease Mode Integration", () => {
     );
   });
 
+  it("reset release returns a clean slot for the next acquire", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "reset-reuse-lease",
+      mode: "branch",
+      branch: "reset-reuse-branch",
+      createBranch: { from: "main", ifExists: "fail" },
+    });
+
+    await writeFile(join(lease.path, "dirty.txt"), "remove-me");
+    await grove.release(lease.leaseId, { cleanup: "reset", resetTo: "main", force: true });
+
+    const reused = await grove.acquire({
+      leaseId: "reset-reuse-next",
+      mode: "detached",
+      ref: "main",
+    });
+
+    expect(reused.slotName).toBe(lease.slotName);
+    expect(existsSync(join(reused.path, "dirty.txt"))).toBe(false);
+  });
+
   it("reset preserves ignored files by default and removes them with cleanIgnored", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
@@ -229,7 +402,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "clean-lease",
       mode: "branch",
       branch: "clean-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     await writeFile(join(lease.path, ".gitignore"), "cache/\n");
@@ -247,7 +420,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "clean-lease-2",
       mode: "branch",
       branch: "clean-branch-2",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
     await writeFile(join(lease2.path, ".gitignore"), "cache/\n");
     await mkdir(join(lease2.path, "cache"), { recursive: true });
@@ -271,7 +444,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "quarantine-lease",
       mode: "branch",
       branch: "quarantine-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     const result = await grove.release(lease.leaseId, { cleanup: "quarantine" });
@@ -291,7 +464,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "fresh-safety",
       mode: "branch",
       branch: "fresh-safety-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     await grove.release(lease.leaseId, { cleanup: "preserve" });
@@ -330,14 +503,14 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "quarantined-release",
       mode: "branch",
       branch: "quarantined-release-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     await grove.release(lease.leaseId, { cleanup: "quarantine" });
 
-    await expect(
-      grove.release(lease.leaseId, { cleanup: "preserve" }),
-    ).rejects.toMatchObject({ code: "LEASE_QUARANTINED" });
+    await expect(grove.release(lease.leaseId, { cleanup: "preserve" })).rejects.toMatchObject({
+      code: "LEASE_QUARANTINED",
+    });
   });
 
   it("release on busy releasing lease throws LEASE_BUSY", async () => {
@@ -349,7 +522,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "busy-release",
       mode: "branch",
       branch: "busy-release-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     const statePath = join(grove.poolDir, "grove-state.json");
@@ -358,9 +531,9 @@ describe("Grove Lease Mode Integration", () => {
     state.leases[0].pendingCleanup = { cleanup: "preserve" };
     await writeFile(statePath, JSON.stringify(state));
 
-    await expect(
-      grove.release(lease.leaseId, { cleanup: "preserve" }),
-    ).rejects.toMatchObject({ code: "LEASE_BUSY" });
+    await expect(grove.release(lease.leaseId, { cleanup: "preserve" })).rejects.toMatchObject({
+      code: "LEASE_BUSY",
+    });
   });
 
   it("resume-cleanup completes interrupted preserve release", async () => {
@@ -372,7 +545,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "resume-cleanup-lease",
       mode: "branch",
       branch: "resume-cleanup-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     const statePath = join(grove.poolDir, "grove-state.json");
@@ -403,16 +576,16 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "repair-lease",
       mode: "branch",
       branch: "repair-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     // Simulate failure during release (state marked releasing)
     await expect(
-      grove.release(lease.leaseId, { cleanup: "reset", resetTo: "invalid-branch", force: true })
+      grove.release(lease.leaseId, { cleanup: "reset", resetTo: "invalid-branch", force: true }),
     ).rejects.toThrow(/Cleanup failed/);
 
     const list = await grove.list();
-    const l = list.find(x => x.leaseId === "repair-lease");
+    const l = list.find((x) => x.leaseId === "repair-lease");
     expect(l?.state).toBe("quarantined");
     expect(l?.pendingCleanup).toMatchObject({ cleanup: "reset", resetTo: "invalid-branch" });
 
@@ -436,7 +609,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "owner-lease",
       mode: "branch",
       branch: "owner-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     const statePath = join(grove.poolDir, "grove-state.json");
@@ -462,7 +635,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "stale-owner-lease",
       mode: "branch",
       branch: "stale-owner-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
     await grove.release("stale-owner-lease", { cleanup: "quarantine" });
 
@@ -488,7 +661,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "no-pending",
       mode: "branch",
       branch: "no-pending-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     await expect(
@@ -505,7 +678,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "no-cleanup",
       mode: "branch",
       branch: "no-cleanup-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     await expect(
@@ -522,7 +695,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "preparing-lease",
       mode: "branch",
       branch: "preparing-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     const statePath = join(grove.poolDir, "grove-state.json");
@@ -563,7 +736,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "releasing-lease",
       mode: "branch",
       branch: "releasing-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     const statePath = join(grove.poolDir, "grove-state.json");
@@ -596,7 +769,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "destroying-lease",
       mode: "branch",
       branch: "destroying-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     const statePath = join(grove.poolDir, "grove-state.json");
@@ -629,7 +802,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "force-destroy-lease",
       mode: "branch",
       branch: "force-destroy-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     const result = await grove.repair({
@@ -651,12 +824,12 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "path-release-lease",
       mode: "branch",
       branch: "path-release-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
-    await expect(
-      grove.release(lease.path, { cleanup: "preserve" }),
-    ).rejects.toMatchObject({ code: "LEASE_NOT_FOUND" });
+    await expect(grove.release(lease.path, { cleanup: "preserve" })).rejects.toMatchObject({
+      code: "LEASE_NOT_FOUND",
+    });
     expect(await grove.inspect("path-release-lease")).toMatchObject({ state: "leased" });
   });
 
@@ -669,7 +842,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "path-destroy-lease",
       mode: "branch",
       branch: "path-destroy-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     await expect(grove.destroy(lease.path, { force: true })).rejects.toMatchObject({
@@ -688,7 +861,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "boundary-lease",
       mode: "branch",
       branch: "boundary-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     const outsidePath = join(tmpDir, "outside-pool", "repo");
@@ -716,7 +889,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "resume-destroy",
       mode: "branch",
       branch: "resume-destroy-branch",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     const statePath = join(grove.poolDir, "grove-state.json");
@@ -745,7 +918,7 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "pr-123",
       mode: "branch",
       branch: "pr/123",
-      createBranch: { from: "main" },
+      createBranch: { from: "main", ifExists: "fail" },
     });
 
     await expect(
@@ -774,6 +947,35 @@ describe("Grove Lease Mode Integration", () => {
     expect(leases[0]?.leaseId).toBe("fail-checkout");
     expect(leases[0]?.state).toBe("quarantined");
     expect(leases[0]?.pendingAcquire).toBeDefined();
+  });
+
+  it("branch reuse requires an explicit opt-in", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    await execa("git", ["branch", "existing-branch", "main"], { cwd: repoDir });
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+
+    await expect(
+      grove.acquire({
+        leaseId: "existing-fail",
+        mode: "branch",
+        branch: "existing-branch",
+        createBranch: { from: "main", ifExists: "fail" },
+      }),
+    ).rejects.toMatchObject({ code: "BRANCH_EXISTS" });
+
+    const failed = await grove.inspect("existing-fail");
+    expect(failed?.state).toBe("quarantined");
+
+    const reused = await grove.acquire({
+      leaseId: "existing-reuse",
+      mode: "branch",
+      branch: "existing-branch",
+      createBranch: { from: "main", ifExists: "reuse" },
+    });
+    expect(reused).toMatchObject({ leaseId: "existing-reuse", state: "leased" });
   });
 
   it("repair resume-acquire completes a quarantined pending acquire", async () => {
@@ -841,9 +1043,7 @@ describe("Grove Lease Mode Integration", () => {
         mode: "detached",
         ref: "other",
         ifLeased: "return-existing",
-      })
+      }),
     ).rejects.toThrow(/does not match existing detached base or SHA/);
   });
-
-
 });

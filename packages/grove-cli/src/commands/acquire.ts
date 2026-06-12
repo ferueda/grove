@@ -13,6 +13,7 @@ export const acquireCmd = new Command("acquire")
   .option("--branch <name>", "Branch to check out")
   .option("--ref <ref>", "Ref to check out detached")
   .option("--create-from <ref>", "Create branch from this ref")
+  .option("--reuse-existing-branch", "Reuse branch if it already exists")
   .option("--fail-if-exists", "Fail if branch already exists")
   .option("-r, --repo <path>", "Path to repository root")
   .option("--json", "Output result as JSON")
@@ -23,6 +24,9 @@ export const acquireCmd = new Command("acquire")
       }
       if (options.branch && options.ref) {
         throw new InvalidInputError("Acquire accepts only one of --branch or --ref");
+      }
+      if (options.reuseExistingBranch && options.failIfExists) {
+        throw new InvalidInputError("Use only one of --reuse-existing-branch or --fail-if-exists");
       }
 
       const grove = await loadGrove({ repo: options.repo });
@@ -37,7 +41,7 @@ export const acquireCmd = new Command("acquire")
               ? {
                   createBranch: {
                     from: options.createFrom,
-                    ifExists: options.failIfExists ? ("fail" as const) : ("reuse" as const),
+                    ifExists: options.reuseExistingBranch ? ("reuse" as const) : ("fail" as const),
                   },
                 }
               : {}),

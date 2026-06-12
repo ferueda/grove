@@ -52,7 +52,7 @@ describe("lease target resolution", () => {
         leaseId: "job-1",
         mode: "branch",
         branch: "agent/job-1",
-        createBranch: { from: "main" },
+        createBranch: { from: "main", ifExists: "fail" },
       },
       repoDir,
     );

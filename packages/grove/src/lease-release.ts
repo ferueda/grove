@@ -1,4 +1,10 @@
-import type { GroveConfig, GroveLeaseRecord, GroveSlot, LeaseFirstCleanupIntent } from "./schemas.js";
+import type {
+  GroveConfig,
+  GroveFailedPhase,
+  GroveLeaseRecord,
+  GroveSlot,
+  LeaseFirstCleanupIntent,
+} from "./schemas.js";
 import type { ReleaseLeaseOptions, ReleaseResult } from "./types.js";
 import { getDefaultBranch, resetWorktree } from "./git/index.js";
 import { withStateLock } from "./lock.js";
@@ -12,13 +18,7 @@ import {
   UnsafeCleanupError,
 } from "./errors.js";
 import { buildLeaseHookEnv, enrichLeaseReadOnly, recordToGroveLease } from "./lease-view.js";
-import {
-  clearSlotOwner,
-  findLease,
-  findSlot,
-  loadPoolState,
-  savePoolState,
-} from "./pool-state.js";
+import { clearSlotOwner, findLease, findSlot, loadPoolState, savePoolState } from "./pool-state.js";
 import { transitionLease, transitionSlot } from "./transitions.js";
 
 type ReleaseHooks = {
@@ -56,11 +56,7 @@ function assertLeaseReleasable(lease: GroveLeaseRecord): void {
   if (lease.state === "quarantined") {
     throw new LeaseQuarantinedError(`Lease ${lease.leaseId} is quarantined`);
   }
-  if (
-    lease.state === "preparing" ||
-    lease.state === "releasing" ||
-    lease.state === "destroying"
-  ) {
+  if (lease.state === "preparing" || lease.state === "releasing" || lease.state === "destroying") {
     throw new LeaseBusyError(`Lease ${lease.leaseId} is busy`);
   }
   throw new LeaseBusyError(`Lease ${lease.leaseId} is not releasable from ${lease.state}`);
@@ -92,7 +88,9 @@ function buildReleaseContext(
     slotName: slot.slotName,
     wtPath: slot.path,
     pendingCleanup,
-    leaseEnvVars: buildLeaseHookEnv(recordToGroveLease(lease, unverified ? "unverified" : "verified")),
+    leaseEnvVars: buildLeaseHookEnv(
+      recordToGroveLease(lease, unverified ? "unverified" : "verified"),
+    ),
   };
 }
 
@@ -172,6 +170,7 @@ async function quarantineFailedRelease(
   repoRoot: string,
   leaseId: string,
   reason: string,
+  failedPhase: GroveFailedPhase,
 ): Promise<void> {
   await withStateLock(poolDir, async () => {
     const state = await loadPoolState(poolDir, repoRoot);
@@ -185,6 +184,7 @@ async function quarantineFailedRelease(
     state.leases[leaseIndex] = transitionLease(lease, {
       type: "RELEASE_FAILED",
       reason,
+      failedPhase,
     })!;
 
     if (slot.state !== "quarantined") {
@@ -289,7 +289,13 @@ async function completeRelease(
   context: ReleaseContext,
   hooks: ReleaseHooks = {},
 ): Promise<ReleaseResult> {
-  await hooks.preRelease?.(context.wtPath, context.leaseEnvVars);
+  try {
+    await hooks.preRelease?.(context.wtPath, context.leaseEnvVars);
+  } catch (err: unknown) {
+    const reason = err instanceof Error ? err.message : "preRelease hook failed";
+    await quarantineFailedRelease(poolDir, repoRoot, context.leaseId, reason, "preRelease");
+    throw err;
+  }
 
   if (context.pendingCleanup.cleanup === "reset") {
     await assertFreshResetProcessSafety(
@@ -308,7 +314,7 @@ async function completeRelease(
       );
     } catch (err) {
       const reason = err instanceof Error ? err.message : "reset failed";
-      await quarantineFailedRelease(poolDir, repoRoot, context.leaseId, reason);
+      await quarantineFailedRelease(poolDir, repoRoot, context.leaseId, reason, "reset");
       throw new UnsafeCleanupError(`Cleanup failed: ${reason}`);
     }
   }

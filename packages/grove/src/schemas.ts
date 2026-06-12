@@ -119,10 +119,15 @@ export const GroveSlotSchema = z.object({
 
 export type GroveSlot = z.infer<typeof GroveSlotSchema>;
 
+export const GroveFailedPhaseSchema = z.enum(["postCreate", "checkout", "preRelease", "reset"]);
+
+export type GroveFailedPhase = z.infer<typeof GroveFailedPhaseSchema>;
+
 export const GroveLeaseDiagnosticsSchema = z.object({
   missingPath: z.boolean().optional(),
   lastProcessSafetyCheck: ProcessSafetyDiagnosticSchema.optional(),
   quarantineReason: z.string().optional(),
+  failedPhase: GroveFailedPhaseSchema.optional(),
 });
 
 export type GroveLeaseDiagnostics = z.infer<typeof GroveLeaseDiagnosticsSchema>;

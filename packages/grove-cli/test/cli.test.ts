@@ -55,21 +55,64 @@ describe("grove CLI lease-first JSON", () => {
     expect(result.stderr).toBe("");
   });
 
+  it("acquire requires explicit branch reuse for existing branches", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+    await execa("git", ["branch", "existing-cli-branch", "main"], { cwd: repoDir });
+
+    const failed = await runCli(
+      [
+        "acquire",
+        "--json",
+        "--lease-id",
+        "existing-cli-fail",
+        "--branch",
+        "existing-cli-branch",
+        "--create-from",
+        "main",
+        "-r",
+        repoDir,
+      ],
+      { GROVE_DIR: groveDir },
+    );
+
+    expect(failed.exitCode).toBe(13);
+    expect(JSON.parse(failed.stdout)).toMatchObject({
+      ok: false,
+      error: { code: "BRANCH_EXISTS" },
+    });
+
+    const reused = await runCli(
+      [
+        "acquire",
+        "--json",
+        "--lease-id",
+        "existing-cli-reuse",
+        "--branch",
+        "existing-cli-branch",
+        "--create-from",
+        "main",
+        "--reuse-existing-branch",
+        "-r",
+        repoDir,
+      ],
+      { GROVE_DIR: groveDir },
+    );
+
+    expect(reused.exitCode).toBe(0);
+    expect(JSON.parse(reused.stdout)).toMatchObject({
+      ok: true,
+      lease: { leaseId: "existing-cli-reuse", state: "leased" },
+    });
+    expect(reused.stderr).toBe("");
+  });
+
   it("list --json writes leases envelope to stdout only", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
     await runCli(
-      [
-        "acquire",
-        "--json",
-        "--lease-id",
-        "list-lease",
-        "--ref",
-        "main",
-        "-r",
-        repoDir,
-      ],
+      ["acquire", "--json", "--lease-id", "list-lease", "--ref", "main", "-r", repoDir],
       { GROVE_DIR: groveDir },
     );
 
@@ -87,30 +130,12 @@ describe("grove CLI lease-first JSON", () => {
     tmpDirs.push(tmpDir);
 
     await runCli(
-      [
-        "acquire",
-        "--json",
-        "--lease-id",
-        "release-lease",
-        "--ref",
-        "main",
-        "-r",
-        repoDir,
-      ],
+      ["acquire", "--json", "--lease-id", "release-lease", "--ref", "main", "-r", repoDir],
       { GROVE_DIR: groveDir },
     );
 
     const result = await runCli(
-      [
-        "release",
-        "--json",
-        "--lease-id",
-        "release-lease",
-        "--cleanup",
-        "preserve",
-        "-r",
-        repoDir,
-      ],
+      ["release", "--json", "--lease-id", "release-lease", "--cleanup", "preserve", "-r", repoDir],
       { GROVE_DIR: groveDir },
     );
 
@@ -144,16 +169,7 @@ describe("grove CLI lease-first JSON", () => {
     );
 
     const result = await runCli(
-      [
-        "acquire",
-        "--json",
-        "--lease-id",
-        "conflict-lease",
-        "--branch",
-        "branch-b",
-        "-r",
-        repoDir,
-      ],
+      ["acquire", "--json", "--lease-id", "conflict-lease", "--branch", "branch-b", "-r", repoDir],
       { GROVE_DIR: groveDir },
     );
 
@@ -175,15 +191,7 @@ describe("grove CLI lease-first JSON", () => {
     tmpDirs.push(tmpDir);
 
     const result = await runCli(
-      [
-        "acquire",
-        "--lease-id",
-        "human-lease",
-        "--ref",
-        "main",
-        "-r",
-        repoDir,
-      ],
+      ["acquire", "--lease-id", "human-lease", "--ref", "main", "-r", repoDir],
       { GROVE_DIR: groveDir },
     );
 

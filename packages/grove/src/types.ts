@@ -11,7 +11,7 @@ type AcquireMode =
       branch: string;
       createBranch?: {
         from: string;
-        ifExists?: "reuse" | "fail";
+        ifExists: "reuse" | "fail";
       };
     }
   | {
@@ -39,9 +39,7 @@ export function isReleaseResult(value: unknown): value is ReleaseResult {
     typeof value === "object" &&
     value !== null &&
     "status" in value &&
-    (value.status === "preserved" ||
-      value.status === "released" ||
-      value.status === "quarantined")
+    (value.status === "preserved" || value.status === "released" || value.status === "quarantined")
   );
 }
 
@@ -81,12 +79,7 @@ export interface GroveLease {
   target?: GroveLeaseTarget | undefined;
   acquiredHeadSha: string;
   currentHeadSha: string;
-  state:
-    | "preparing"
-    | "leased"
-    | "releasing"
-    | "destroying"
-    | "quarantined";
+  state: "preparing" | "leased" | "releasing" | "destroying" | "quarantined";
   pendingAcquire?: PendingAcquire | undefined;
   pendingCleanup?: GroveCleanupIntent | undefined;
   diagnostics?: GroveLeaseDiagnostics | undefined;

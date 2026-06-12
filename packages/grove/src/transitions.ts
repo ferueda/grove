@@ -5,16 +5,17 @@ import type {
   LeaseFirstCleanupIntent,
   LeaseFirstGroveState,
   PendingAcquire,
+  GroveFailedPhase,
 } from "./schemas.js";
 import { InvalidGroveStateError, InvalidTransitionError, RepairNotAvailableError } from "./errors.js";
 
 export type LeaseEvent =
   | { type: "ACQUIRE_COMPLETE"; target: GroveLeaseTarget; headSha: string }
-  | { type: "ACQUIRE_FAILED"; reason: string }
+  | { type: "ACQUIRE_FAILED"; reason: string; failedPhase?: GroveFailedPhase }
   | { type: "RELEASE_START"; cleanup: LeaseFirstCleanupIntent }
   | { type: "RELEASE_PRESERVE_COMPLETE" }
   | { type: "RELEASE_RESET_COMPLETE" }
-  | { type: "RELEASE_FAILED"; reason: string }
+  | { type: "RELEASE_FAILED"; reason: string; failedPhase?: GroveFailedPhase }
   | { type: "QUARANTINE"; reason: string }
   | { type: "DESTROY_START" }
   | { type: "DESTROY_COMPLETE" }
@@ -33,8 +34,13 @@ export type SlotEvent =
 function quarantineDiagnostics(
   lease: GroveLeaseRecord,
   reason: string,
+  failedPhase?: GroveFailedPhase,
 ): GroveLeaseRecord["diagnostics"] {
-  return { ...lease.diagnostics, quarantineReason: reason };
+  return {
+    ...lease.diagnostics,
+    quarantineReason: reason,
+    ...(failedPhase !== undefined ? { failedPhase } : {}),
+  };
 }
 
 export function transitionLease(
@@ -69,7 +75,7 @@ export function transitionLease(
       return {
         ...base,
         state: "quarantined",
-        diagnostics: quarantineDiagnostics(lease, event.reason),
+        diagnostics: quarantineDiagnostics(lease, event.reason, event.failedPhase),
       };
     }
     case "RELEASE_START": {
@@ -124,7 +130,7 @@ export function transitionLease(
       return {
         ...base,
         state: "quarantined",
-        diagnostics: quarantineDiagnostics(lease, event.reason),
+        diagnostics: quarantineDiagnostics(lease, event.reason, event.failedPhase),
       };
     }
     case "QUARANTINE": {
