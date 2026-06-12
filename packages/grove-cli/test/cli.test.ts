@@ -193,4 +193,32 @@ describe("grove CLI lease-first JSON", () => {
     expect(result.stdout).toBe("");
     expect(result.stderr).toContain("human-lease");
   });
+
+  it("acquire rejects invalid lease id with INVALID_INPUT", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const result = await runCli(
+      [
+        "acquire",
+        "--json",
+        "--lease-id",
+        "bad id!",
+        "--branch",
+        "cli-invalid-id-branch",
+        "--create-from",
+        "main",
+        "-r",
+        repoDir,
+      ],
+      { GROVE_DIR: groveDir },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: false,
+      error: { code: "INVALID_INPUT", message: "Invalid lease ID format" },
+    });
+    expect(result.stderr).toBe("");
+  });
 });

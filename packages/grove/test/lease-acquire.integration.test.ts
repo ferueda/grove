@@ -176,4 +176,22 @@ describe("lease acquire integration", () => {
       }),
     ).rejects.toThrow(/does not match existing detached base or SHA/);
   });
+
+  it("rejects invalid leaseId before mutating pool state", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    cleanup.tmpDirs.push(tmpDir);
+
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
+
+    await expect(
+      grove.acquire({
+        leaseId: "bad id!",
+        mode: "branch",
+        branch: "invalid-lease-id-branch",
+        createBranch: { from: "main", ifExists: "fail" },
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+
+    expect(await grove.list()).toEqual([]);
+  });
 });
