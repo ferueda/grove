@@ -4,8 +4,8 @@ import pc from "picocolors";
 import { handleError, setDebug, setJson } from "./error-handler.js";
 import { acquireCmd } from "./commands/acquire.js";
 import { releaseCmd } from "./commands/release.js";
-import { statusCmd } from "./commands/status.js";
-import { destroyCmd, destroyAllCmd } from "./commands/destroy.js";
+import { listCmd } from "./commands/list.js";
+import { destroyCmd } from "./commands/destroy.js";
 import { inspectCmd } from "./commands/inspect.js";
 import { repairCmd } from "./commands/repair.js";
 
@@ -23,10 +23,10 @@ const program = new Command();
 
 program
   .name("grove")
-  .description("CLI for Grove - A programmatic git worktree pool manager")
+  .description("CLI for Grove - lease-first git worktree pool manager")
   .version("0.1.0")
   .option("--debug", "Show verbose error output including stack traces")
-  .hook("preAction", (thisCommand, actionCommand) => {
+  .hook("preAction", (_thisCommand, actionCommand) => {
     const opts = actionCommand.optsWithGlobals();
     if (opts.debug) setDebug(true);
     if (opts.json) setJson(true);
@@ -34,16 +34,13 @@ program
 
 program.addCommand(acquireCmd);
 program.addCommand(releaseCmd);
-program.addCommand(statusCmd);
+program.addCommand(listCmd);
 program.addCommand(destroyCmd);
-program.addCommand(destroyAllCmd);
 program.addCommand(inspectCmd);
 program.addCommand(repairCmd);
 
 try {
   await program.parseAsync(process.argv);
 } catch (err: unknown) {
-  if (process.exitCode !== 1) {
-    handleError(err);
-  }
+  handleError(err);
 }

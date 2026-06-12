@@ -19,26 +19,6 @@ describe("Grove Lease Mode Integration", () => {
     }
   });
 
-  it("legacy signatures are maintained", async () => {
-    const { repoDir, tmpDir, groveDir } = await setupRepo();
-    tmpDirs.push(tmpDir);
-
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
-
-    const wt1 = await grove.acquire();
-    expect(wt1.path).toBeDefined();
-    expect(wt1.name).toBeDefined();
-
-    const list1 = await grove.listWorktreeStatus();
-    expect(list1).toHaveLength(1);
-    expect(list1[0]?.status).toBe("in-use");
-
-    await grove.release(wt1.path);
-
-    const list2 = await grove.listWorktreeStatus();
-    expect(list2).toHaveLength(1);
-  });
-
   it("reacquire allows commits made inside the leased branch worktree", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
@@ -88,7 +68,7 @@ describe("Grove Lease Mode Integration", () => {
       }),
     ).rejects.toThrow(/Hook failed/);
 
-    const leases = await grove.listLeases();
+    const leases = await grove.list();
     expect(leases).toHaveLength(1);
     expect(leases[0]?.leaseId).toBe("hook-fail-lease");
     expect(leases[0]?.state).toBe("leased");
@@ -230,11 +210,14 @@ describe("Grove Lease Mode Integration", () => {
       leaseId: "reset-lease",
       path: lease.path,
     });
-    expect(await grove.listLeases()).toHaveLength(0);
+    expect(await grove.list()).toHaveLength(0);
     expect(existsSync(join(lease.path, "untracked.txt"))).toBe(false);
 
-    const slots = await grove.listWorktreeStatus();
-    expect(slots.find((slot) => slot.path === lease.path)?.status).toBe("available");
+    const statePath = join(grove.poolDir, "grove-state.json");
+    const state = JSON.parse(await readFile(statePath, "utf8"));
+    expect(state.slots.find((slot: { path: string }) => slot.path === lease.path)?.state).toBe(
+      "available",
+    );
   });
 
   it("reset preserves ignored files by default and removes them with cleanIgnored", async () => {
@@ -428,7 +411,7 @@ describe("Grove Lease Mode Integration", () => {
       grove.release(lease.leaseId, { cleanup: "reset", resetTo: "invalid-branch", force: true })
     ).rejects.toThrow(/Cleanup failed/);
 
-    const list = await grove.listLeases();
+    const list = await grove.list();
     const l = list.find(x => x.leaseId === "repair-lease");
     expect(l?.state).toBe("quarantined");
     expect(l?.pendingCleanup).toMatchObject({ cleanup: "reset", resetTo: "invalid-branch" });
@@ -659,6 +642,25 @@ describe("Grove Lease Mode Integration", () => {
     expect(existsSync(lease.path)).toBe(false);
   });
 
+  it("destroy rejects physical worktree paths and only accepts leaseId", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "path-destroy-lease",
+      mode: "branch",
+      branch: "path-destroy-branch",
+      createBranch: { from: "main" },
+    });
+
+    await expect(grove.destroy(lease.path, { force: true })).rejects.toMatchObject({
+      code: "LEASE_NOT_FOUND",
+    });
+    expect(await grove.inspect("path-destroy-lease")).toMatchObject({ state: "leased" });
+    expect(existsSync(lease.path)).toBe(true);
+  });
+
   it("destroy rejects paths outside the pool boundary and quarantines the lease", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
@@ -749,7 +751,7 @@ describe("Grove Lease Mode Integration", () => {
       }),
     ).rejects.toThrow(/Branch not found/);
 
-    const leases = await grove.listLeases();
+    const leases = await grove.list();
     expect(leases).toHaveLength(1);
     expect(leases[0]?.leaseId).toBe("fail-checkout");
     expect(leases[0]?.state).toBe("quarantined");
@@ -801,34 +803,6 @@ describe("Grove Lease Mode Integration", () => {
     expect(listed[0]?.diagnostics?.missingPath).toBe(true);
   });
 
-  it("destroyAll is atomic: fails completely if one worktree is unsafe", async () => {
-    const { repoDir, tmpDir, groveDir } = await setupRepo();
-    tmpDirs.push(tmpDir);
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
-
-    const lease1 = await grove.acquire({ leaseId: "safe-lease", mode: "detached", ref: "main" });
-    const lease2 = await grove.acquire({ leaseId: "unsafe-lease", mode: "detached", ref: "main" });
-
-    await grove.release(lease1.leaseId, { cleanup: "preserve" });
-
-    const p = execa("sleep", ["60"], { cwd: lease2.path });
-    await new Promise((r) => setTimeout(r, 500));
-
-    try {
-      await expect(grove.destroyAll()).rejects.toThrow(/in use/);
-
-      const leases = await grove.listLeases();
-      expect(leases).toHaveLength(2);
-      expect(leases.find((l) => l.leaseId === "safe-lease")?.state).toBe("leased");
-      expect(leases.find((l) => l.leaseId === "unsafe-lease")?.state).toBe("leased");
-      expect(existsSync(lease1.path)).toBe(true);
-      expect(existsSync(lease2.path)).toBe(true);
-    } finally {
-      p.kill();
-      await p.catch(() => {});
-    }
-  });
-
   it("idempotent acquire rejects incompatible detached ref", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
@@ -854,25 +828,4 @@ describe("Grove Lease Mode Integration", () => {
   });
 
 
-  it("destroyAll happy path: cleans up all idle leases safely", async () => {
-    const { repoDir, tmpDir, groveDir } = await setupRepo();
-    tmpDirs.push(tmpDir);
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
-
-    const lease1 = await grove.acquire({ leaseId: "lease-1", mode: "detached", ref: "main" });
-    const lease2 = await grove.acquire({ leaseId: "lease-2", mode: "detached", ref: "main" });
-
-    // Release them to preserve to clear the owner/PID tracking, making them idle
-    await grove.release(lease1.leaseId, { cleanup: "preserve" });
-    await grove.release(lease2.leaseId, { cleanup: "preserve" });
-
-    await grove.destroyAll();
-
-    const leases = await grove.listLeases();
-    expect(leases).toHaveLength(0);
-
-    const { existsSync } = await import("node:fs");
-    expect(existsSync(lease1.path)).toBe(false);
-    expect(existsSync(lease2.path)).toBe(false);
-  });
 });

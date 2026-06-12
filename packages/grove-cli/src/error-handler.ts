@@ -1,5 +1,7 @@
 import pc from "picocolors";
 import { GroveError, GitCommandError } from "@ferueda/grove";
+import { errorEnvelope } from "./json-output.js";
+import { exitCodeForError } from "./exit-codes.js";
 
 let debugEnabled = false;
 let jsonEnabled = false;
@@ -12,14 +14,22 @@ export function setJson(enabled: boolean): void {
   jsonEnabled = enabled;
 }
 
+export function isJsonMode(): boolean {
+  return jsonEnabled;
+}
+
 export function handleError(err: unknown): never {
+  const exitCode = exitCodeForError(err);
+
   if (jsonEnabled) {
-    const errorObj: any = { error: err instanceof Error ? err.message : String(err) };
-    if (err instanceof GroveError) {
-      errorObj.code = err.code;
+    const code = err instanceof GroveError ? err.code : "UNKNOWN_ERROR";
+    const message = err instanceof Error ? err.message : String(err);
+    const details: Record<string, unknown> = {};
+    if (err instanceof GitCommandError && err.stderr) {
+      details.stderr = err.stderr;
     }
-    process.stdout.write(JSON.stringify(errorObj, null, 2) + "\n");
-    process.exit(1);
+    process.stdout.write(JSON.stringify(errorEnvelope(code, message, details)) + "\n");
+    process.exit(exitCode);
   }
 
   if (err instanceof GroveError) {
@@ -41,6 +51,5 @@ export function handleError(err: unknown): never {
     console.error(pc.red(String(err)));
   }
 
-  process.exitCode = 1;
-  throw err;
+  process.exit(exitCode);
 }

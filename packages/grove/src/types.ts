@@ -5,20 +5,6 @@ import type {
   PendingAcquire,
 } from "./schemas.js";
 
-export type WorktreeStatusInfo = "available" | "dirty" | "in-use" | "you're here";
-
-export interface AcquiredSlot {
-  readonly path: string;
-  readonly name: string;
-}
-
-export interface WorktreeStatus {
-  name: string;
-  path: string;
-  status: WorktreeStatusInfo;
-  processes: { PID: number; Name?: string }[];
-}
-
 type AcquireMode =
   | {
       mode: "branch";
