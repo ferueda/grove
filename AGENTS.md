@@ -25,7 +25,7 @@ Felipe owns this. Work style: telegraph; noun-phrases ok; drop grammar; min toke
 
 ## Agent Protocol
 
-- **Port Strategy:** Go behavior is spec for ephemeral pool. Lease mode spec: `grove-daddybot-compatibility-prd.md`. Use **test-first port** (port tests to vitest, run, fail, then implement until green).
+- **Port Strategy:** Go behavior is spec for ephemeral pool. Lease mode spec: `packages/grove/test/lease.integration.test.ts`. Use **test-first port** (port tests to vitest, run, fail, then implement until green).
 - **Module Size:** Split files if they grow >700 LOC.
 - **Mocks:** DO NOT mock `git` in pool/integration tests. Use `setupRepo()` from `packages/grove/test/helpers/git-repo.ts`.
 - **Config:** Programmatic `createGrove()` config only; no config files (TOML/YAML) loader.
@@ -42,7 +42,7 @@ Felipe owns this. Work style: telegraph; noun-phrases ok; drop grammar; min toke
 - **Rule 1 — Simplicity First:** Minimum code that solves the problem. Match existing Go style for ephemeral pool. Don't add speculative features.
 - **Rule 2 — Surgical Changes:** Touch only what you must. If you modify core pool logic, run `vitest` immediately.
 - **Rule 3 — Validation at Boundaries:** Use `zod` to validate `GroveConfig` input and `GroveState` from disk. Once parsed, operate on trusted shapes. `leaseId` must match `LeaseIdSchema` regex.
-- **Rule 4 — Read before you write:** Ephemeral pool → Go port plan. Lease mode → PRD acceptance tests.
+- **Rule 4 — Read before you write:** Ephemeral pool → Go port plan. Lease mode → `lease.integration.test.ts`.
 
 ## Commit & Release Guidelines
 
@@ -77,5 +77,4 @@ Felipe owns this. Work style: telegraph; noun-phrases ok; drop grammar; min toke
 ## Source of Truth Docs
 
 - Product Vision: `VISION.md`
-- Lease mode PRD: `grove-daddybot-compatibility-prd.md`
 - User-facing API docs: `README.md`
