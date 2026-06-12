@@ -47,7 +47,7 @@ export const acquireCmd = new Command("acquire")
         };
 
         const lease = await grove.acquire(acquireOpts);
-        
+
         if (options.json) {
           process.stdout.write(JSON.stringify(lease, null, 2) + "\n");
           return;

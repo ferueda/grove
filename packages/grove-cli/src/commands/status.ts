@@ -11,7 +11,7 @@ export const statusCmd = new Command("status")
   .action(async (options) => {
     try {
       const grove = await loadGrove({ repo: options.repo });
-      
+
       if (options.leases) {
         const leases = await grove.listLeases();
         if (options.json) {

@@ -81,9 +81,9 @@ export async function listLeases(poolDir: string, config: GroveConfig): Promise<
 
     for (const wt of state.worktrees) {
       if (!wt.leaseId) continue;
-      
+
       const { unverified } = await findInWorktree(wt.path);
-      
+
       try {
         wt.currentHeadSha = await getHeadSha(wt.path);
       } catch {}
@@ -107,7 +107,7 @@ export async function inspectLease(leaseIdOrPath: string, poolDir: string, confi
   if (!wt || !wt.leaseId) return null;
 
   const { unverified } = await findInWorktree(wt.path);
-  
+
   try {
     wt.currentHeadSha = await getHeadSha(wt.path);
   } catch {}

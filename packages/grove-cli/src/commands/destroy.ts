@@ -14,7 +14,7 @@ export const destroyCmd = new Command("destroy")
     try {
       const grove = await loadGrove({ repo: options.repo });
       await grove.destroy(pathOrLeaseId, { force: options.force, deleteBranch: options.deleteBranch });
-      
+
       if (options.json) {
         process.stdout.write(JSON.stringify({ success: true, target: pathOrLeaseId }) + "\n");
       } else {
@@ -34,7 +34,7 @@ export const destroyAllCmd = new Command("destroy-all")
     try {
       const grove = await loadGrove({ repo: options.repo });
       await grove.destroyAll({ force: options.force });
-      
+
       if (options.json) {
         process.stdout.write(JSON.stringify({ success: true }) + "\n");
       } else {

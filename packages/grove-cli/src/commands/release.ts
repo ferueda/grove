@@ -21,16 +21,16 @@ export const releaseCmd = new Command("release")
         if (!["preserve", "reset", "quarantine"].includes(options.cleanup)) {
           throw new Error("Invalid cleanup action");
         }
-        
+
         let releaseOpts: ReleaseLeaseOptions;
         if (options.cleanup === "preserve") {
           releaseOpts = { cleanup: "preserve" };
         } else if (options.cleanup === "quarantine") {
           releaseOpts = { cleanup: "quarantine" };
         } else {
-          releaseOpts = { 
-            cleanup: "reset", 
-            force: options.force 
+          releaseOpts = {
+            cleanup: "reset",
+            force: options.force
           };
           if (options.resetTo) {
             releaseOpts.resetTo = options.resetTo;
@@ -38,7 +38,7 @@ export const releaseCmd = new Command("release")
         }
 
         const lease = await grove.release(targetPath, releaseOpts);
-        
+
         if (options.json) {
           process.stdout.write(JSON.stringify(lease, null, 2) + "\n");
           return;

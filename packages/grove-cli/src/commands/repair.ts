@@ -30,7 +30,7 @@ export const repairCmd = new Command("repair")
         }
         return;
       }
-      
+
       if (options.json) {
         process.stdout.write(JSON.stringify(lease, null, 2) + "\n");
       } else {

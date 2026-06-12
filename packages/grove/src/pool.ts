@@ -70,14 +70,14 @@ export class Grove {
   private async findOrAllocateSlot(state: GroveState, defaultBranch: string): Promise<{ entry: WorktreeEntry, isNew: boolean }> {
     for (const wt of state.worktrees) {
       if (wt.destroying || wt.state === "destroying" || wt.state === "releasing" || wt.state === "quarantined" || wt.leaseId) continue;
-      
+
       const { inUse } = await isWorktreeInUse(wt.path);
       const alive = await ownerAlive(wt);
       if (inUse || alive) continue;
 
       const dirty = await isDirty(wt.path);
-      if (dirty) continue; 
-      
+      if (dirty) continue;
+
       try {
         await resetWorktree(wt.path, defaultBranch);
       } catch {
@@ -163,7 +163,7 @@ export class Grove {
         if (options.ifLeased === "fail") {
           throw new LeaseAlreadyExistsError(`Lease ${options.leaseId} already exists`);
         }
-        
+
         if (existing.state === "quarantined") {
           throw new LeaseQuarantinedError(`Lease ${options.leaseId} is quarantined`);
         }
@@ -260,7 +260,7 @@ export class Grove {
     }
 
     const leaseData = await this.inspect(options.leaseId) as GroveLease;
-    
+
     await this.runHook(this.config.hooks?.postAcquire, targetWtPath, this.leaseEnv(leaseData));
 
     return leaseData;
@@ -309,7 +309,7 @@ export class Grove {
       if (!wt || !wt.leaseId) {
         throw new LeaseNotFoundError(`Lease ${leaseIdOrPath} not found`);
       }
-      
+
       const { inUse, unverified } = await isWorktreeInUse(wt.path);
       const alive = await ownerAlive(wt);
 
@@ -354,7 +354,7 @@ export class Grove {
       wt.owner_pid = undefined;
       wt.owner_started_at = undefined;
       wt.pendingCleanup = undefined;
-      
+
       if (options.cleanup === "quarantine") {
         wt.state = "quarantined";
       } else if (options.cleanup === "reset") {
@@ -383,7 +383,7 @@ export class Grove {
       const state = await readState(this.poolDir);
       const idx = state.worktrees.findIndex(w => w.leaseId === leaseIdOrPath || w.path === leaseIdOrPath);
       const targetWt = state.worktrees[idx];
-      
+
       if (!targetWt) {
         throw new WorktreeNotManagedError(`worktree ${leaseIdOrPath} not managed by grove`);
       }
@@ -410,7 +410,7 @@ export class Grove {
       targetWt.destroying = true;
       targetWt.state = "destroying";
       await reserveOwner(targetWt);
-      
+
       targetWtPath = targetWt.path;
       leaseEnvVars = targetWt.leaseId ? this.leaseEnv(entryToLease(targetWt, unverified ? "unverified" : "verified", this.config.repoRoot)) : {};
 
@@ -455,7 +455,7 @@ export class Grove {
 
       state.worktrees.splice(idx, 1);
       await writeState(this.poolDir, state);
-      
+
       if (branchDeleteError) {
         throw new BranchDeleteFailedError(`Branch deletion failed: ${branchDeleteError.message}`);
       }
@@ -467,7 +467,7 @@ export class Grove {
 
     await withStateLock(this.poolDir, async () => {
       const state = await readState(this.poolDir);
-      
+
       // Phase 1: validate all
       for (const wt of state.worktrees) {
         const { inUse, unverified } = await isWorktreeInUse(wt.path);
@@ -491,7 +491,7 @@ export class Grove {
         const env = wt.leaseId ? this.leaseEnv(entryToLease(wt, unverified ? "unverified" : "verified", this.config.repoRoot)) : {};
         targets.push({ path: wt.path, env });
       }
-      
+
       await writeState(this.poolDir, state);
     });
 
@@ -540,7 +540,7 @@ export class Grove {
         }
         // we will let the outside call handle it, just leave state as is
       }
-      
+
       if (options.action === "force-destroy") {
         // Handled by explicit call outside
       }

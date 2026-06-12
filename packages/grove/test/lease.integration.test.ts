@@ -167,7 +167,7 @@ describe("Grove Lease Mode Integration", () => {
 
     // Destroy and delete branch
     await grove.destroy(lease.leaseId, { force: true, deleteBranch: true });
-    
+
     // Check branch is gone
     await expect(execa("git", ["rev-parse", "--verify", "pr/123"], { cwd: repoDir })).rejects.toThrowError(/exit code/);
   });
@@ -203,7 +203,7 @@ describe("Grove Lease Mode Integration", () => {
 
     // Spawn a long-running process in lease2 to make it unsafe
     const p = execa("sleep", ["60"], { cwd: lease2.path });
-    
+
     // Attempt destroyAll without force
     await expect(grove.destroyAll()).rejects.toThrow(/in use/);
 

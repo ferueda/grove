@@ -12,7 +12,7 @@ export const inspectCmd = new Command("inspect")
     try {
       const grove = await loadGrove({ repo: options.repo });
       const lease = await grove.inspect(pathOrLeaseId);
-      
+
       if (!lease) {
         throw new Error(`Lease not found: ${pathOrLeaseId}`);
       }
