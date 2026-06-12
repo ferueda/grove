@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { createGrove } from "../src/index.js";
+import { createTestGrove } from "./helpers/test-grove.js";
 import { setupRepo } from "./helpers/git-repo.js";
 import { existsSync } from "node:fs";
 import { rm, mkdir, writeFile } from "node:fs/promises";
@@ -22,7 +22,7 @@ describe("Grove lease-first smoke", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     const lease = await grove.acquire({
       leaseId: "smoke-lease",
       mode: "branch",
@@ -46,7 +46,7 @@ describe("Grove lease-first smoke", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     await mkdir(grove.poolDir, { recursive: true });
     await writeFile(join(grove.poolDir, "grove-state.json"), "invalid json");
 
@@ -63,7 +63,7 @@ describe("Grove lease-first smoke", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir, maxTrees: 1 });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir, maxTrees: 1 });
     await grove.acquire({ leaseId: "lease-1", mode: "detached", ref: "main" });
 
     let err: any;

@@ -10,7 +10,7 @@ if (!repoRoot || !groveRoot) {
 }
 
 try {
-  const grove = await createGrove({ repoRoot, groveRoot, maxTrees: 8 });
+  const grove = await createGrove({ repoRoot, groveRoot, maxTrees: 8, fetchOnAcquire: false });
   const lease = await grove.acquire({
     leaseId: `parallel-${leaseIndex}`,
     mode: "detached",

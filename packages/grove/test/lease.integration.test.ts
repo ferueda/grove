@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { createGrove } from "../src/index.js";
+import { createTestGrove } from "./helpers/test-grove.js";
 import { setupRepo } from "./helpers/git-repo.js";
 import { rm, writeFile, readFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -29,7 +29,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
 
     const lease1 = await grove.acquire({
       leaseId: "commit-lease",
@@ -56,7 +56,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({
+    const grove = await createTestGrove({
       repoRoot: repoDir,
       groveRoot: groveDir,
       onHookFailure: "fail",
@@ -84,7 +84,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({
+    const grove = await createTestGrove({
       repoRoot: repoDir,
       groveRoot: groveDir,
       onHookFailure: "fail",
@@ -118,7 +118,7 @@ describe("Grove Lease Mode Integration", () => {
     const attemptsPath = join(tmpDir, "post-create-attempts.txt");
     const hook = failOnceHook(attemptsPath);
 
-    const grove = await createGrove({
+    const grove = await createTestGrove({
       repoRoot: repoDir,
       groveRoot: groveDir,
       onHookFailure: "fail",
@@ -154,7 +154,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({
+    const grove = await createTestGrove({
       repoRoot: repoDir,
       groveRoot: groveDir,
       onHookFailure: "fail",
@@ -188,7 +188,7 @@ describe("Grove Lease Mode Integration", () => {
     tmpDirs.push(tmpDir);
 
     const attemptsPath = join(tmpDir, "pre-release-attempts.txt");
-    const grove = await createGrove({
+    const grove = await createTestGrove({
       repoRoot: repoDir,
       groveRoot: groveDir,
       onHookFailure: "fail",
@@ -226,7 +226,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
 
     const lease1 = await grove.acquire({
       leaseId: "test-lease",
@@ -272,7 +272,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
 
     const lease = await grove.acquire({
       leaseId: "safety-lease",
@@ -306,7 +306,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     const lease = await grove.acquire({
       leaseId: "preserve-lease",
       mode: "branch",
@@ -338,7 +338,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     const lease = await grove.acquire({
       leaseId: "reset-lease",
       mode: "branch",
@@ -372,7 +372,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     const lease = await grove.acquire({
       leaseId: "reset-reuse-lease",
       mode: "branch",
@@ -397,7 +397,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     const lease = await grove.acquire({
       leaseId: "clean-lease",
       mode: "branch",
@@ -439,7 +439,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     const lease = await grove.acquire({
       leaseId: "quarantine-lease",
       mode: "branch",
@@ -459,7 +459,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     const lease = await grove.acquire({
       leaseId: "fresh-safety",
       mode: "branch",
@@ -498,7 +498,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     const lease = await grove.acquire({
       leaseId: "quarantined-release",
       mode: "branch",
@@ -517,7 +517,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     const lease = await grove.acquire({
       leaseId: "busy-release",
       mode: "branch",
@@ -540,7 +540,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     const lease = await grove.acquire({
       leaseId: "resume-cleanup-lease",
       mode: "branch",
@@ -570,7 +570,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
 
     const lease = await grove.acquire({
       leaseId: "repair-lease",
@@ -604,7 +604,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     await grove.acquire({
       leaseId: "owner-lease",
       mode: "branch",
@@ -630,7 +630,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     await grove.acquire({
       leaseId: "stale-owner-lease",
       mode: "branch",
@@ -656,7 +656,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     await grove.acquire({
       leaseId: "no-pending",
       mode: "branch",
@@ -673,7 +673,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     await grove.acquire({
       leaseId: "no-cleanup",
       mode: "branch",
@@ -690,7 +690,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     await grove.acquire({
       leaseId: "preparing-lease",
       mode: "branch",
@@ -731,7 +731,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     await grove.acquire({
       leaseId: "releasing-lease",
       mode: "branch",
@@ -764,7 +764,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     const lease = await grove.acquire({
       leaseId: "destroying-lease",
       mode: "branch",
@@ -797,7 +797,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     const lease = await grove.acquire({
       leaseId: "force-destroy-lease",
       mode: "branch",
@@ -819,7 +819,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     const lease = await grove.acquire({
       leaseId: "path-release-lease",
       mode: "branch",
@@ -837,7 +837,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     const lease = await grove.acquire({
       leaseId: "path-destroy-lease",
       mode: "branch",
@@ -856,7 +856,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     const lease = await grove.acquire({
       leaseId: "boundary-lease",
       mode: "branch",
@@ -884,7 +884,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     const lease = await grove.acquire({
       leaseId: "resume-destroy",
       mode: "branch",
@@ -908,7 +908,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({
+    const grove = await createTestGrove({
       repoRoot: repoDir,
       groveRoot: groveDir,
       safeDeleteBranchPrefixes: ["pr/"],
@@ -932,7 +932,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
 
     await expect(
       grove.acquire({
@@ -955,7 +955,7 @@ describe("Grove Lease Mode Integration", () => {
 
     await execa("git", ["branch", "existing-branch", "main"], { cwd: repoDir });
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
 
     await expect(
       grove.acquire({
@@ -982,7 +982,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
 
     await expect(
       grove.acquire({
@@ -1005,7 +1005,7 @@ describe("Grove Lease Mode Integration", () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
 
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
     const lease = await grove.acquire({
       leaseId: "inspect-lease",
       mode: "detached",
@@ -1026,7 +1026,7 @@ describe("Grove Lease Mode Integration", () => {
   it("idempotent acquire rejects incompatible detached ref", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
-    const grove = await createGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
 
     // Create a new branch 'other'
     await execa("git", ["branch", "other", "main"], { cwd: repoDir });

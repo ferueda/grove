@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { setupRepo } from "./helpers/git-repo.js";
+import { setupPathFixture } from "./helpers/git-repo.js";
 import {
   migrateLegacyToLeaseFirst,
   parseLeaseFirstState,
@@ -22,7 +22,7 @@ describe("Lease-first state", () => {
   let groveDir: string;
 
   beforeEach(async () => {
-    const setup = await setupRepo();
+    const setup = await setupPathFixture();
     tmpDir = setup.tmpDir;
     groveDir = setup.groveDir;
   });
