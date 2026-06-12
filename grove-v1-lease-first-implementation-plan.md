@@ -1260,3 +1260,47 @@ Branch: `feat/lease-first-pr4-destroy`
   - `packages/grove/test/lease.integration.test.ts`
   - `packages/grove/test/transitions.test.ts`
   - `grove-v1-lease-first-implementation-plan.md`
+
+## PR 5 Implementation Summary (Completed)
+
+Branch: `feat/lease-first-pr5-repair`
+
+- **What was done**
+
+  - Added `lease-repair.ts` with the full repair matrix: `quarantine`, `resume-acquire`,
+    `resume-cleanup`, and `force-destroy`.
+  - Introduced typed `RepairResult` (`quarantined` | `destroyed`) and `isRepairResult()`.
+  - `pool.repair()` delegates entirely to `repairLease()`; ephemeral release uses
+    `transitionSlot(RELEASE_TO_POOL)` instead of hand-editing slot state.
+  - `resumeAcquireLease()` throws `REPAIR_NOT_AVAILABLE` when `pendingAcquire` is
+    missing or lease is not `quarantined`.
+  - Added `mutator-enforcement.test.ts` — lease mutator modules must not assign
+    `.state` directly.
+  - Integration tests: repair preconditions, quarantine from `preparing` / `releasing` /
+    `destroying`, and `force-destroy`.
+  - CLI `repair` command updated for `resume-acquire` and `RepairResult` handling.
+
+- **How it was done**
+
+  - `repairQuarantine()` uses `applyLeaseSlotQuarantine()` (transition-driven).
+  - `repairForceDestroy()` preflights process safety, then calls `destroyLease({ force: true })`.
+  - Resume paths reuse `resumeAcquireLease()` / `resumeCleanupLease()` from PR 2–3.
+  - Transition unit tests cover `QUARANTINE` from `preparing` and `releasing`.
+
+- **Why it was done**
+
+  - PR 5 completes Phase 7 repair and enforces the Phase 1 rule that all lease-first
+    mutators route state changes through `transitions.ts` before PR 6 API cutover.
+
+- **Files worked on**
+
+  - `packages/grove/src/lease-repair.ts` (new)
+  - `packages/grove/src/lease-acquire.ts`
+  - `packages/grove/src/pool.ts`
+  - `packages/grove/src/types.ts`
+  - `packages/grove/src/index.ts`
+  - `packages/grove-cli/src/commands/repair.ts`
+  - `packages/grove/test/lease.integration.test.ts`
+  - `packages/grove/test/transitions.test.ts`
+  - `packages/grove/test/mutator-enforcement.test.ts` (new)
+  - `grove-v1-lease-first-implementation-plan.md`

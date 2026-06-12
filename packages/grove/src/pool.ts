@@ -5,45 +5,40 @@ import {
 } from "./git/index.js";
 import { withStateLock } from "./lock.js";
 import { reserveOwner } from "./process/detect.js";
-import { assertWorktreeSafeForCleanup } from "./process/cleanup-safety.js";
 import { runHooks } from "./hooks.js";
 import type { GroveConfig } from "./index.js";
 import type { GroveSlot } from "./schemas.js";
-import {
-  WorktreeDestroyingError,
-  WorktreeNotManagedError,
-  LeaseNotFoundError,
-} from "./errors.js";
+import { WorktreeDestroyingError, WorktreeNotManagedError } from "./errors.js";
 import type {
   AcquiredSlot,
   AcquireLeaseOptions,
   ReleaseLeaseOptions,
   ReleaseResult,
+  RepairResult,
   DestroyLeaseOptions,
   RepairLeaseOptions,
   GroveLease,
   WorktreeStatus,
 } from "./types.js";
-import { acquireLease, resumeAcquireLease } from "./lease-acquire.js";
+import { acquireLease } from "./lease-acquire.js";
 import { destroyEphemeralSlot, destroyLease, preflightDestroyAll } from "./lease-destroy.js";
-import { releaseLease, resumeCleanupLease } from "./lease-release.js";
+import { releaseLease } from "./lease-release.js";
+import { repairLease } from "./lease-repair.js";
 import {
   buildLeaseHookEnv,
   inspectLeaseRecord,
   listLeaseRecords,
 } from "./lease-view.js";
 import {
-  applyLeaseSlotQuarantine,
   clearSlotOwner,
-  findLease,
   findLeaseByIdOrPath,
   findOrAllocateSlot,
-  findSlot,
   leaseForSlot,
   loadPoolState,
   savePoolState,
   slotToWorktreeEntry,
 } from "./pool-state.js";
+import { transitionSlot } from "./transitions.js";
 
 export class Grove {
   constructor(
@@ -133,8 +128,10 @@ export class Grove {
         const slot = state.slots.find((entry) => entry.path === leaseIdOrPath);
         if (!slot) return;
         await clearSlotOwner(slot);
-        slot.state = "available";
-        slot.updatedAt = new Date().toISOString();
+        if (slot.state === "leased") {
+          const slotIndex = state.slots.findIndex((entry) => entry.slotName === slot.slotName);
+          state.slots[slotIndex] = transitionSlot(slot, { type: "RELEASE_TO_POOL" })!;
+        }
         await savePoolState(this.poolDir, state);
       });
       return;
@@ -185,52 +182,16 @@ export class Grove {
     }
   }
 
-  async repair(options: RepairLeaseOptions): Promise<GroveLease | ReleaseResult | void> {
-    if (options.action === "resume-acquire") {
-      return resumeAcquireLease(this.poolDir, this.config, options.leaseId, {
-        postAcquire: (path, lease) =>
-          this.runHook(this.config.hooks?.postAcquire, path, this.leaseEnv(lease)),
-      });
-    }
-
-    if (options.action === "resume-cleanup") {
-      return resumeCleanupLease(this.poolDir, this.config, options.leaseId, {
-        preRelease: (path, env) => this.runHook(this.config.hooks?.preRelease, path, env),
-        postRelease: (path, env) => this.runHook(this.config.hooks?.postRelease, path, env),
-      });
-    }
-
-    await withStateLock(this.poolDir, async () => {
-      const state = await loadPoolState(this.poolDir, this.config.repoRoot);
-      const lease = findLease(state, options.leaseId);
-      if (!lease) throw new LeaseNotFoundError(`Lease ${options.leaseId} not found`);
-
-      const slot = findSlot(state, lease.slotName);
-
-      if (options.action === "force-destroy" && slot) {
-        await assertWorktreeSafeForCleanup(slot.path, slot, lease, {
-          force: options.force,
-          message:
-            "Cannot force-destroy: processes running or unverified. Use force: true",
-        });
-      }
-
-      if (options.action === "quarantine" && slot && lease.state !== "quarantined") {
-        applyLeaseSlotQuarantine(state, lease, "repair quarantine");
-        await savePoolState(this.poolDir, state);
-        return;
-      }
-
+  async repair(
+    options: RepairLeaseOptions,
+  ): Promise<GroveLease | ReleaseResult | RepairResult> {
+    return repairLease(this.poolDir, this.config, options, {
+      postAcquire: (path, lease) =>
+        this.runHook(this.config.hooks?.postAcquire, path, this.leaseEnv(lease)),
+      preRelease: (path, env) => this.runHook(this.config.hooks?.preRelease, path, env),
+      postRelease: (path, env) => this.runHook(this.config.hooks?.postRelease, path, env),
+      preDestroy: (path, env) => this.runHook(this.config.hooks?.preDestroy, path, env),
     });
-
-    if (options.action === "force-destroy") {
-      await this.destroy(options.leaseId, { force: true });
-      return;
-    }
-
-    const res = await this.inspect(options.leaseId);
-    if (!res) throw new LeaseNotFoundError("Lease not found after repair");
-    return res;
   }
 
   async inspect(leaseId: string): Promise<GroveLease | null> {

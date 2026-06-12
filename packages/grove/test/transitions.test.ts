@@ -201,6 +201,30 @@ describe("transitionLease", () => {
     );
   });
 
+  it("preparing -> quarantined on QUARANTINE and preserves pendingAcquire", () => {
+    const lease = createPreparingLease({
+      leaseId: "job-1",
+      slotName: "slot-1",
+      path: "/pool/slot-1",
+      repoRoot: "/repo",
+      pendingAcquire: { target: TARGET, startedAt: NOW },
+      now: NOW,
+    });
+    const next = transitionLease(lease, { type: "QUARANTINE", reason: "stuck" }, NOW);
+    expect(next?.state).toBe("quarantined");
+    expect(next?.pendingAcquire).toEqual(lease.pendingAcquire);
+  });
+
+  it("releasing -> quarantined on QUARANTINE and clears pendingCleanup", () => {
+    const lease = leasedLease({
+      state: "releasing",
+      pendingCleanup: { cleanup: "preserve" },
+    });
+    const next = transitionLease(lease, { type: "QUARANTINE", reason: "stuck" }, NOW);
+    expect(next?.state).toBe("quarantined");
+    expect(next?.pendingCleanup).toBeUndefined();
+  });
+
   const invalidLeaseTransitions: Array<{
     name: string;
     lease: GroveLeaseRecord;
@@ -264,9 +288,15 @@ describe("transitionSlot", () => {
     expect(next?.state).toBe("available");
   });
 
-  it("leased -> quarantined on QUARANTINE", () => {
-    const next = transitionSlot(leasedSlot(), { type: "QUARANTINE", reason: "manual" }, NOW);
+  it("leased -> quarantined on QUARANTINE and clears owner fields", () => {
+    const next = transitionSlot(
+      leasedSlot({ ownerPid: 1234, ownerStartedAt: 1_700_000_000 }),
+      { type: "QUARANTINE", reason: "manual" },
+      NOW,
+    );
     expect(next?.state).toBe("quarantined");
+    expect(next?.ownerPid).toBeUndefined();
+    expect(next?.ownerStartedAt).toBeUndefined();
   });
 
   it("leased -> destroying on DESTROY_START", () => {
