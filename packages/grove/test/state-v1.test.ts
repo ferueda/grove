@@ -6,11 +6,7 @@ import {
   readLeaseFirstState,
   writeLeaseFirstState,
 } from "../src/state-v1.js";
-import {
-  GroveLeaseSchema,
-  type GroveState,
-  type LeaseFirstGroveState,
-} from "../src/schemas.js";
+import { GroveLeaseSchema, type GroveState, type LeaseFirstGroveState } from "../src/schemas.js";
 import { InvalidGroveStateError } from "../src/errors.js";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -92,9 +88,7 @@ describe("Lease-first state", () => {
       expect(migrated.slots).toHaveLength(1);
       expect(migrated.leases).toHaveLength(1);
       expect(migrated.leases[0]?.target?.mode).toBe("branch");
-      expect(parseLeaseFirstState(legacy, { repoRoot: "/repo" }).leases[0]?.repoRoot).toBe(
-        "/repo",
-      );
+      expect(parseLeaseFirstState(legacy, { repoRoot: "/repo" }).leases[0]?.repoRoot).toBe("/repo");
     });
 
     it("throws INVALID_GROVE_STATE when legacy pendingCleanup is invalid", () => {
