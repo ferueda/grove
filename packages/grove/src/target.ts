@@ -60,10 +60,7 @@ export function buildPendingAcquire(target: GroveLeaseTarget, startedAt: string)
   return { target, startedAt };
 }
 
-export function finalizeBranchTarget(
-  target: GroveLeaseTarget,
-  headSha: string,
-): GroveLeaseTarget {
+export function finalizeBranchTarget(target: GroveLeaseTarget, headSha: string): GroveLeaseTarget {
   if (target.mode !== "branch") {
     return target;
   }
@@ -129,7 +126,9 @@ export async function assertCompatibleReacquire(
     }
     const requestedSha = await resolveRef(repoRoot, requestedCreateFrom);
     if (stored.createFromSha && stored.createFromSha !== requestedSha) {
-      throw new LeaseConflictError(`Lease conflict: createFromSha mismatch for ${existing.leaseId}`);
+      throw new LeaseConflictError(
+        `Lease conflict: createFromSha mismatch for ${existing.leaseId}`,
+      );
     }
   }
 
