@@ -1,7 +1,7 @@
-# Grove
+# @ferueda/grove
 
 > A fast, secure pool of reusable git worktrees
 
-This is the programmatic SDK for Grove.
+Programmatic SDK for Grove — ephemeral detached-HEAD pool and durable branch-aware leases.
 
-Please see the [main documentation](https://github.com/ferueda/grove#readme) for full usage instructions and API references!
+See the [main documentation](https://github.com/ferueda/grove#the-programmatic-sdk) for installation, lease mode quick start, API reference, hooks, and error codes.
