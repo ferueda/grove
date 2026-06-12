@@ -2,16 +2,15 @@ import { dirname } from "node:path";
 import { rm } from "node:fs/promises";
 import type { GroveConfig } from "./schemas.js";
 import type { DestroyLeaseOptions } from "./types.js";
-import { deleteBranch, removeWorktree } from "./git/index.js";
+import { removeWorktree } from "./git/index.js";
 import { withStateLock } from "./lock.js";
 import { assertPathWithinPool } from "./path-boundary.js";
 import { isWorktreeInUse } from "./process/detect.js";
 import { assertWorktreeSafeForCleanup } from "./process/cleanup-safety.js";
 import {
-  BranchDeleteFailedError,
+  InvalidInputError,
   LeaseBusyError,
   LeaseNotFoundError,
-  UnsafeCleanupError,
   WorktreeNotManagedError,
 } from "./errors.js";
 import { buildLeaseHookEnv, recordToGroveLease } from "./lease-view.js";
@@ -20,11 +19,15 @@ import {
   findLeaseByIdOrPath,
   findSlot,
   findSlotByPath,
+  leaseForSlot,
   loadPoolState,
   reserveSlotOwner,
   savePoolState,
 } from "./pool-state.js";
 import { transitionLease, transitionSlot } from "./transitions.js";
+
+const DESTROY_UNSAFE_MESSAGE = (path: string) =>
+  `worktree ${path} is in use or unverified. Use --force to override`;
 
 type DestroyHooks = {
   preDestroy?: (path: string, env: Record<string, string>) => Promise<void>;
@@ -35,9 +38,16 @@ type DestroyContext = {
   slotName: string;
   wtPath: string;
   leaseEnvVars: Record<string, string>;
-  branchToDelete?: string | undefined;
   force: boolean | undefined;
 };
+
+function assertDeleteBranchNotRequested(options?: DestroyLeaseOptions): void {
+  if (options?.deleteBranch) {
+    throw new InvalidInputError(
+      "deleteBranch is not supported in lease-first destroy MVP",
+    );
+  }
+}
 
 function assertLeaseDestroyable(lease: { leaseId: string; state: string }, resuming: boolean): void {
   if (resuming) {
@@ -52,21 +62,21 @@ function assertLeaseDestroyable(lease: { leaseId: string; state: string }, resum
   throw new LeaseBusyError(`Lease ${lease.leaseId} is busy`);
 }
 
-async function resolveBranchToDelete(
-  config: GroveConfig,
-  lease: NonNullable<ReturnType<typeof findLeaseByIdOrPath>>["lease"],
-  options?: DestroyLeaseOptions,
-): Promise<string | undefined> {
-  if (!options?.deleteBranch || lease.target?.mode !== "branch") {
-    return undefined;
-  }
-
-  const branch = lease.target.branch;
-  const safePrefixes = config.safeDeleteBranchPrefixes || [];
-  if (!safePrefixes.some((prefix) => branch.startsWith(prefix))) {
-    throw new UnsafeCleanupError(`Branch ${branch} does not match safe-delete prefixes`);
-  }
-  return branch;
+export async function preflightDestroyAll(
+  poolDir: string,
+  repoRoot: string,
+  options?: { force?: boolean },
+): Promise<void> {
+  await withStateLock(poolDir, async () => {
+    const state = await loadPoolState(poolDir, repoRoot);
+    for (const slot of state.slots) {
+      const lease = leaseForSlot(state, slot.slotName);
+      await assertWorktreeSafeForCleanup(slot.path, slot, lease, {
+        force: options?.force,
+        message: DESTROY_UNSAFE_MESSAGE(slot.path),
+      });
+    }
+  });
 }
 
 async function beginDestroy(
@@ -75,6 +85,8 @@ async function beginDestroy(
   leaseId: string,
   options?: DestroyLeaseOptions,
 ): Promise<DestroyContext> {
+  assertDeleteBranchNotRequested(options);
+
   let context!: DestroyContext;
 
   await withStateLock(poolDir, async () => {
@@ -91,10 +103,8 @@ async function beginDestroy(
 
     await assertWorktreeSafeForCleanup(slot.path, slot, lease, {
       force: options?.force,
-      message: `worktree ${slot.path} is in use or unverified. Use --force to override`,
+      message: DESTROY_UNSAFE_MESSAGE(slot.path),
     });
-
-    const branchToDelete = await resolveBranchToDelete(config, lease, options);
 
     if (!resuming) {
       const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === lease.leaseId);
@@ -117,7 +127,6 @@ async function beginDestroy(
       leaseEnvVars: buildLeaseHookEnv(
         recordToGroveLease(lease, unverified ? "unverified" : "verified"),
       ),
-      branchToDelete,
       force: options?.force,
     };
   });
@@ -141,7 +150,7 @@ async function assertFreshDestroyProcessSafety(
   await assertWorktreeSafeForCleanup(slot.path, slot, lease, {
     force,
     ignoreOwnerReservation: true,
-    message: `worktree ${slot.path} is in use or unverified. Use --force to override`,
+    message: DESTROY_UNSAFE_MESSAGE(slot.path),
   });
 }
 
@@ -191,6 +200,28 @@ async function quarantineFailedDestroy(
   });
 }
 
+async function quarantineFailedEphemeralDestroy(
+  poolDir: string,
+  repoRoot: string,
+  slotName: string,
+  reason: string,
+): Promise<void> {
+  await withStateLock(poolDir, async () => {
+    const state = await loadPoolState(poolDir, repoRoot, { heal: false });
+    const slot = findSlot(state, slotName);
+    if (!slot || slot.state === "quarantined") {
+      return;
+    }
+
+    const slotIndex = state.slots.findIndex((entry) => entry.slotName === slot.slotName);
+    state.slots[slotIndex] = transitionSlot(slot, {
+      type: "QUARANTINE",
+      reason,
+    })!;
+    await savePoolState(poolDir, state);
+  });
+}
+
 async function finalizeDestroy(
   poolDir: string,
   repoRoot: string,
@@ -228,34 +259,41 @@ async function completeDestroy(
   context: DestroyContext,
   hooks: DestroyHooks = {},
 ): Promise<void> {
-  await hooks.preDestroy?.(context.wtPath, context.leaseEnvVars);
+  try {
+    if (
+      !(await assertDestroyStillPending(
+        poolDir,
+        config.repoRoot,
+        context.leaseId,
+        context.slotName,
+      ))
+    ) {
+      return;
+    }
 
-  if (
-    !(await assertDestroyStillPending(
+    await hooks.preDestroy?.(context.wtPath, context.leaseEnvVars);
+
+    if (
+      !(await assertDestroyStillPending(
+        poolDir,
+        config.repoRoot,
+        context.leaseId,
+        context.slotName,
+      ))
+    ) {
+      return;
+    }
+
+    await assertFreshDestroyProcessSafety(
       poolDir,
       config.repoRoot,
       context.leaseId,
-      context.slotName,
-    ))
-  ) {
-    return;
-  }
+      context.force,
+    );
 
-  await assertFreshDestroyProcessSafety(poolDir, config.repoRoot, context.leaseId, context.force);
-
-  let branchDeleteError: Error | undefined;
-  try {
     await assertPathWithinPool(poolDir, context.wtPath);
     await removeWorktree(config.repoRoot, context.wtPath);
     await rm(dirname(context.wtPath), { recursive: true, force: true });
-
-    if (context.branchToDelete) {
-      try {
-        await deleteBranch(config.repoRoot, context.branchToDelete, context.force);
-      } catch (err) {
-        branchDeleteError = err instanceof Error ? err : new Error("branch delete failed");
-      }
-    }
   } catch (err) {
     const reason = err instanceof Error ? err.message : "destroy failed";
     await quarantineFailedDestroy(poolDir, config.repoRoot, context.leaseId, reason);
@@ -263,10 +301,6 @@ async function completeDestroy(
   }
 
   await finalizeDestroy(poolDir, config.repoRoot, context);
-
-  if (branchDeleteError) {
-    throw new BranchDeleteFailedError(`Branch deletion failed: ${branchDeleteError.message}`);
-  }
 }
 
 export async function destroyLease(
@@ -292,6 +326,8 @@ async function beginEphemeralDestroy(
   slotPath: string,
   options?: DestroyLeaseOptions,
 ): Promise<EphemeralDestroyContext> {
+  assertDeleteBranchNotRequested(options);
+
   let context!: EphemeralDestroyContext;
 
   await withStateLock(poolDir, async () => {
@@ -304,7 +340,7 @@ async function beginEphemeralDestroy(
     const resuming = slot.state === "destroying";
     await assertWorktreeSafeForCleanup(slot.path, slot, undefined, {
       force: options?.force,
-      message: `worktree ${slot.path} is in use or unverified. Use --force to override`,
+      message: DESTROY_UNSAFE_MESSAGE(slot.path),
     });
 
     if (!resuming) {
@@ -354,36 +390,33 @@ async function completeEphemeralDestroy(
   context: EphemeralDestroyContext,
   hooks: DestroyHooks = {},
 ): Promise<void> {
-  await hooks.preDestroy?.(context.wtPath, {});
-
-  const state = await loadPoolState(poolDir, config.repoRoot);
-  const slot = findSlot(state, context.slotName);
-  if (!slot || slot.state !== "destroying") {
-    return;
-  }
-
-  await assertWorktreeSafeForCleanup(slot.path, slot, undefined, {
-    force: context.force,
-    ignoreOwnerReservation: true,
-    message: `worktree ${slot.path} is in use or unverified. Use --force to override`,
-  });
   try {
+    const state = await loadPoolState(poolDir, config.repoRoot);
+    const slot = findSlot(state, context.slotName);
+    if (!slot || slot.state !== "destroying") {
+      return;
+    }
+
+    await hooks.preDestroy?.(context.wtPath, {});
+
+    const afterHook = await loadPoolState(poolDir, config.repoRoot);
+    const slotAfterHook = findSlot(afterHook, context.slotName);
+    if (!slotAfterHook || slotAfterHook.state !== "destroying") {
+      return;
+    }
+
+    await assertWorktreeSafeForCleanup(slotAfterHook.path, slotAfterHook, undefined, {
+      force: context.force,
+      ignoreOwnerReservation: true,
+      message: DESTROY_UNSAFE_MESSAGE(slotAfterHook.path),
+    });
+
     await assertPathWithinPool(poolDir, context.wtPath);
     await removeWorktree(config.repoRoot, context.wtPath);
     await rm(dirname(context.wtPath), { recursive: true, force: true });
   } catch (err) {
-    await withStateLock(poolDir, async () => {
-      const locked = await loadPoolState(poolDir, config.repoRoot, { heal: false });
-      const lockedSlot = findSlot(locked, context.slotName);
-      if (lockedSlot && lockedSlot.state !== "quarantined") {
-        const slotIndex = locked.slots.findIndex((entry) => entry.slotName === lockedSlot.slotName);
-        locked.slots[slotIndex] = transitionSlot(lockedSlot, {
-          type: "QUARANTINE",
-          reason: err instanceof Error ? err.message : "destroy failed",
-        })!;
-        await savePoolState(poolDir, locked);
-      }
-    });
+    const reason = err instanceof Error ? err.message : "destroy failed";
+    await quarantineFailedEphemeralDestroy(poolDir, config.repoRoot, context.slotName, reason);
     throw err;
   }
 

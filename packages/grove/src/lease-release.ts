@@ -79,7 +79,7 @@ async function assertFreshResetProcessSafety(
   if (!lease || !slot) {
     throw new LeaseNotFoundError(`Lease ${leaseId} not found during reset safety check`);
   }
-  await assertWorktreeSafeForCleanup(slot.path, slot, lease, force);
+  await assertWorktreeSafeForCleanup(slot.path, slot, lease, { force });
 }
 
 function buildReleaseContext(
@@ -117,7 +117,7 @@ async function beginRelease(
 
     const { unverified } =
       cleanup.cleanup === "reset"
-        ? await assertWorktreeSafeForCleanup(slot.path, slot, lease, cleanup.force)
+        ? await assertWorktreeSafeForCleanup(slot.path, slot, lease, { force: cleanup.force })
         : await isWorktreeInUse(slot.path).then(({ unverified: u }) => ({ unverified: u }));
 
     const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === lease.leaseId);

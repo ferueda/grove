@@ -25,7 +25,7 @@ import type {
   WorktreeStatus,
 } from "./types.js";
 import { acquireLease, resumeAcquireLease } from "./lease-acquire.js";
-import { destroyEphemeralSlot, destroyLease } from "./lease-destroy.js";
+import { destroyEphemeralSlot, destroyLease, preflightDestroyAll } from "./lease-destroy.js";
 import { releaseLease, resumeCleanupLease } from "./lease-release.js";
 import {
   buildLeaseHookEnv,
@@ -169,6 +169,8 @@ export class Grove {
   }
 
   async destroyAll(options?: { force?: boolean }): Promise<void> {
+    await preflightDestroyAll(this.poolDir, this.config.repoRoot, options);
+
     const state = await loadPoolState(this.poolDir, this.config.repoRoot);
     const leaseIds = state.leases.map((lease) => lease.leaseId);
     const ephemeralPaths = state.slots
@@ -206,13 +208,11 @@ export class Grove {
       const slot = findSlot(state, lease.slotName);
 
       if (options.action === "force-destroy" && slot) {
-        await assertWorktreeSafeForCleanup(
-          slot.path,
-          slot,
-          lease,
-          options.force,
-          "Cannot force-destroy: processes running or unverified. Use force: true",
-        );
+        await assertWorktreeSafeForCleanup(slot.path, slot, lease, {
+          force: options.force,
+          message:
+            "Cannot force-destroy: processes running or unverified. Use force: true",
+        });
       }
 
       if (options.action === "quarantine" && slot && lease.state !== "quarantined") {

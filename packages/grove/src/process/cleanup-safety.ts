@@ -9,26 +9,22 @@ export type WorktreeCleanupSafetyOptions = {
   message?: string | undefined;
 };
 
+const DEFAULT_UNSAFE_MESSAGE =
+  "Unsafe cleanup: active processes or unverified safety. Use force: true.";
+
 export async function assertWorktreeSafeForCleanup(
   slotPath: string,
   slot: GroveSlot,
   lease: GroveLeaseRecord | undefined,
-  options?: boolean | WorktreeCleanupSafetyOptions,
-  legacyMessage?: string,
+  options: WorktreeCleanupSafetyOptions = {},
 ): Promise<{ unverified: boolean }> {
-  const normalized: WorktreeCleanupSafetyOptions =
-    typeof options === "boolean" ? { force: options } : (options ?? {});
-  const message =
-    normalized.message ??
-    legacyMessage ??
-    "Unsafe cleanup: active processes or unverified safety. Use force: true.";
-
+  const message = options.message ?? DEFAULT_UNSAFE_MESSAGE;
   const { inUse, unverified } = await isWorktreeInUse(slotPath);
-  if (normalized.force) {
+  if (options.force) {
     return { unverified };
   }
 
-  const alive = normalized.ignoreOwnerReservation
+  const alive = options.ignoreOwnerReservation
     ? false
     : await ownerAlive(slotToWorktreeEntry(slot, lease));
   if (inUse || alive || unverified) {
