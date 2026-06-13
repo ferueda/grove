@@ -28,16 +28,19 @@ export type GroveErrorCode =
 
 export class GroveError extends Error {
   readonly code: GroveErrorCode;
-  constructor(message: string, code: GroveErrorCode) {
+  readonly details: Record<string, unknown>;
+
+  constructor(message: string, code: GroveErrorCode, details: Record<string, unknown> = {}) {
     super(message);
     this.name = this.constructor.name;
     this.code = code;
+    this.details = details;
   }
 }
 
 export class GroveExhaustedError extends GroveError {
-  constructor(message: string = "Grove exhausted") {
-    super(message, "GROVE_EXHAUSTED");
+  constructor(message: string = "Grove exhausted", details: Record<string, unknown> = {}) {
+    super(message, "GROVE_EXHAUSTED", details);
   }
 }
 
@@ -98,8 +101,8 @@ export class LeaseNotFoundError extends GroveError {
 }
 
 export class LeaseConflictError extends GroveError {
-  constructor(message: string = "Lease conflict") {
-    super(message, "LEASE_CONFLICT");
+  constructor(message: string = "Lease conflict", details: Record<string, unknown> = {}) {
+    super(message, "LEASE_CONFLICT", details);
   }
 }
 
@@ -110,20 +113,20 @@ export class LeaseAlreadyExistsError extends GroveError {
 }
 
 export class LeaseQuarantinedError extends GroveError {
-  constructor(message: string = "Lease quarantined") {
-    super(message, "LEASE_QUARANTINED");
+  constructor(message: string = "Lease quarantined", details: Record<string, unknown> = {}) {
+    super(message, "LEASE_QUARANTINED", details);
   }
 }
 
 export class LeaseBusyError extends GroveError {
-  constructor(message: string = "Lease is busy") {
-    super(message, "LEASE_BUSY");
+  constructor(message: string = "Lease is busy", details: Record<string, unknown> = {}) {
+    super(message, "LEASE_BUSY", details);
   }
 }
 
 export class AcquireInProgressError extends GroveError {
-  constructor(message: string = "Acquire in progress") {
-    super(message, "ACQUIRE_IN_PROGRESS");
+  constructor(message: string = "Acquire in progress", details: Record<string, unknown> = {}) {
+    super(message, "ACQUIRE_IN_PROGRESS", details);
   }
 }
 

@@ -24,7 +24,8 @@ export function handleError(err: unknown): never {
   if (jsonEnabled) {
     const code = err instanceof GroveError ? err.code : "UNKNOWN_ERROR";
     const message = err instanceof Error ? err.message : String(err);
-    const details: Record<string, unknown> = {};
+    const details: Record<string, unknown> =
+      err instanceof GroveError ? { ...err.details } : {};
     if (err instanceof GitCommandError && err.stderr) {
       details.stderr = err.stderr;
     }

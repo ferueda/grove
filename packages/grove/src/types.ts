@@ -88,3 +88,15 @@ export interface GroveLease {
   createdAt: string;
   updatedAt: string;
 }
+
+export type GroveLeaseState = GroveLease["state"];
+
+export type GrovePoolStats = {
+  count: number;
+  byState: Partial<Record<GroveLeaseState, number>>;
+  pool: {
+    used: number;
+    max: number;
+    available: number;
+  };
+};

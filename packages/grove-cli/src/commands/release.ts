@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { loadGrove } from "../utils.js";
 import { handleError } from "../error-handler.js";
 import { resultEnvelope, writeJson } from "../json-output.js";
+import { suggestionsForReleaseResult } from "../suggestions.js";
 import { InvalidInputError } from "@ferueda/grove";
 import pc from "picocolors";
 import type { ReleaseLeaseOptions } from "@ferueda/grove";
@@ -37,7 +38,9 @@ export const releaseCmd = new Command("release")
       const result = await grove.release(options.leaseId, releaseOpts);
 
       if (options.json) {
-        writeJson(resultEnvelope(result));
+        writeJson(
+          resultEnvelope(result, { suggestions: suggestionsForReleaseResult(result) }),
+        );
         return;
       }
 

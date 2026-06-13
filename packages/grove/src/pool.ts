@@ -10,6 +10,8 @@ import type {
   DestroyLeaseOptions,
   RepairLeaseOptions,
   GroveLease,
+  GroveLeaseState,
+  GrovePoolStats,
 } from "./types.js";
 import { acquireLease } from "./lease-acquire.js";
 import { destroyLease } from "./lease-destroy.js";
@@ -110,6 +112,33 @@ export class Grove {
       leases = await listLeaseRecords(state, options);
     });
     return leases;
+  }
+
+  async stats(): Promise<GrovePoolStats> {
+    let stats: GrovePoolStats = {
+      count: 0,
+      byState: {},
+      pool: { used: 0, max: this.config.maxTrees ?? 16, available: this.config.maxTrees ?? 16 },
+    };
+    await withStateLock(this.poolDir, async () => {
+      const state = await loadPoolState(this.poolDir, this.config.repoRoot);
+      const max = this.config.maxTrees ?? 16;
+      const used = state.slots.length;
+      const byState: Partial<Record<GroveLeaseState, number>> = {};
+      for (const lease of state.leases) {
+        byState[lease.state] = (byState[lease.state] ?? 0) + 1;
+      }
+      stats = {
+        count: state.leases.length,
+        byState,
+        pool: {
+          used,
+          max,
+          available: Math.max(0, max - used),
+        },
+      };
+    });
+    return stats;
   }
 
   private leaseEnv(lease: GroveLease): Record<string, string> {

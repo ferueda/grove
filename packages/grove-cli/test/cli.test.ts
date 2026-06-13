@@ -53,6 +53,13 @@ describe("grove CLI lease-first JSON", () => {
       ok: true,
       lease: { leaseId: "cli-lease", state: "leased" },
     });
+    expect(body.suggestions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          command: expect.stringContaining("grove release --json --lease-id cli-lease"),
+        }),
+      ]),
+    );
     expect(result.stderr).toBe("");
   });
 
@@ -124,6 +131,12 @@ describe("grove CLI lease-first JSON", () => {
     expect(body.ok).toBe(true);
     expect(body.leases).toHaveLength(1);
     expect(body.leases[0]).toMatchObject({ leaseId: "list-lease" });
+    expect(body.count).toBe(1);
+    expect(body.byState.leased).toBe(1);
+    expect(body.pool.max).toBe(16);
+    expect(body.pool.used).toBeGreaterThanOrEqual(1);
+    expect(body.pool.available).toBe(body.pool.max - body.pool.used);
+    expect(body.suggestions).toEqual(expect.any(Array));
     expect(result.stderr).toBe("");
   });
 
@@ -148,6 +161,7 @@ describe("grove CLI lease-first JSON", () => {
       ok: true,
       result: { status: "preserved", leaseId: "release-lease" },
     });
+    expect(body.suggestions).toEqual(expect.any(Array));
     expect(result.stderr).toBe("");
   });
 
@@ -169,13 +183,14 @@ describe("grove CLI lease-first JSON", () => {
 
     expect(result.exitCode).toBe(3);
     const body = JSON.parse(result.stdout);
-    expect(body).toEqual({
-      ok: false,
-      error: {
-        code: "LEASE_CONFLICT",
-        message: expect.stringContaining("branch"),
-        details: {},
-      },
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("LEASE_CONFLICT");
+    expect(body.error.message).toEqual(expect.stringContaining("branch"));
+    expect(body.error.details).toMatchObject({
+      leaseId: "conflict-lease",
+      existingState: "leased",
+      existingBranch: "branch-a",
+      requestedBranch: "branch-b",
     });
     expect(result.stderr).toBe("");
   });
@@ -219,6 +234,41 @@ describe("grove CLI lease-first JSON", () => {
       ok: false,
       error: { code: "INVALID_INPUT", message: "Invalid lease ID format" },
     });
+    expect(result.stderr).toBe("");
+  });
+
+  it("commands --json writes machine-readable command catalog", async () => {
+    const result = await runCli(["commands", "--json"], {});
+
+    expect(result.exitCode).toBe(0);
+    const body = JSON.parse(result.stdout);
+    expect(body.ok).toBe(true);
+    const names = body.commands.map((cmd: { name: string }) => cmd.name);
+    expect(names).toEqual(expect.arrayContaining(["acquire", "list", "repair"]));
+    expect(result.stderr).toBe("");
+  });
+
+  it("status --json writes pool dashboard", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    await seedLease(repoDir, groveDir, {
+      leaseId: "status-lease",
+      mode: "detached",
+      ref: "main",
+    });
+
+    const result = await runCli(["status", "--json", "-r", repoDir], { GROVE_DIR: groveDir });
+    expect(result.exitCode).toBe(0);
+    const body = JSON.parse(result.stdout);
+    expect(body.ok).toBe(true);
+    expect(body.repoRoot).toBe(repoDir);
+    expect(body.poolDir).toBe(groveDir);
+    expect(body.count).toBe(1);
+    expect(body.byState.leased).toBe(1);
+    expect(body.pool.max).toBe(16);
+    expect(body.leases).toHaveLength(1);
+    expect(body.suggestions).toEqual(expect.any(Array));
     expect(result.stderr).toBe("");
   });
 });

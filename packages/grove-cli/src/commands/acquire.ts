@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { loadGrove } from "../utils.js";
 import { handleError } from "../error-handler.js";
 import { leaseEnvelope, writeJson } from "../json-output.js";
+import { suggestionsForLease } from "../suggestions.js";
 import { InvalidInputError } from "@ferueda/grove";
 import pc from "picocolors";
 import type { AcquireLeaseOptions } from "@ferueda/grove";
@@ -56,7 +57,7 @@ export const acquireCmd = new Command("acquire")
       const lease = await grove.acquire(acquireOpts);
 
       if (options.json) {
-        writeJson(leaseEnvelope(lease));
+        writeJson(leaseEnvelope(lease, { suggestions: suggestionsForLease(lease) }));
         return;
       }
 

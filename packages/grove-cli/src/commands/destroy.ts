@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { loadGrove } from "../utils.js";
 import { handleError } from "../error-handler.js";
 import { resultEnvelope, writeJson } from "../json-output.js";
+import { suggestionsForDestroyedLease } from "../suggestions.js";
 import pc from "picocolors";
 
 export const destroyCmd = new Command("destroy")
@@ -16,7 +17,12 @@ export const destroyCmd = new Command("destroy")
       await grove.destroy(options.leaseId, { force: options.force });
 
       if (options.json) {
-        writeJson(resultEnvelope({ status: "destroyed", leaseId: options.leaseId }));
+        writeJson(
+          resultEnvelope(
+            { status: "destroyed", leaseId: options.leaseId },
+            { suggestions: suggestionsForDestroyedLease(options.leaseId) },
+          ),
+        );
         return;
       }
 
