@@ -346,4 +346,3 @@ try {
 
 - Product vision: [`VISION.md`](VISION.md)
 - Contributor guide: [`AGENTS.md`](AGENTS.md)
-- Implementation plan: [`grove-v1-lease-first-implementation-plan.md`](grove-v1-lease-first-implementation-plan.md)
