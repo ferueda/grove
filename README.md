@@ -29,7 +29,7 @@ npm install -g @ferueda/grove-cli
 
 ### Usage
 
-Run Grove commands from inside any Git repository. Grove detects the repository and creates the pool in `~/.grove/<hash>/` unless overridden by `GROVE_DIR` or `--repo`.
+Run Grove commands from inside any Git repository. Grove detects the repository root unless overridden by `--repo` or `GROVE_REPO_ROOT`. Grove creates the pool in `~/.grove/<hash>/` unless overridden by `GROVE_DIR`.
 
 | Variable | Purpose |
 |----------|---------|
@@ -249,6 +249,7 @@ interface GroveLease {
   branch?: string;
   baseRef?: string;
   baseSha?: string;
+  target?: GroveLeaseTarget;
   acquiredHeadSha: string;
   currentHeadSha: string;
   state: "preparing" | "leased" | "releasing" | "destroying" | "quarantined";
@@ -256,10 +257,13 @@ interface GroveLease {
   pendingCleanup?: GroveCleanupIntent;
   processSafety?: "verified" | "unverified";
   diagnostics?: GroveLeaseDiagnostics;
+  metadata?: Record<string, string>;
   createdAt: string;
   updatedAt: string;
 }
 ```
+
+`branch`, `baseRef`, and `baseSha` are convenience projections from `target` when present.
 
 #### Lease states
 
@@ -293,24 +297,36 @@ Set `onHookFailure: "fail"` to throw `HOOK_FAILED` on hook errors.
 
 ### Error model
 
-All Grove errors extend `GroveError` with a stable `.code` property.
+All Grove errors extend `GroveError` with a stable `.code` property. The CLI maps most codes to exit categories via `packages/grove-cli/src/exit-codes.ts`; unmapped codes exit `1`.
 
-| Code | When |
-|------|------|
-| `POOL_EXHAUSTED` | Pool at `maxTrees` with no available slots |
-| `LEASE_NOT_FOUND` | Unknown `leaseId` |
-| `LEASE_CONFLICT` | Re-acquire with incompatible branch/ref |
-| `LEASE_ALREADY_EXISTS` | Acquire with `ifLeased: "fail"` on existing lease |
-| `LEASE_QUARANTINED` | Lease is quarantined |
-| `LEASE_BUSY` | Lease in transient state |
-| `ACQUIRE_IN_PROGRESS` | Acquire still preparing |
-| `REPAIR_NOT_AVAILABLE` | Repair action missing required intent |
-| `UNSAFE_CLEANUP` | Destructive op blocked by processes |
-| `PATH_OUTSIDE_POOL` | Destructive target outside pool boundary |
-| `INVALID_GROVE_STATE` | Corrupt `grove-state.json` |
-| `LOCK_FAILED` | Could not acquire state file lock |
-| `GIT_COMMAND_FAILED` | Git subprocess failed |
-| `HOOK_FAILED` | Hook failed with `onHookFailure: "fail"` |
+| Code | When | CLI exit |
+|------|------|----------|
+| `INVALID_INPUT` | Invalid `leaseId` or options at API boundary | 2 |
+| `LEASE_CONFLICT` | Re-acquire with incompatible branch/ref | 3 |
+| `LEASE_ALREADY_EXISTS` | Acquire with `ifLeased: "fail"` on existing lease | 3 |
+| `GROVE_EXHAUSTED` | No pool capacity (legacy alias) | 4 |
+| `POOL_EXHAUSTED` | Pool at `maxTrees` with no available slots | 4 |
+| `GIT_NOT_FOUND` | `git` binary not found | 5 |
+| `GIT_COMMAND_FAILED` | Git subprocess failed | 5 |
+| `LOCK_FAILED` | Could not acquire state file lock | 6 |
+| `UNSAFE_CLEANUP` | Destructive op blocked by processes | 7 |
+| `PROCESS_SAFETY_UNVERIFIED` | Destructive op with unverified process safety | 7 |
+| `WORKTREE_IN_USE` | Legacy worktree-in-use guard | 7 |
+| `LEASE_NOT_FOUND` | Unknown `leaseId` | 8 |
+| `WORKTREE_NOT_MANAGED` | Legacy path not in pool | 8 |
+| `LEASE_QUARANTINED` | Lease is quarantined | 9 |
+| `LEASE_BUSY` | Lease in transient state | 9 |
+| `ACQUIRE_IN_PROGRESS` | Acquire still preparing | 9 |
+| `REPAIR_NOT_AVAILABLE` | Repair action missing required intent | 10 |
+| `INVALID_TRANSITION` | Illegal lease/slot state transition | 10 |
+| `INVALID_GROVE_STATE` | Corrupt `grove-state.json` | 11 |
+| `PATH_OUTSIDE_POOL` | Destructive target outside pool boundary | 12 |
+| `BRANCH_EXISTS` | Branch create failed because branch exists | 13 |
+| `BRANCH_NOT_FOUND` | Requested branch does not exist | 13 |
+| `REF_NOT_FOUND` | Requested ref does not resolve | 13 |
+| `HOOK_FAILED` | Hook failed with `onHookFailure: "fail"` | 14 |
+| `WORKTREE_DESTROYING` | Legacy destroying guard | 1 |
+| `BRANCH_DELETE_FAILED` | Branch deletion failed during destroy | 1 |
 
 ```typescript
 import { LeaseConflictError } from "@ferueda/grove";

@@ -1,6 +1,33 @@
 # Grove Test Suite Speedup Implementation Plan
 
-Status: planned.
+Status: **completed** (Phases 1–6 landed via PRs #45, #46, and #47).
+
+## Completion Summary
+
+| Phase | PR | Outcome |
+| ----- | -- | ------- |
+| 1 — Remove duplicate fetch | #45 | `Grove.acquire()` fetches at most once; `acquireLease()` no longer fetches |
+| 2 — Cheaper test fixtures | #45–46 | `setupLocalRepo()` and path fixtures; config/state tests off full remote setup |
+| 3 — Disable fetch in integration tests | #45 | Test helper defaults `fetchOnAcquire: false` unless a test opts in |
+| 4 — Split lease integration by behavior | #46 | `lease-*.integration.test.ts` buckets replace monolithic file |
+| 5 — Trim CLI setup cost | #47 | `list` / `release` / error-envelope tests seed via SDK; subprocess acquire retained |
+| 6 — Timing guardrails | #45 | `pnpm test:timed` (`scripts/test-timed.mjs`) reports slow tests by file |
+
+Current lease integration layout:
+
+- `packages/grove/test/lease-acquire.integration.test.ts`
+- `packages/grove/test/lease-hooks.integration.test.ts`
+- `packages/grove/test/lease-release.integration.test.ts`
+- `packages/grove/test/lease-repair.integration.test.ts`
+- `packages/grove/test/lease-destroy.integration.test.ts`
+
+CLI tests seed pool state through the SDK for command-focused cases while keeping full `dist/cli.js` acquire happy-path and error-path coverage.
+
+---
+
+> **Historical baseline below.** The "Current Reality" section captures pre-speedup
+> measurements from the PR #44 validation run. The monolithic
+> `lease.integration.test.ts` no longer exists.
 
 Source reference: user request after PR #44 validation run and local timing analysis from
 `/tmp/grove-test-2.log`.
@@ -59,7 +86,7 @@ Slow tests make review loops expensive and push agents toward running only
 focused subsets. The goal is to make the full suite cheap enough to run
 regularly while preserving confidence.
 
-## Current Reality
+## Current Reality (historical baseline)
 
 Verified from the current PR #44 branch.
 
