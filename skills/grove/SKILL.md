@@ -1,35 +1,15 @@
 ---
 name: grove
 description: "Use Grove's lease-first git worktree pool CLI for durable branch-aware worktree leases: acquire, inspect, list, release, repair, destroy, and status. Use when agents or automation need isolated reusable checkouts without cloning repeatedly."
-user-invocable: false
-author: Felipe Rueda (ferueda)
-metadata:
-  hermes:
-    tags: [git, worktree, cli, leases, automation, agents]
-    category: devtools
 ---
 
 # Grove
 
 Grove is a lease-first git worktree pool. It gives agents and automation durable, branch-aware checkouts keyed by `leaseId`.
 
-Grove is **not** an agent runner, workflow manager, PR system, or validation framework. Use it only to manage checkout leases.
-
-## Install the skill
-
-```sh
-npx skills add ferueda/grove --skill grove -g
-```
-
 ## When to use
 
 Use Grove when a task needs an isolated reusable worktree for a repo, especially across process restarts or concurrent jobs.
-
-Do **not** use Grove to:
-
-- Run agents or orchestrate multi-step workflows
-- Open PRs, run reviews, or validate output
-- Replace your caller's lifecycle management
 
 ## Workflow
 
@@ -41,7 +21,7 @@ Do **not** use Grove to:
 
 ## Commands
 
-Prefer `--json` for agent automation. JSON mode writes machine-readable output to stdout only; human prose goes to stderr.
+**Always pass `--json` for agent automation.** JSON mode writes machine-readable output to stdout only; human prose goes to stderr.
 
 | Command | Purpose |
 |---------|---------|
@@ -63,7 +43,7 @@ grove status --json    # pool dashboard (start here)
 
 ### Acquire
 
-Branch work (creates branch from ref):
+Branch work — prefer a **new branch name** with `--create-from`:
 
 ```sh
 grove acquire --json \
@@ -71,6 +51,8 @@ grove acquire --json \
   --branch feature/my-work \
   --create-from main
 ```
+
+Do **not** use `--branch main` to check out the existing `main` branch while your primary repo is already on `main`. Git allows a branch in only one worktree. Use `--create-from main` with a new branch name, or `--ref main` for detached work.
 
 Detached validation:
 
@@ -80,16 +62,9 @@ grove acquire --json \
   --ref origin/main
 ```
 
-### Inspect and list
-
-```sh
-grove inspect --json --lease-id job_abc123
-grove list --json
-```
-
-`list --json` includes `count`, `byState`, `pool` (used/max/available), and `suggestions`.
-
 ### Release
+
+`--cleanup` is required:
 
 ```sh
 grove release --json --lease-id job_abc123 --cleanup preserve
@@ -105,34 +80,76 @@ grove repair --json --lease-id job_abc123 --action resume-cleanup
 grove repair --json --lease-id job_abc123 --action force-destroy --force
 ```
 
-### Destroy
+## JSON errors
 
-```sh
-grove destroy --json --lease-id job_abc123
-grove destroy --json --lease-id job_abc123 --force
+All failures with `--json` use a stable envelope on stdout:
+
+```json
+{ "ok": false, "error": { "code": "...", "message": "...", "details": {} } }
 ```
 
-## JSON response shapes
+Read `error.details` before retrying. Common shapes:
 
-Success responses include the primary payload (`lease`, `leases`, or `result`) plus optional additive fields:
+**Missing required flags** (including Commander validation):
 
-- `suggestions` — advisory next Grove commands with reasons
-- `count`, `byState`, `pool` — on `list --json` and `status --json`
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "INVALID_INPUT",
+    "message": "required option '--cleanup <action>' not specified",
+    "details": {
+      "missing": ["cleanup"],
+      "source": "commander",
+      "commanderCode": "commander.missingMandatoryOptionValue"
+    }
+  }
+}
+```
 
-Error responses:
+**Missing acquire target:**
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "INVALID_INPUT",
+    "message": "Acquire requires either --branch or --ref",
+    "details": { "missing": ["branch", "ref"], "requireOneOf": ["branch", "ref"] }
+  }
+}
+```
+
+**Lease conflict:**
 
 ```json
 {
   "ok": false,
   "error": {
     "code": "LEASE_CONFLICT",
-    "message": "...",
     "details": { "leaseId": "...", "existingBranch": "...", "requestedBranch": "..." }
   }
 }
 ```
 
-Recoverable errors include structured `details` to help callers decide the next action without extra inspection.
+**Branch already checked out elsewhere:**
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "WORKTREE_IN_USE",
+    "message": "Branch main is already checked out in another worktree",
+    "details": {
+      "branch": "main",
+      "reason": "branch_already_checked_out",
+      "existingWorktreePath": "/path/to/repo"
+    }
+  }
+}
+```
+
+Invalid enum values include `details.allowed` (for example cleanup or repair actions).
 
 ## Tips
 
@@ -142,6 +159,7 @@ Recoverable errors include structured `details` to help callers decide the next 
 - Use `grove status --json` or `grove list --json` to check pool capacity before acquiring.
 - Use `grove commands --json` when you need machine-readable command discovery.
 - Re-acquire with the same `leaseId` to get the same worktree back (idempotent for compatible targets).
+- On `INVALID_INPUT`, inspect `details.missing` or `details.allowed` and retry with corrected flags.
 
 ## Environment
 

@@ -6,17 +6,54 @@ import {
   RefNotFoundError,
   GitCommandError,
   InvalidInputError,
+  WorktreeInUseError,
+  type GroveError,
 } from "../errors.js";
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function gitStderr(error: unknown): string {
+  if (error instanceof GitCommandError) return error.stderr;
+  return errorMessage(error);
+}
+
+function classifyCheckoutBranchError(
+  branch: string,
+  wtPath: string,
+  err: unknown,
+): GroveError {
+  const stderr = gitStderr(err);
+  const details: Record<string, unknown> = {
+    branch,
+    worktreePath: wtPath,
+    ...(stderr ? { stderr } : {}),
+  };
+
+  if (/already (used by worktree|checked out)/i.test(stderr)) {
+    const worktreeMatch = stderr.match(/worktree at '([^']+)'/);
+    return new WorktreeInUseError(
+      `Branch ${branch} is already checked out in another worktree`,
+      {
+        ...details,
+        reason: "branch_already_checked_out",
+        ...(worktreeMatch ? { existingWorktreePath: worktreeMatch[1] } : {}),
+      },
+    );
+  }
+
+  return new BranchNotFoundError(`Branch not found: ${branch}`, {
+    ...details,
+    reason: "not_found",
+  });
+}
+
 export async function validateBranchName(repoRoot: string, branch: string): Promise<void> {
   try {
     await runGit(repoRoot, ["check-ref-format", "--branch", branch]);
   } catch {
-    throw new InvalidInputError(`Invalid branch name: ${branch}`);
+    throw new InvalidInputError(`Invalid branch name: ${branch}`, { branch });
   }
 }
 
@@ -138,8 +175,12 @@ export async function getHeadSha(wtPath: string): Promise<string> {
 export async function resolveRef(repoRoot: string, ref: string): Promise<string> {
   try {
     return (await runGit(repoRoot, ["rev-parse", ref])).trim();
-  } catch {
-    throw new RefNotFoundError(`Ref not found: ${ref}`);
+  } catch (err: unknown) {
+    throw new RefNotFoundError(`Ref not found: ${ref}`, {
+      ref,
+      reason: "not_found",
+      ...(gitStderr(err) ? { stderr: gitStderr(err) } : {}),
+    });
   }
 }
 
@@ -155,7 +196,11 @@ export async function checkoutBranch(
         throw new BranchExistsError(`Branch exists: ${branch}`);
       }
       // reuse
-      await runGit(wtPath, ["checkout", branch]);
+      try {
+        await runGit(wtPath, ["checkout", branch]);
+      } catch (err: unknown) {
+        throw classifyCheckoutBranchError(branch, wtPath, err);
+      }
     } else {
       try {
         await runGit(wtPath, ["checkout", "-b", branch, createOpts.from]);
@@ -169,8 +214,8 @@ export async function checkoutBranch(
   } else {
     try {
       await runGit(wtPath, ["checkout", branch]);
-    } catch {
-      throw new BranchNotFoundError(`Branch not found: ${branch}`);
+    } catch (err: unknown) {
+      throw classifyCheckoutBranchError(branch, wtPath, err);
     }
   }
 }
@@ -178,8 +223,14 @@ export async function checkoutBranch(
 export async function checkoutDetached(wtPath: string, ref: string): Promise<void> {
   try {
     await runGit(wtPath, ["checkout", "--detach", ref]);
-  } catch {
-    throw new RefNotFoundError(`Ref not found: ${ref}`);
+  } catch (err: unknown) {
+    const stderr = gitStderr(err);
+    throw new RefNotFoundError(`Ref not found: ${ref}`, {
+      ref,
+      worktreePath: wtPath,
+      reason: "not_found",
+      ...(stderr ? { stderr } : {}),
+    });
   }
 }
 

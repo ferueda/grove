@@ -21,13 +21,20 @@ export const acquireCmd = new Command("acquire")
   .action(async (options) => {
     try {
       if (!options.branch && !options.ref) {
-        throw new InvalidInputError("Acquire requires either --branch or --ref");
+        throw new InvalidInputError("Acquire requires either --branch or --ref", {
+          missing: ["branch", "ref"],
+          requireOneOf: ["branch", "ref"],
+        });
       }
       if (options.branch && options.ref) {
-        throw new InvalidInputError("Acquire accepts only one of --branch or --ref");
+        throw new InvalidInputError("Acquire accepts only one of --branch or --ref", {
+          conflicting: ["branch", "ref"],
+        });
       }
       if (options.reuseExistingBranch && options.failIfExists) {
-        throw new InvalidInputError("Use only one of --reuse-existing-branch or --fail-if-exists");
+        throw new InvalidInputError("Use only one of --reuse-existing-branch or --fail-if-exists", {
+          conflicting: ["reuseExistingBranch", "failIfExists"],
+        });
       }
 
       const grove = await loadGrove({ repo: options.repo });
