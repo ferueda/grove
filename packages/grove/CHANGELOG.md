@@ -1,5 +1,13 @@
 # @ferueda/grove
 
+## [1.3.0](https://github.com/ferueda/grove/compare/grove-v1.2.0...grove-v1.3.0) (2026-06-13)
+
+
+### Features
+
+* add structured CLI errors and commander JSON routing ([4d91cef](https://github.com/ferueda/grove/commit/4d91cef64f9038f39912cdb2fd947d9c1da771b8))
+* add structured CLI errors and commander JSON routing ([d40e5f5](https://github.com/ferueda/grove/commit/d40e5f5325f7653d45e111bff84ed2ff5e37c88f))
+
 ## [1.2.0](https://github.com/ferueda/grove/compare/grove-v1.1.0...grove-v1.2.0) (2026-06-13)
 
 
