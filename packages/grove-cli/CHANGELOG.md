@@ -1,5 +1,28 @@
 # @ferueda/grove-cli
 
+## [0.4.0](https://github.com/ferueda/grove/compare/grove-cli-v0.3.0...grove-cli-v0.4.0) (2026-06-13)
+
+
+### Features
+
+* implement v1 lease acquire, inspect, and list ([ab5277e](https://github.com/ferueda/grove/commit/ab5277e3ed7b2cffa3390fa7981fb55de77cffc3))
+* implement v1 lease release with ReleaseResult and resume-cleanup ([6c41dcd](https://github.com/ferueda/grove/commit/6c41dcd3eb678fe5283d137e1284a74bd65b0c62))
+* implement v1 repair matrix and mutator enforcement ([d494451](https://github.com/ferueda/grove/commit/d49445146207d10110d98ac24b0db9ac5fe2b251))
+* v1 lease acquire, inspect, and list (PR 2) ([a97762c](https://github.com/ferueda/grove/commit/a97762c98da8e4ac815a7cb52a46340dfd6e5df9))
+* v1 lease release with ReleaseResult (PR 3) ([f3962fd](https://github.com/ferueda/grove/commit/f3962fd47649829fb36fd162af48d839ca1a0f0a))
+* v1 lease repair matrix and mutator enforcement (PR 5) ([5bbf69d](https://github.com/ferueda/grove/commit/5bbf69dd886f0503c363d57587753c3ec3809b4e))
+* v1 lease-first API cutover and CLI JSON envelopes ([1860c63](https://github.com/ferueda/grove/commit/1860c63c16527bc95dbfa9c6313d579a46f53c8a))
+* v1 lease-first API cutover and CLI JSON envelopes (PR 6) ([9e3e177](https://github.com/ferueda/grove/commit/9e3e17798f2776de543f36bc0386d2347f11f4c6))
+
+
+### Bug Fixes
+
+* apply PR 3 review fixes and document PR 4 deferrals ([d1f4aa8](https://github.com/ferueda/grove/commit/d1f4aa8349f80216a9ea08f55fde069445a58ae3))
+* harden v1 lease recovery ([52b6344](https://github.com/ferueda/grove/commit/52b6344a62ae44f95a6fa17bb4f1aa859675cda9))
+* harden v1 lease recovery ([2043cbd](https://github.com/ferueda/grove/commit/2043cbd929fff01a7c8caf90126f784c2e6d8fba))
+* validate leaseId at API boundary before state writes ([612b95c](https://github.com/ferueda/grove/commit/612b95c43d1b459dbe11ed5f96e8eb8b6fada69e))
+* validate leaseId at Grove API boundary before state writes ([89006cc](https://github.com/ferueda/grove/commit/89006cca432decc94d0b38de9fc2dae9280512c0))
+
 ## [0.3.0](https://github.com/ferueda/grove/compare/grove-cli-v0.2.0...grove-cli-v0.3.0) (2026-06-12)
 
 
