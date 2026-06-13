@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Felipe owns this. Work style: telegraph; noun-phrases ok; drop grammar; min tokens; always respond in English.
+Work style: telegraph; noun-phrases ok; drop grammar; min tokens; always respond in English.
 
 ## Project Overview
 
@@ -84,4 +84,4 @@ Felipe owns this. Work style: telegraph; noun-phrases ok; drop grammar; min toke
 
 - Product Vision: `VISION.md`
 - User-facing API docs: `README.md`
-- v1 implementation plan: `grove-v1-lease-first-implementation-plan.md`
+
