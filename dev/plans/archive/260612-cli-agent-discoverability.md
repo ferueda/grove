@@ -1,18 +1,17 @@
 # Plan 260612-cli-agent-discoverability: Add agent-friendly CLI discovery without changing Grove scope
 
-> **Executor instructions**: Follow this plan step by step. Run every
-> verification command and confirm the expected result before moving to the
-> next step. If anything in the "STOP conditions" section occurs, stop and
-> report. Do not improvise.
+> **Completed** in [PR #56](https://github.com/ferueda/grove/pull/56) (`feat/cli-agent-discoverability`). Archived after implementation and review.
 
 ## Status
 
+- **State**: completed
 - **Priority**: P1
 - **Effort**: M
 - **Risk**: MED
 - **Depends on**: none
 - **Category**: dx
 - **Issue**: [https://github.com/ferueda/grove/issues/54](https://github.com/ferueda/grove/issues/54)
+- **PR**: [https://github.com/ferueda/grove/pull/56](https://github.com/ferueda/grove/pull/56)
 
 ## Why this matters
 
@@ -33,6 +32,7 @@ Relevant files and current roles:
 - `packages/grove-cli/src/cli.ts` — Commander root; registers all commands.
 - `packages/grove-cli/src/commands/*.ts` — command handlers that directly call `writeJson(...)`.
 - `packages/grove-cli/src/utils.ts` — resolves repo root and creates the SDK client.
+- `skills/grove/SKILL.md` — does not exist yet; this plan will add an Agent Skills format guide for agents using Grove.
 - `packages/grove/src/errors.ts` — stable error classes and `code` values.
 - `packages/grove/src/pool.ts` — public SDK facade; currently exposes `list()` but no stats method.
 - `packages/grove/src/pool-state.ts` — loads/heals state and has slot/lease access helpers.
@@ -137,6 +137,13 @@ expect(body.leases).toHaveLength(1);
 expect(result.stderr).toBe("");
 ```
 
+Agent Skills examples to match:
+
+- `lavish-axi` skill uses YAML frontmatter with `name`, `description`, `argument-hint`, `author`, and `metadata.hermes`.
+- `gh-axi` skill uses YAML frontmatter with `name`, `description`, `user-invocable`, `author`, and `metadata.hermes`.
+- Both keep the body practical: when to use, workflow, commands, and tips.
+- Grove's skill should follow that style, but describe Grove's actual CLI and scope.
+
 Repo conventions to match:
 
 - TypeScript, Node `>=24`, ESM-only.
@@ -185,6 +192,7 @@ Repo conventions to match:
   - `commands/catalog.ts`
   - `commands/status.ts`
 - `packages/grove-cli/test/cli.test.ts`
+- `skills/grove/SKILL.md`
 - README sections that document new additive JSON fields and new commands, if commands are added.
 
 **Out of scope**:
@@ -215,6 +223,7 @@ type CliSuggestion = {
 2. **Expose stats through the SDK, not by duplicating state reads in CLI.** Add a read-only SDK method so CLI and future callers share the same state/capacity logic.
 3. **Make `status` the dashboard command.** Add `grove status --json` instead of changing no-args behavior. This avoids surprising human users and keeps Commander help intact.
 4. **Add `commands --json` only if discovery is still desired after P0.** It is lower risk than making agents parse Commander help.
+5. **Ship a Grove Agent Skill as documentation, not runtime code.** `skills/grove/SKILL.md` should teach agents how to use the CLI safely. It must not add product behavior or imply Grove runs workflows.
 
 ## Data Contracts
 
@@ -619,7 +628,92 @@ Verify:
 
 `pnpm test -- packages/grove-cli/test/cli.test.ts` -> exit 0; status test passes.
 
-### Phase 7: Documentation and final gates
+### Phase 7: Add `skills/grove/SKILL.md`
+
+What to build:
+
+- Create `skills/grove/SKILL.md` in the repository.
+- Use the [Agent Skills](https://agentskills.io) format.
+- Follow the style of the referenced examples:
+  - concise YAML frontmatter
+  - direct "when to use" guidance
+  - command-first workflow
+  - practical tips
+  - explicit scope boundaries
+
+Recommended frontmatter:
+
+```markdown
+---
+name: grove
+description: "Use Grove's lease-first git worktree pool CLI for durable branch-aware worktree leases: acquire, inspect, list, release, repair, destroy, and status. Use when agents or automation need isolated reusable checkouts without cloning repeatedly."
+user-invocable: false
+author: Felipe Rueda (ferueda)
+metadata:
+  hermes:
+    tags: [git, worktree, cli, leases, automation, agents]
+    category: devtools
+---
+```
+
+Recommended body outline:
+
+```markdown
+# Grove
+
+Grove is a lease-first git worktree pool. It gives agents and automation durable, branch-aware checkouts keyed by `leaseId`.
+
+Grove is not an agent runner, workflow manager, PR system, or validation framework. Use it only to manage checkout leases.
+
+## When to use
+
+Use Grove when a task needs an isolated reusable worktree for a repo, especially across process restarts or concurrent jobs.
+
+## Workflow
+
+1. Start with `grove status --json` to inspect repo, pool, capacity, active leases, and suggestions.
+2. Use `grove acquire --json --lease-id <id> --branch <branch> --create-from <ref>` for branch work, or `--ref <ref>` for detached validation work.
+3. Run the caller's work in `lease.path`.
+4. Release explicitly with `grove release --json --lease-id <id> --cleanup preserve|reset|quarantine`.
+5. If a lease is stuck, follow `suggestions` or use `grove repair --json --lease-id <id> --action <action>`.
+
+## Commands
+
+List the lease-first commands and prefer `--json` for agent automation.
+
+## Tips
+
+- Keep `GROVE_DIR` consistent across commands.
+- Treat `leaseId` as the stable handle. Do not pass worktree paths to destructive commands.
+- Follow `suggestions` when present.
+- Use `grove commands --json` for machine-readable discovery.
+```
+
+Content requirements:
+
+- Mention the install command exactly:
+
+```sh
+npx skills add ferueda/grove --skill grove -g
+```
+
+- Include the current primary command loop:
+  - `status`
+  - `acquire`
+  - caller runs work in `lease.path`
+  - `release`
+  - `repair` when needed
+- Say JSON mode is preferred for agents.
+- Say Grove does not create PRs, run reviews, validate output, or own lifecycle orchestration.
+- Keep the skill concise. Target about 100-180 lines, not a full README clone.
+
+Verify:
+
+`test -f skills/grove/SKILL.md` -> exit 0.
+
+`pnpm lint` -> exit 0.
+
+### Phase 8: Documentation and final gates
 
 What to update:
 
@@ -629,11 +723,25 @@ What to update:
   - Document `grove commands --json` if implemented.
   - Document `grove status --json` if implemented.
   - Keep the guidance that JSON mode writes machine-readable stdout only.
+- Add a quickstart subsection to the CLI documentation for the Grove Agent Skill:
+
+````markdown
+### Agent Skill Quickstart
+
+Install the Grove skill in the [Agent Skills](https://agentskills.io) format with [`npx skills`](https://github.com/vercel-labs/skills):
+
+```sh
+npx skills add ferueda/grove --skill grove -g
+```
+````
+
+- Place the quickstart near the CLI usage/JSON-mode area so agent users find it before command examples get too deep.
 
 Do not over-document internal AXI terminology. Public docs should explain practical behavior:
 
 - "Use `list --json` or `status --json` to inspect pool capacity."
 - "Use `suggestions` for Grove-native next commands."
+- "Install the Grove Agent Skill when using an agent environment that supports Agent Skills."
 
 Verify:
 
@@ -674,6 +782,10 @@ Required test cases:
 - New `status --json writes pool dashboard`:
   - Seed one lease.
   - Assert `repoRoot`, `poolDir`, `count`, `byState`, `pool`, `leases`, and `suggestions`.
+- New `skills/grove/SKILL.md` exists:
+  - No Vitest test required.
+  - Verify with `test -f skills/grove/SKILL.md`.
+  - Review the frontmatter and body manually against the examples.
 
 Optional SDK tests:
 
@@ -684,19 +796,21 @@ Optional SDK tests:
 
 All must hold:
 
-- [ ] `LEASE_CONFLICT` JSON errors include non-empty structured `error.details`.
-- [ ] `grove list --json` includes `count`, `byState`, `pool.used`, `pool.max`, and `pool.available`.
-- [ ] Successful JSON responses for acquire/list/inspect/release/repair/destroy include additive `suggestions`.
-- [ ] `grove commands --json` returns a machine-readable catalog if Phase 5 is included.
-- [ ] `grove status --json` returns repo, pool, aggregate, lease, and suggestion data if Phase 6 is included.
-- [ ] Existing top-level success envelope keys remain compatible: `lease`, `leases`, and `result` still exist where they existed before.
-- [ ] Human mode still writes prose to stderr and keeps stdout empty.
-- [ ] No lifecycle/workflow commands are added.
-- [ ] `pnpm test -- packages/grove-cli/test/cli.test.ts` exits 0.
-- [ ] `pnpm build` exits 0.
-- [ ] `pnpm typecheck` exits 0.
-- [ ] `pnpm lint` exits 0.
-- [ ] `pnpm check` exits 0 before merge.
+- [x] `LEASE_CONFLICT` JSON errors include non-empty structured `error.details`.
+- [x] `grove list --json` includes `count`, `byState`, `pool.used`, `pool.max`, and `pool.available`.
+- [x] Successful JSON responses for acquire/list/inspect/release/repair/destroy include additive `suggestions`.
+- [x] `grove commands --json` returns a machine-readable catalog if Phase 5 is included.
+- [x] `grove status --json` returns repo, pool, aggregate, lease, and suggestion data if Phase 6 is included.
+- [x] `skills/grove/SKILL.md` exists and follows Agent Skills frontmatter/body conventions.
+- [x] README CLI docs include the Agent Skill quickstart with `npx skills add ferueda/grove --skill grove -g`.
+- [x] Existing top-level success envelope keys remain compatible: `lease`, `leases`, and `result` still exist where they existed before.
+- [x] Human mode still writes prose to stderr and keeps stdout empty.
+- [x] No lifecycle/workflow commands are added.
+- [x] `pnpm test -- packages/grove-cli/test/cli.test.ts` exits 0.
+- [x] `pnpm build` exits 0.
+- [x] `pnpm typecheck` exits 0.
+- [x] `pnpm lint` exits 0.
+- [x] `pnpm check` exits 0 before merge.
 
 ## STOP Conditions
 
@@ -709,6 +823,7 @@ Stop and report back if:
 - A test requires mocking git to pass.
 - A proposed suggestion would need to recommend non-Grove workflow actions.
 - A step requires changing existing success envelope keys or defaulting to brief lease output.
+- The Agent Skill content starts describing Grove as an agent runner, workflow engine, PR tool, or validation framework.
 - A verification command fails twice after a focused fix attempt.
 
 ## Maintenance Notes
@@ -716,6 +831,7 @@ Stop and report back if:
 - Reviewers should scrutinize JSON compatibility. This plan is intentionally additive.
 - `pool.used` should track slot capacity consumption, not just active lease count. If allocation rules change later, update stats with that rule.
 - Suggestions are a CLI affordance, not an orchestration policy. Keep them limited to Grove commands.
+- The Grove Agent Skill is documentation and onboarding for agent environments. Keep it synchronized with CLI command names and JSON fields.
 - If future versions introduce `--view summary|full`, that should be a separate versioned output-shape plan.
 - If `repair` envelopes are unified later, treat it as a compatibility-sensitive follow-up.
 - If `GROVE_MAX_TREES` or other CLI config env vars are added later, update `status --json` and README together.
