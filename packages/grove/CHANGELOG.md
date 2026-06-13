@@ -1,5 +1,53 @@
 # @ferueda/grove
 
+## [1.0.0](https://github.com/ferueda/grove/compare/grove-v0.3.0...grove-v1.0.0) (2026-06-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **lease-first API cutover** — Grove v1 is a breaking rewrite of the public SDK surface.
+  * `acquire()` now requires `{ leaseId, mode, ref? }`; no-arg acquire is removed.
+  * `release(leaseId, options)` and `destroy(leaseId)` are leaseId-only; path-based release/destroy removed.
+  * `list()`, `inspect()`, and `repair()` replace `listLeases`, `listWorktreeStatus`, and `destroyAll`.
+  * Removed types: `AcquiredSlot`, `WorktreeStatus`.
+  * State machine is transition-driven with crash-recoverable acquire, release WAL, destroy, and repair.
+
+
+### Features
+
+* add lease and slot transition helpers with joint invariants ([2fbd270](https://github.com/ferueda/grove/commit/2fbd27088f5e417062204d953b43e64fe281a879))
+* add lease-first state parse, read, write, and legacy migration ([fb913ba](https://github.com/ferueda/grove/commit/fb913ba80e0e94570ae1d3d02b909dbd734c415b))
+* add lease-first v1 error codes and classes ([46aad01](https://github.com/ferueda/grove/commit/46aad01232b7aa86affd7517408051bfec95f5c5))
+* add lease-first v1 Zod schemas for slots and leases ([0d5c9a2](https://github.com/ferueda/grove/commit/0d5c9a21e22846a9d4a793230800a5f13bcf3834))
+* export lease-first v1 schemas, transitions, and state APIs ([7a50e08](https://github.com/ferueda/grove/commit/7a50e08a4d227fae889c8d9607ccaab8a0736f8c))
+* implement v1 lease acquire, inspect, and list ([ab5277e](https://github.com/ferueda/grove/commit/ab5277e3ed7b2cffa3390fa7981fb55de77cffc3))
+* implement v1 lease destroy with path safety and resume ([b5c575b](https://github.com/ferueda/grove/commit/b5c575ba6b15c100274c83d33b711c592731b132))
+* implement v1 lease release with ReleaseResult and resume-cleanup ([6c41dcd](https://github.com/ferueda/grove/commit/6c41dcd3eb678fe5283d137e1284a74bd65b0c62))
+* implement v1 repair matrix and mutator enforcement ([d494451](https://github.com/ferueda/grove/commit/d49445146207d10110d98ac24b0db9ac5fe2b251))
+* lease-first v1 PR 1 — schemas, transitions, and state loader ([47c90f0](https://github.com/ferueda/grove/commit/47c90f089d72bfba748a08598e612a6845d3a259))
+* v1 lease acquire, inspect, and list (PR 2) ([a97762c](https://github.com/ferueda/grove/commit/a97762c98da8e4ac815a7cb52a46340dfd6e5df9))
+* v1 lease destroy with path safety (PR 4) ([b275eb8](https://github.com/ferueda/grove/commit/b275eb8719cceecdfcc37e39a94f6e420d1e1ef2))
+* v1 lease release with ReleaseResult (PR 3) ([f3962fd](https://github.com/ferueda/grove/commit/f3962fd47649829fb36fd162af48d839ca1a0f0a))
+* v1 lease repair matrix and mutator enforcement (PR 5) ([5bbf69d](https://github.com/ferueda/grove/commit/5bbf69dd886f0503c363d57587753c3ec3809b4e))
+* v1 lease-first API cutover and CLI JSON envelopes ([1860c63](https://github.com/ferueda/grove/commit/1860c63c16527bc95dbfa9c6313d579a46f53c8a))
+* v1 lease-first API cutover and CLI JSON envelopes (PR 6) ([9e3e177](https://github.com/ferueda/grove/commit/9e3e17798f2776de543f36bc0386d2347f11f4c6))
+
+
+### Bug Fixes
+
+* address lease recovery review nits ([12e5610](https://github.com/ferueda/grove/commit/12e5610b4d3a440c2accbe2f5c4e65e5e2d9d7be))
+* address PR [#45](https://github.com/ferueda/grove/issues/45) review — timing parser and fetch default test ([024ebd1](https://github.com/ferueda/grove/commit/024ebd1709405452cafc810b6a46a21a72111831))
+* address PR 4 destroy review findings ([606264c](https://github.com/ferueda/grove/commit/606264c08ab3e526d3a14fac57a3f169c75906b1))
+* apply PR 3 review fixes and document PR 4 deferrals ([d1f4aa8](https://github.com/ferueda/grove/commit/d1f4aa8349f80216a9ea08f55fde069445a58ae3))
+* clear slot owner fields on quarantine repair ([726b8f5](https://github.com/ferueda/grove/commit/726b8f5cd007c0b4b731d9479c964428b74da45b))
+* enforce leaseId-only destroy and post-hook path consistency ([b6bf96c](https://github.com/ferueda/grove/commit/b6bf96c77283096af4689ca0dcce1d4184e84278))
+* fresh reset safety scan and typed release state errors ([551a37f](https://github.com/ferueda/grove/commit/551a37f62204850f370fd4b9ac32b8dcbc69a9e5))
+* harden v1 lease recovery ([52b6344](https://github.com/ferueda/grove/commit/52b6344a62ae44f95a6fa17bb4f1aa859675cda9))
+* harden v1 lease recovery ([2043cbd](https://github.com/ferueda/grove/commit/2043cbd929fff01a7c8caf90126f784c2e6d8fba))
+* tighten lease acquire reacquire and hook failure handling ([6155dde](https://github.com/ferueda/grove/commit/6155ddef1fa468164e91e67cd2a363bdfeb6b449))
+* validate leaseId at API boundary before state writes ([612b95c](https://github.com/ferueda/grove/commit/612b95c43d1b459dbe11ed5f96e8eb8b6fada69e))
+* validate leaseId at Grove API boundary before state writes ([89006cc](https://github.com/ferueda/grove/commit/89006cca432decc94d0b38de9fc2dae9280512c0))
+
 ## [0.3.0](https://github.com/ferueda/grove/compare/grove-v0.2.0...grove-v0.3.0) (2026-06-12)
 
 
