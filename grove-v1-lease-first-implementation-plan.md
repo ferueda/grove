@@ -1,6 +1,10 @@
 # Grove V1 Lease-First Implementation Plan
 
-Status: draft.
+Status: **completed** — merged to `main` via PR #38 (`chore/v1-release-prep`), 2026-06-12. v1.0.0 release tracked in PR #50.
+
+> **Historical record.** This document describes the v1 lease-first implementation
+> plan. The work is complete; branch workflow and PR-by-PR instructions below are
+> archival context for how the integration landed.
 
 Source: GitHub issue #29 proposal and follow-up review discussion on 2026-06-11.
 
@@ -803,12 +807,18 @@ if cheap: old entries can become available slots when their disk paths are valid
 Invalid or missing old entries should quarantine or be ignored with clear repair
 guidance.
 
-## Integration Branch and Release
+## Integration Branch and Release (completed)
 
-Lease-first v1 is a **breaking change**. Do not land it on `main` incrementally.
+Lease-first v1 shipped as a **breaking change** in a single merge to `main`.
 
-Use a long-lived integration branch and one final merge to `main` for the major
-release.
+**Final outcome**
+
+- Integration branch `feat/lease-first-v1` carried PRs 1–6, then merged via PR #38.
+- `main` is the v1 lease-first production line.
+- Release Please opened the v1.0.0 release PR (#50); breaking markers were added
+  manually because commits used plain `feat:` without `BREAKING CHANGE:` footers.
+
+**Historical branch layout** (archival)
 
 ```text
 main (stable, current semver — releasable)
@@ -820,31 +830,23 @@ main (stable, current semver — releasable)
             └─ feat/lease-first-v1 → main  (single breaking release)
 ```
 
-**Branch roles**
+**Branch roles** (archival)
 
 | Branch | Role |
 | --- | --- |
-| `main` | Production line. No lease-first breaking API until integration merge. |
-| `feat/lease-first-v1` | Integration branch. All PRs 1–6 merge here first. |
+| `main` | Production line. Lease-first v1 merged here via PR #38. |
+| `feat/lease-first-v1` | Integration branch (merged and closed). |
 | `feat/lease-first-prN-*` | Short-lived implementation branches; base = `feat/lease-first-v1`. |
 
-**Workflow rules**
+**Final PR status**
 
-- Every implementation PR (1–6) targets **`feat/lease-first-v1`**, not `main`.
-- Keep **`feat/lease-first-v1` CI green** after each merged PR.
-- **PR 6** removes legacy API surface; it is the last PR before release.
-- When PR 6 is merged and CI is green, open **one PR**: `feat/lease-first-v1` → `main`.
-- That merge ships **v1 major** via release-please. Use `feat!:` or a
-  `BREAKING CHANGE:` footer on the final merge PR (or PR 6 commits) so semver
-  bumps correctly.
-
-**Current status**
-
-- Integration branch: `feat/lease-first-v1` (created from `main`).
-- PR 1: merged — `feat/lease-first-pr1-schemas-transitions` → `feat/lease-first-v1`.
-- PR 2: merged — `feat/lease-first-pr2-acquire` → `feat/lease-first-v1`.
-- PR 3: merged — `feat/lease-first-pr3-release` → `feat/lease-first-v1`.
-- PR 4: in progress — `feat/lease-first-pr4-destroy` → `feat/lease-first-v1`.
+- PR 1: merged — schemas, transitions, state loader
+- PR 2: merged — acquire, inspect, list
+- PR 3: merged — release with WAL and resume-cleanup
+- PR 4: merged — destroy with path safety
+- PR 5: merged — repair matrix and mutator enforcement
+- PR 6: merged — breaking API cutover and CLI JSON envelopes
+- Release prep: merged — PR #38 (`chore/v1-release-prep`) → `main`
 
 ## PR Split
 
@@ -1161,7 +1163,7 @@ Branch: `feat/lease-first-pr2-acquire`
   - `packages/grove/src/types.ts` — `GroveLease` v1 fields, `resume-acquire`
   - `packages/grove-cli/src/commands/status.ts`
   - `packages/grove/test/target.test.ts` (new)
-  - `packages/grove/test/lease.integration.test.ts`
+  - `packages/grove/test/lease-*.integration.test.ts`
   - `packages/grove/test/pool.test.ts`, `grove.integration.test.ts`
   - `packages/grove/test/helpers/hook-probe.mjs`
   - `grove-v1-lease-first-implementation-plan.md`
@@ -1227,7 +1229,7 @@ Branch: `feat/lease-first-pr3-release`
   - `packages/grove/src/pool.ts` — delegate release/repair cleanup
   - `packages/grove/src/index.ts` — export `ReleaseResult`, `isReleaseResult`
   - `packages/grove-cli/src/commands/release.ts`, `repair.ts`
-  - `packages/grove/test/lease.integration.test.ts`
+  - `packages/grove/test/lease-*.integration.test.ts`
   - `grove-v1-lease-first-implementation-plan.md`
 
 ## PR 4 Implementation Summary (Completed)
@@ -1268,7 +1270,7 @@ Branch: `feat/lease-first-pr4-destroy`
   - `packages/grove/src/pool.ts`
   - `packages/grove/src/lease-release.ts`
   - `packages/grove/src/transitions.ts`
-  - `packages/grove/test/lease.integration.test.ts`
+  - `packages/grove/test/lease-*.integration.test.ts`
   - `packages/grove/test/transitions.test.ts`
   - `grove-v1-lease-first-implementation-plan.md`
 
@@ -1311,7 +1313,7 @@ Branch: `feat/lease-first-pr5-repair`
   - `packages/grove/src/types.ts`
   - `packages/grove/src/index.ts`
   - `packages/grove-cli/src/commands/repair.ts`
-  - `packages/grove/test/lease.integration.test.ts`
+  - `packages/grove/test/lease-*.integration.test.ts`
   - `packages/grove/test/transitions.test.ts`
   - `packages/grove/test/mutator-enforcement.test.ts` (new)
   - `grove-v1-lease-first-implementation-plan.md`
@@ -1357,7 +1359,7 @@ Branch: `feat/lease-first-pr6-cutover`
     `exit-codes.ts`
   - `packages/grove-cli/src/commands/*.ts` (acquire, release, destroy, inspect,
     list, repair; status removed)
-  - `packages/grove/test/grove.integration.test.ts`, `lease.integration.test.ts`
+  - `packages/grove/test/grove.integration.test.ts`, `lease-*.integration.test.ts`
   - `packages/grove/test/pool.test.ts` (removed)
   - `packages/grove-cli/test/cli.test.ts` (new)
   - `grove-v1-lease-first-implementation-plan.md`

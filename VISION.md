@@ -88,7 +88,7 @@ Grove state must always match disk reality.
 
 ## Agent And Contributor Guardrails
 
-Acceptance tests in `packages/grove/test/lease.integration.test.ts` define expected lease behavior.
+Acceptance tests in `packages/grove/test/lease-*.integration.test.ts` define expected lease behavior (acquire, hooks, release, repair, destroy).
 Transition rules live in `packages/grove/test/transitions.test.ts`.
 
 Prefer changes that:
