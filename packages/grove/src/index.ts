@@ -13,6 +13,8 @@ export type {
   DestroyLeaseOptions,
   RepairLeaseOptions,
   GroveLease,
+  GroveLeaseState,
+  GrovePoolStats,
 } from "./types.js";
 export { GroveConfigSchema } from "./schemas.js";
 export type {

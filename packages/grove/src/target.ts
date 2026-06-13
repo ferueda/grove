@@ -8,6 +8,24 @@ import {
   LeaseQuarantinedError,
 } from "./errors.js";
 
+function leaseStateDetails(lease: GroveLeaseRecord): Record<string, unknown> {
+  return { leaseId: lease.leaseId, existingState: lease.state };
+}
+
+function conflictDetails(
+  existing: GroveLeaseRecord,
+  requested: GroveLeaseTarget,
+  extra: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    leaseId: existing.leaseId,
+    existingState: existing.state,
+    ...(existing.target ? { existingTarget: existing.target } : {}),
+    requestedTarget: requested,
+    ...extra,
+  };
+}
+
 export async function buildAcquireTarget(
   options: AcquireLeaseOptions,
   repoRoot: string,
@@ -77,22 +95,34 @@ export async function assertCompatibleReacquire(
   repoRoot: string,
 ): Promise<void> {
   if (existing.state === "preparing") {
-    throw new AcquireInProgressError(`Acquire in progress for lease ${existing.leaseId}`);
+    throw new AcquireInProgressError(
+      `Acquire in progress for lease ${existing.leaseId}`,
+      leaseStateDetails(existing),
+    );
   }
   if (existing.state === "quarantined") {
-    throw new LeaseQuarantinedError(`Lease ${existing.leaseId} is quarantined`);
+    throw new LeaseQuarantinedError(
+      `Lease ${existing.leaseId} is quarantined`,
+      leaseStateDetails(existing),
+    );
   }
   if (existing.state === "releasing" || existing.state === "destroying") {
-    throw new LeaseBusyError(`Lease ${existing.leaseId} is busy`);
+    throw new LeaseBusyError(`Lease ${existing.leaseId} is busy`, leaseStateDetails(existing));
   }
   if (existing.state !== "leased" || !existing.target) {
-    throw new LeaseConflictError(`Lease ${existing.leaseId} is not in a reacquirable state`);
+    throw new LeaseConflictError(
+      `Lease ${existing.leaseId} is not in a reacquirable state`,
+      leaseStateDetails(existing),
+    );
   }
 
   const requested = await buildAcquireTarget(options, repoRoot);
 
   if (requested.mode !== existing.target.mode) {
-    throw new LeaseConflictError(`Lease conflict: mode mismatch for ${existing.leaseId}`);
+    throw new LeaseConflictError(
+      `Lease conflict: mode mismatch for ${existing.leaseId}`,
+      conflictDetails(existing, requested),
+    );
   }
 
   if (requested.mode === "detached") {
@@ -103,6 +133,10 @@ export async function assertCompatibleReacquire(
     ) {
       throw new LeaseConflictError(
         `Lease conflict: requested ref ${requested.requestedRef} does not match existing detached base or SHA`,
+        conflictDetails(existing, requested, {
+          existingRef: stored.requestedRef,
+          requestedRef: requested.requestedRef,
+        }),
       );
     }
     return;
@@ -110,24 +144,41 @@ export async function assertCompatibleReacquire(
 
   const stored = existing.target;
   if (stored.mode !== "branch") {
-    throw new LeaseConflictError(`Lease conflict: mode mismatch for ${existing.leaseId}`);
+    throw new LeaseConflictError(
+      `Lease conflict: mode mismatch for ${existing.leaseId}`,
+      conflictDetails(existing, requested),
+    );
   }
 
   if (requested.branch !== stored.branch) {
     throw new LeaseConflictError(
       `Lease conflict: requested branch ${requested.branch}, existing has ${stored.branch}`,
+      conflictDetails(existing, requested, {
+        existingBranch: stored.branch,
+        requestedBranch: requested.branch,
+      }),
     );
   }
 
   const requestedCreateFrom = options.mode === "branch" ? options.createBranch?.from : undefined;
   if (requestedCreateFrom !== undefined) {
     if ((stored.createFromRef ?? undefined) !== requestedCreateFrom) {
-      throw new LeaseConflictError(`Lease conflict: createFrom mismatch for ${existing.leaseId}`);
+      throw new LeaseConflictError(
+        `Lease conflict: createFrom mismatch for ${existing.leaseId}`,
+        conflictDetails(existing, requested, {
+          existingCreateFromRef: stored.createFromRef,
+          requestedCreateFromRef: requestedCreateFrom,
+        }),
+      );
     }
     const requestedSha = await resolveRef(repoRoot, requestedCreateFrom);
     if (stored.createFromSha && stored.createFromSha !== requestedSha) {
       throw new LeaseConflictError(
         `Lease conflict: createFromSha mismatch for ${existing.leaseId}`,
+        conflictDetails(existing, requested, {
+          existingCreateFromSha: stored.createFromSha,
+          requestedCreateFromSha: requestedSha,
+        }),
       );
     }
   }
@@ -135,6 +186,7 @@ export async function assertCompatibleReacquire(
   if (!stored.branchHeadShaAtAcquire) {
     throw new LeaseConflictError(
       `Lease conflict: branch ${stored.branch} has no recorded head for ${existing.leaseId}`,
+      conflictDetails(existing, requested, { existingBranch: stored.branch }),
     );
   }
 
@@ -157,6 +209,11 @@ export async function assertCompatibleReacquire(
 
   throw new LeaseConflictError(
     `Lease conflict: branch ${stored.branch} moved outside lease ${existing.leaseId}`,
+    conflictDetails(existing, requested, {
+      existingBranch: stored.branch,
+      branchHeadShaAtAcquire: stored.branchHeadShaAtAcquire,
+      currentBranchHead: branchHead,
+    }),
   );
 }
 

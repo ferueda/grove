@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { loadGrove } from "../utils.js";
 import { handleError } from "../error-handler.js";
 import { leaseEnvelope, writeJson } from "../json-output.js";
+import { suggestionsForLease } from "../suggestions.js";
 import { LeaseNotFoundError } from "@ferueda/grove";
 import pc from "picocolors";
 
@@ -20,7 +21,7 @@ export const inspectCmd = new Command("inspect")
       }
 
       if (options.json) {
-        writeJson(leaseEnvelope(lease));
+        writeJson(leaseEnvelope(lease, { suggestions: suggestionsForLease(lease) }));
         return;
       }
 

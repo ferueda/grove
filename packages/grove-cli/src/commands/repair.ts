@@ -3,6 +3,11 @@ import { Command } from "commander";
 import { loadGrove } from "../utils.js";
 import { handleError } from "../error-handler.js";
 import { leaseEnvelope, resultEnvelope, writeJson } from "../json-output.js";
+import {
+  suggestionsForLease,
+  suggestionsForReleaseResult,
+  suggestionsForRepairResult,
+} from "../suggestions.js";
 import pc from "picocolors";
 
 const REPAIR_ACTIONS = ["quarantine", "resume-acquire", "resume-cleanup", "force-destroy"] as const;
@@ -34,11 +39,15 @@ export const repairCmd = new Command("repair")
 
       if (options.json) {
         if (isRepairResult(result)) {
-          writeJson(resultEnvelope(result));
+          writeJson(
+            resultEnvelope(result, { suggestions: suggestionsForRepairResult(result) }),
+          );
         } else if (isReleaseResult(result)) {
-          writeJson(resultEnvelope(result));
+          writeJson(
+            resultEnvelope(result, { suggestions: suggestionsForReleaseResult(result) }),
+          );
         } else {
-          writeJson(leaseEnvelope(result));
+          writeJson(leaseEnvelope(result, { suggestions: suggestionsForLease(result) }));
         }
         return;
       }

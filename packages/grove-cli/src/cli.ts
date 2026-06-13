@@ -8,6 +8,8 @@ import { listCmd } from "./commands/list.js";
 import { destroyCmd } from "./commands/destroy.js";
 import { inspectCmd } from "./commands/inspect.js";
 import { repairCmd } from "./commands/repair.js";
+import { commandsCmd } from "./commands/commands.js";
+import { statusCmd } from "./commands/status.js";
 
 process.on("uncaughtException", (err) => {
   console.error(pc.red(`Fatal: ${err.message}`));
@@ -38,6 +40,8 @@ program.addCommand(listCmd);
 program.addCommand(destroyCmd);
 program.addCommand(inspectCmd);
 program.addCommand(repairCmd);
+program.addCommand(statusCmd);
+program.addCommand(commandsCmd);
 
 try {
   await program.parseAsync(process.argv);

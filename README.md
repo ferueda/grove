@@ -91,14 +91,34 @@ grove destroy --json --lease-id job_abc123
 grove destroy --json --lease-id job_abc123 --force
 ```
 
+Discovery and dashboard:
+
+```bash
+grove status --json
+grove commands --json
+```
+
+### Agent Skill Quickstart
+
+Install the Grove skill in the [Agent Skills](https://agentskills.io) format with [`npx skills`](https://github.com/vercel/labs/skills):
+
+```sh
+npx skills add ferueda/grove --skill grove -g
+```
+
 ### JSON mode
 
 With `--json`, stdout is machine-readable only. Human messages go to stderr.
 
+Success responses may include additive fields beyond the primary payload:
+
+- `suggestions` — advisory next Grove commands (`command` + `reason`)
+- `count`, `byState`, `pool` — on `list --json` and `status --json`
+
 Success examples:
 
 ```json
-{ "ok": true, "lease": {} }
+{ "ok": true, "lease": {}, "suggestions": [{ "command": "grove release --json --lease-id job_abc123 --cleanup preserve", "reason": "..." }] }
 ```
 
 ```json
@@ -106,7 +126,15 @@ Success examples:
 ```
 
 ```json
-{ "ok": true, "leases": [] }
+{ "ok": true, "leases": [{ "leaseId": "job_a", "state": "leased" }, { "leaseId": "job_b", "state": "quarantined" }], "count": 2, "byState": { "leased": 1, "quarantined": 1 }, "pool": { "used": 2, "max": 16, "available": 14 } }
+```
+
+```json
+{ "ok": true, "repoRoot": "/path/to/repo", "poolDir": "/path/to/pool", "count": 1, "byState": { "leased": 1 }, "pool": { "used": 1, "max": 16, "available": 15 }, "leases": [{ "leaseId": "job_abc123", "state": "leased" }] }
+```
+
+```json
+{ "ok": true, "commands": [{ "name": "acquire", "description": "...", "usage": "...", "output": "lease" }] }
 ```
 
 Error example:
@@ -117,7 +145,12 @@ Error example:
   "error": {
     "code": "LEASE_CONFLICT",
     "message": "Lease job_abc123 targets a different branch",
-    "details": {}
+    "details": {
+      "leaseId": "job_abc123",
+      "existingState": "leased",
+      "existingBranch": "branch-a",
+      "requestedBranch": "branch-b"
+    }
   }
 }
 ```

@@ -170,7 +170,9 @@ export async function findOrAllocateSlot(
 
   const maxTrees = config.maxTrees || 16;
   if (state.slots.length >= maxTrees) {
-    throw new GroveExhaustedError(`Exhausted worktrees (max ${maxTrees})`);
+    throw new GroveExhaustedError(`Exhausted worktrees (max ${maxTrees})`, {
+      pool: { used: state.slots.length, max: maxTrees, available: 0 },
+    });
   }
 
   const slotName = nextSlotName(state);

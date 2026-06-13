@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { loadGrove } from "../utils.js";
 import { handleError } from "../error-handler.js";
 import { leasesEnvelope, writeJson } from "../json-output.js";
+import { suggestionsForList } from "../suggestions.js";
 import pc from "picocolors";
 
 export const listCmd = new Command("list")
@@ -12,12 +13,20 @@ export const listCmd = new Command("list")
   .action(async (options) => {
     try {
       const grove = await loadGrove({ repo: options.repo });
-      const leases = await grove.list({
-        includeProcesses: options.includeProcesses,
-      });
+      const [leases, stats] = await Promise.all([
+        grove.list({ includeProcesses: options.includeProcesses }),
+        grove.stats(),
+      ]);
 
       if (options.json) {
-        writeJson(leasesEnvelope(leases));
+        writeJson(
+          leasesEnvelope(leases, {
+            count: stats.count,
+            byState: stats.byState,
+            pool: stats.pool,
+            suggestions: suggestionsForList(stats),
+          }),
+        );
         return;
       }
 
