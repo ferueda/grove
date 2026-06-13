@@ -1,6 +1,15 @@
 # @ferueda/grove-cli
 
-## [0.4.0](https://github.com/ferueda/grove/compare/grove-cli-v0.3.0...grove-cli-v0.4.0) (2026-06-13)
+## [1.0.0](https://github.com/ferueda/grove/compare/grove-cli-v0.3.0...grove-cli-v1.0.0) (2026-06-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **lease-first CLI cutover** — Grove CLI v1 matches the lease-first SDK.
+  * Acquire requires `--lease-id` and `--ref` / `--branch`; release and destroy require `--lease-id`.
+  * `list` replaces `status`; `destroy-all` removed.
+  * `--json` emits stable envelopes (`{ ok, lease }`, `{ ok, result }`, `{ ok, leases }`, `{ ok: false, error }`).
+  * Human prose goes to stderr in `--json` mode; exit codes map to error classes.
 
 
 ### Features

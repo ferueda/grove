@@ -1,6 +1,16 @@
 # @ferueda/grove
 
-## [0.4.0](https://github.com/ferueda/grove/compare/grove-v0.3.0...grove-v0.4.0) (2026-06-13)
+## [1.0.0](https://github.com/ferueda/grove/compare/grove-v0.3.0...grove-v1.0.0) (2026-06-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **lease-first API cutover** — Grove v1 is a breaking rewrite of the public SDK surface.
+  * `acquire()` now requires `{ leaseId, mode, ref? }`; no-arg acquire is removed.
+  * `release(leaseId, options)` and `destroy(leaseId)` are leaseId-only; path-based release/destroy removed.
+  * `list()`, `inspect()`, and `repair()` replace `listLeases`, `listWorktreeStatus`, and `destroyAll`.
+  * Removed types: `AcquiredSlot`, `WorktreeStatus`.
+  * State machine is transition-driven with crash-recoverable acquire, release WAL, destroy, and repair.
 
 
 ### Features
