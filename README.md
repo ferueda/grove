@@ -126,11 +126,11 @@ Success examples:
 ```
 
 ```json
-{ "ok": true, "leases": [], "count": 2, "byState": { "leased": 1, "quarantined": 1 }, "pool": { "used": 2, "max": 16, "available": 14 } }
+{ "ok": true, "leases": [{ "leaseId": "job_a", "state": "leased" }, { "leaseId": "job_b", "state": "quarantined" }], "count": 2, "byState": { "leased": 1, "quarantined": 1 }, "pool": { "used": 2, "max": 16, "available": 14 } }
 ```
 
 ```json
-{ "ok": true, "repoRoot": "/path/to/repo", "poolDir": "/path/to/pool", "count": 1, "byState": { "leased": 1 }, "pool": { "used": 1, "max": 16, "available": 15 }, "leases": [] }
+{ "ok": true, "repoRoot": "/path/to/repo", "poolDir": "/path/to/pool", "count": 1, "byState": { "leased": 1 }, "pool": { "used": 1, "max": 16, "available": 15 }, "leases": [{ "leaseId": "job_abc123", "state": "leased" }] }
 ```
 
 ```json
