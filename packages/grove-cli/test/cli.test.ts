@@ -232,7 +232,241 @@ describe("grove CLI lease-first JSON", () => {
     expect(result.exitCode).toBe(2);
     expect(JSON.parse(result.stdout)).toMatchObject({
       ok: false,
-      error: { code: "INVALID_INPUT", message: "Invalid lease ID format" },
+      error: {
+        code: "INVALID_INPUT",
+        message: "Invalid lease ID format",
+        details: { leaseId: "bad id!" },
+      },
+    });
+    expect(result.stderr).toBe("");
+  });
+
+  it("acquire --json without branch or ref reports structured INVALID_INPUT", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const result = await runCli(
+      ["acquire", "--json", "--lease-id", "needs-target", "-r", repoDir],
+      { GROVE_DIR: groveDir },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: false,
+      error: {
+        code: "INVALID_INPUT",
+        message: "Acquire requires either --branch or --ref",
+        details: { missing: ["branch", "ref"], requireOneOf: ["branch", "ref"] },
+      },
+    });
+    expect(result.stderr).toBe("");
+  });
+
+  it("acquire --json without lease-id routes commander error through JSON envelope", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const result = await runCli(
+      ["acquire", "--json", "--branch", "cli-branch", "--create-from", "main", "-r", repoDir],
+      { GROVE_DIR: groveDir },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: false,
+      error: {
+        code: "INVALID_INPUT",
+        details: {
+          missing: ["leaseId"],
+          source: "commander",
+          commanderCode: "commander.missingMandatoryOptionValue",
+        },
+      },
+    });
+    expect(result.stderr).toBe("");
+  });
+
+  it("acquire --json on occupied branch reports WORKTREE_IN_USE with structured details", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const result = await runCli(
+      ["acquire", "--json", "--lease-id", "main-lease", "--branch", "main", "-r", repoDir],
+      { GROVE_DIR: groveDir },
+    );
+
+    expect(result.exitCode).toBe(7);
+    const body = JSON.parse(result.stdout);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("WORKTREE_IN_USE");
+    expect(body.error.message).toContain("already checked out");
+    expect(body.error.details).toMatchObject({
+      branch: "main",
+      reason: "branch_already_checked_out",
+    });
+    expect(result.stderr).toBe("");
+  });
+
+  it("acquire --json on missing branch reports BRANCH_NOT_FOUND with structured details", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const result = await runCli(
+      [
+        "acquire",
+        "--json",
+        "--lease-id",
+        "missing-branch-lease",
+        "--branch",
+        "no-such-branch-xyz",
+        "-r",
+        repoDir,
+      ],
+      { GROVE_DIR: groveDir },
+    );
+
+    expect(result.exitCode).toBe(13);
+    const body = JSON.parse(result.stdout);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("BRANCH_NOT_FOUND");
+    expect(body.error.details).toMatchObject({
+      branch: "no-such-branch-xyz",
+      reason: "not_found",
+    });
+    expect(result.stderr).toBe("");
+  });
+
+  it("release --json without cleanup routes commander error through JSON envelope", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const result = await runCli(
+      ["release", "--json", "--lease-id", "release-missing-cleanup", "-r", repoDir],
+      { GROVE_DIR: groveDir },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: false,
+      error: {
+        code: "INVALID_INPUT",
+        message: expect.stringContaining("--cleanup"),
+        details: {
+          missing: ["cleanup"],
+          source: "commander",
+          commanderCode: "commander.missingMandatoryOptionValue",
+        },
+      },
+    });
+    expect(result.stderr).toBe("");
+  });
+
+  it("release with typo lease-id flag routes commander error through JSON envelope", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const result = await runCli(
+      ["release", "--json", "--leasw-id", "typo-lease", "--cleanup", "preserve", "-r", repoDir],
+      { GROVE_DIR: groveDir },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: false,
+      error: {
+        code: "INVALID_INPUT",
+        details: {
+          missing: ["leaseId"],
+          source: "commander",
+          commanderCode: "commander.missingMandatoryOptionValue",
+        },
+      },
+    });
+    expect(result.stderr).toBe("");
+  });
+
+  it("release without cleanup writes INVALID_INPUT to stderr in human mode", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const result = await runCli(
+      ["release", "--lease-id", "human-release", "-r", repoDir],
+      { GROVE_DIR: groveDir },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("[INVALID_INPUT]");
+    expect(result.stderr).toContain("--cleanup");
+  });
+
+  it("release --json rejects invalid cleanup with structured INVALID_INPUT", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    await seedLease(repoDir, groveDir, {
+      leaseId: "release-invalid-cleanup",
+      mode: "detached",
+      ref: "main",
+    });
+
+    const result = await runCli(
+      [
+        "release",
+        "--json",
+        "--lease-id",
+        "release-invalid-cleanup",
+        "--cleanup",
+        "not-a-cleanup",
+        "-r",
+        repoDir,
+      ],
+      { GROVE_DIR: groveDir },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: false,
+      error: {
+        code: "INVALID_INPUT",
+        message: "Invalid cleanup action",
+        details: {
+          cleanup: "not-a-cleanup",
+          allowed: ["preserve", "reset", "quarantine"],
+        },
+      },
+    });
+    expect(result.stderr).toBe("");
+  });
+
+  it("repair --json rejects invalid action with structured INVALID_INPUT", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const result = await runCli(
+      [
+        "repair",
+        "--json",
+        "--lease-id",
+        "repair-invalid-action",
+        "--action",
+        "not-an-action",
+        "-r",
+        repoDir,
+      ],
+      { GROVE_DIR: groveDir },
+    );
+
+    expect(result.exitCode).toBe(2);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: false,
+      error: {
+        code: "INVALID_INPUT",
+        details: {
+          action: "not-an-action",
+          allowed: ["quarantine", "resume-acquire", "resume-cleanup", "force-destroy"],
+        },
+      },
     });
     expect(result.stderr).toBe("");
   });

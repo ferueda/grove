@@ -63,8 +63,8 @@ export class WorktreeNotManagedError extends GroveError {
 }
 
 export class WorktreeInUseError extends GroveError {
-  constructor(message: string = "Worktree is in use") {
-    super(message, "WORKTREE_IN_USE");
+  constructor(message: string = "Worktree is in use", details: Record<string, unknown> = {}) {
+    super(message, "WORKTREE_IN_USE", details);
   }
 }
 
@@ -149,14 +149,14 @@ export class BranchExistsError extends GroveError {
 }
 
 export class BranchNotFoundError extends GroveError {
-  constructor(message: string = "Branch not found") {
-    super(message, "BRANCH_NOT_FOUND");
+  constructor(message: string = "Branch not found", details: Record<string, unknown> = {}) {
+    super(message, "BRANCH_NOT_FOUND", details);
   }
 }
 
 export class RefNotFoundError extends GroveError {
-  constructor(message: string = "Ref not found") {
-    super(message, "REF_NOT_FOUND");
+  constructor(message: string = "Ref not found", details: Record<string, unknown> = {}) {
+    super(message, "REF_NOT_FOUND", details);
   }
 }
 
@@ -167,8 +167,8 @@ export class PathOutsidePoolError extends GroveError {
 }
 
 export class InvalidInputError extends GroveError {
-  constructor(message: string = "Invalid input") {
-    super(message, "INVALID_INPUT");
+  constructor(message: string = "Invalid input", details: Record<string, unknown> = {}) {
+    super(message, "INVALID_INPUT", details);
   }
 }
 

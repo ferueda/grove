@@ -2,6 +2,7 @@ import pc from "picocolors";
 import { GroveError, GitCommandError } from "@ferueda/grove";
 import { errorEnvelope } from "./json-output.js";
 import { exitCodeForError } from "./exit-codes.js";
+import { invalidInputFromCommander, isCommanderError } from "./commander-error.js";
 
 let debugEnabled = false;
 let jsonEnabled = false;
@@ -19,6 +20,10 @@ export function isJsonMode(): boolean {
 }
 
 export function handleError(err: unknown): never {
+  if (isCommanderError(err)) {
+    return handleError(invalidInputFromCommander(err));
+  }
+
   const exitCode = exitCodeForError(err);
 
   if (jsonEnabled) {
@@ -35,6 +40,9 @@ export function handleError(err: unknown): never {
 
   if (err instanceof GroveError) {
     console.error(pc.red(`[${err.code}] ${err.message}`));
+    if (debugEnabled && Object.keys(err.details).length > 0) {
+      console.error(pc.gray(`details: ${JSON.stringify(err.details)}`));
+    }
     if (debugEnabled) {
       if (err instanceof GitCommandError && err.stderr) {
         console.error(pc.gray(`git stderr: ${err.stderr}`));

@@ -27,6 +27,10 @@ export const repairCmd = new Command("repair")
       if (!REPAIR_ACTIONS.includes(options.action)) {
         throw new InvalidInputError(
           "Invalid action. Must be quarantine, resume-acquire, resume-cleanup, or force-destroy.",
+          {
+            action: options.action,
+            allowed: [...REPAIR_ACTIONS],
+          },
         );
       }
 

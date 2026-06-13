@@ -10,6 +10,7 @@ import { inspectCmd } from "./commands/inspect.js";
 import { repairCmd } from "./commands/repair.js";
 import { commandsCmd } from "./commands/commands.js";
 import { statusCmd } from "./commands/status.js";
+import { applyCliErrorRouting } from "./cli-error-routing.js";
 
 process.on("uncaughtException", (err) => {
   console.error(pc.red(`Fatal: ${err.message}`));
@@ -20,6 +21,10 @@ process.on("unhandledRejection", (reason) => {
   console.error(pc.red(`Unhandled rejection: ${reason}`));
   process.exitCode = 1;
 });
+
+if (process.argv.includes("--json")) {
+  setJson(true);
+}
 
 const program = new Command();
 
@@ -42,6 +47,8 @@ program.addCommand(inspectCmd);
 program.addCommand(repairCmd);
 program.addCommand(statusCmd);
 program.addCommand(commandsCmd);
+
+applyCliErrorRouting(program);
 
 try {
   await program.parseAsync(process.argv);

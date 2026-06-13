@@ -18,7 +18,10 @@ export const releaseCmd = new Command("release")
   .action(async (options) => {
     try {
       if (!["preserve", "reset", "quarantine"].includes(options.cleanup)) {
-        throw new InvalidInputError("Invalid cleanup action");
+        throw new InvalidInputError("Invalid cleanup action", {
+          cleanup: options.cleanup,
+          allowed: ["preserve", "reset", "quarantine"],
+        });
       }
 
       const grove = await loadGrove({ repo: options.repo });

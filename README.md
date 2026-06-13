@@ -137,7 +137,9 @@ Success examples:
 { "ok": true, "commands": [{ "name": "acquire", "description": "...", "usage": "...", "output": "lease" }] }
 ```
 
-Error example:
+Error examples:
+
+Lease conflict:
 
 ```json
 {
@@ -154,6 +156,58 @@ Error example:
   }
 }
 ```
+
+Missing required CLI options (Commander validation is routed through the same envelope with `--json`):
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "INVALID_INPUT",
+    "message": "required option '--cleanup <action>' not specified",
+    "details": {
+      "missing": ["cleanup"],
+      "source": "commander",
+      "commanderCode": "commander.missingMandatoryOptionValue"
+    }
+  }
+}
+```
+
+Invalid option values:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "INVALID_INPUT",
+    "message": "Acquire requires either --branch or --ref",
+    "details": {
+      "missing": ["branch", "ref"],
+      "requireOneOf": ["branch", "ref"]
+    }
+  }
+}
+```
+
+Branch already checked out in another worktree (common when acquiring `--branch main` while already on `main`):
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "WORKTREE_IN_USE",
+    "message": "Branch main is already checked out in another worktree",
+    "details": {
+      "branch": "main",
+      "reason": "branch_already_checked_out",
+      "existingWorktreePath": "/path/to/repo"
+    }
+  }
+}
+```
+
+With `--json`, all CLI validation and Grove errors write this envelope to stdout. Human mode prints `[CODE] message` to stderr instead.
 
 Exit codes map to error categories (e.g. `LEASE_CONFLICT` → 3, `POOL_EXHAUSTED` → 4). See `packages/grove-cli/src/exit-codes.ts`.
 
@@ -330,11 +384,11 @@ Set `onHookFailure: "fail"` to throw `HOOK_FAILED` on hook errors.
 
 ### Error model
 
-All Grove errors extend `GroveError` with a stable `.code` property. The CLI maps most codes to exit categories via `packages/grove-cli/src/exit-codes.ts`; unmapped codes exit `1`.
+All Grove errors extend `GroveError` with a stable `.code` property and optional `.details` for structured, JSON-safe context. The CLI maps most codes to exit categories via `packages/grove-cli/src/exit-codes.ts`; unmapped codes exit `1`. With `--json`, `error.details` is included in the stdout envelope.
 
 | Code | When | CLI exit |
 |------|------|----------|
-| `INVALID_INPUT` | Invalid `leaseId` or options at API boundary | 2 |
+| `INVALID_INPUT` | Invalid `leaseId`, CLI flags, or option values (`details.missing`, `details.allowed`, etc.) | 2 |
 | `LEASE_CONFLICT` | Re-acquire with incompatible branch/ref | 3 |
 | `LEASE_ALREADY_EXISTS` | Acquire with `ifLeased: "fail"` on existing lease | 3 |
 | `GROVE_EXHAUSTED` | No pool capacity (legacy alias) | 4 |
@@ -344,7 +398,7 @@ All Grove errors extend `GroveError` with a stable `.code` property. The CLI map
 | `LOCK_FAILED` | Could not acquire state file lock | 6 |
 | `UNSAFE_CLEANUP` | Destructive op blocked by processes | 7 |
 | `PROCESS_SAFETY_UNVERIFIED` | Destructive op with unverified process safety | 7 |
-| `WORKTREE_IN_USE` | Legacy worktree-in-use guard | 7 |
+| `WORKTREE_IN_USE` | Branch already checked out in another worktree, or legacy in-use guard | 7 |
 | `LEASE_NOT_FOUND` | Unknown `leaseId` | 8 |
 | `WORKTREE_NOT_MANAGED` | Legacy path not in pool | 8 |
 | `LEASE_QUARANTINED` | Lease is quarantined | 9 |
@@ -355,7 +409,7 @@ All Grove errors extend `GroveError` with a stable `.code` property. The CLI map
 | `INVALID_GROVE_STATE` | Corrupt `grove-state.json` | 11 |
 | `PATH_OUTSIDE_POOL` | Destructive target outside pool boundary | 12 |
 | `BRANCH_EXISTS` | Branch create failed because branch exists | 13 |
-| `BRANCH_NOT_FOUND` | Requested branch does not exist | 13 |
+| `BRANCH_NOT_FOUND` | Requested branch does not exist in the worktree (`details.reason: "not_found"`) | 13 |
 | `REF_NOT_FOUND` | Requested ref does not resolve | 13 |
 | `HOOK_FAILED` | Hook failed with `onHookFailure: "fail"` | 14 |
 | `WORKTREE_DESTROYING` | Legacy destroying guard | 1 |
@@ -369,6 +423,7 @@ try {
 } catch (err) {
   if (err instanceof LeaseConflictError) {
     console.error(err.code); // "LEASE_CONFLICT"
+    console.error(err.details); // { leaseId, existingBranch, ... }
   }
 }
 ```
