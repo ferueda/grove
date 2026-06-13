@@ -1,5 +1,13 @@
 # @ferueda/grove-cli
 
+## [1.2.0](https://github.com/ferueda/grove/compare/grove-cli-v1.1.0...grove-cli-v1.2.0) (2026-06-13)
+
+
+### Features
+
+* add agent-friendly CLI discovery and structured JSON ergonomics ([9a60857](https://github.com/ferueda/grove/commit/9a60857650632fbc0fa11059b6497aa67f14523f))
+* add agent-friendly CLI discovery and structured JSON ergonomics ([48fc77a](https://github.com/ferueda/grove/commit/48fc77a04a48a8586fb6394a457be91e8ec6b0ed))
+
 ## [1.1.0](https://github.com/ferueda/grove/compare/grove-cli-v1.0.0...grove-cli-v1.1.0) (2026-06-13)
 
 
