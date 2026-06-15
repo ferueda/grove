@@ -20,9 +20,9 @@
     "@types/proper-lockfile": "^4.1.4",
     "@typescript/native-preview": "^7.0.0-dev",
     "husky": "^9.1.7",
-    "oxfmt": "^0.54.0",
-    "oxlint": "^1.69.0",
-    "vitest": "^4.1.0"
+    "oxfmt": "^0.55.0",
+    "oxlint": "^1.70.0",
+    "vitest": "^4.1.9"
   },
   "engines": {
     "node": ">=24"
