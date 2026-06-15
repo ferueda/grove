@@ -2,6 +2,28 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: >-
+          auto — default release-please behavior (publish when a release PR was merged).
+          release-pr — open or refresh the release PR only; merge it yourself to publish.
+          force — bump version from current main and publish (for dependency-only changes).
+        required: true
+        default: auto
+        type: choice
+        options:
+          - auto
+          - release-pr
+          - force
+      bump:
+        description: Version bump when mode is force
+        required: false
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
   push:
     branches:
       - main
@@ -21,7 +43,6 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v6
         with:
-          # This makes Actions fetch all Git history so that Changesets can generate changelogs correctly
           fetch-depth: 0
 
       - run: corepack enable
@@ -31,13 +52,68 @@ jobs:
         with:
           node-version: "24"
 
+      - name: Resolve release mode
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ inputs.mode }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=auto" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Prepare forced release config
+        if: ${{ steps.mode.outputs.value == 'force' }}
+        id: force
+        env:
+          BUMP: ${{ inputs.bump || 'patch' }}
+        run: |
+          CURRENT=$(jq -r '."packages/grove-cli"' .release-please-manifest.json)
+          IFS=. read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          case "$BUMP" in
+            major) NEXT="$((MAJOR + 1)).0.0" ;;
+            minor) NEXT="${MAJOR}.$((MINOR + 1)).0" ;;
+            patch) NEXT="${MAJOR}.${MINOR}.$((PATCH + 1))" ;;
+            *) echo "Unsupported bump: $BUMP" >&2; exit 1 ;;
+          esac
+          echo "version=$NEXT" >> "$GITHUB_OUTPUT"
+          jq --arg version "$NEXT" \
+            '.packages."packages/grove" += { "release-as": $version } |
+             .packages."packages/grove-cli" += { "release-as": $version }' \
+            release-please-config.json > release-please-config.force.json
+          echo "Prepared release-as $NEXT"
+
+      - name: Open or refresh release PR
+        if: ${{ steps.mode.outputs.value == 'force' || steps.mode.outputs.value == 'release-pr' }}
+        uses: googleapis/release-please-action@v5
+        id: release_pr
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: ${{ steps.mode.outputs.value == 'force' && 'release-please-config.force.json' || 'release-please-config.json' }}
+          manifest-file: .release-please-manifest.json
+          skip-github-release: true
+
+      - name: Merge release PR
+        if: ${{ steps.mode.outputs.value == 'force' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR=$(gh pr list --head release-please--branches--main --base main --json number --jq '.[0].number')
+          if [ -z "$PR" ] || [ "$PR" = "null" ]; then
+            echo "No release PR found to merge" >&2
+            exit 1
+          fi
+          gh pr merge "$PR" --merge --delete-branch
+          git pull origin main
+
       - name: Release Please
+        if: ${{ steps.mode.outputs.value != 'release-pr' }}
         uses: googleapis/release-please-action@v5
         id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+          skip-github-pull-request: ${{ steps.mode.outputs.value == 'force' }}
 
       - name: Install Dependencies
         if: ${{ steps.release.outputs.releases_created == 'true' }}

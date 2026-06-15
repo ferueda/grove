@@ -28,8 +28,8 @@ updates:
       timezone: "America/Vancouver"
     open-pull-requests-limit: 10
     commit-message:
-      prefix: "chore"
-      include: "scope"
+      prefix: "deps"
+      prefix-development: "deps-dev"
     groups:
       npm-non-major:
         patterns:
