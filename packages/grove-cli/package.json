@@ -19,7 +19,7 @@
     "build": "tsgo -p tsconfig.json"
   },
   "dependencies": {
-    "commander": "^13.0.0",
+    "commander": "^15.0.0",
     "execa": "^9.6.0",
     "@ferueda/grove": "workspace:*",
     "picocolors": "^1.1.0"
