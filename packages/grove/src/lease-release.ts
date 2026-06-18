@@ -8,6 +8,7 @@ import type {
 import type { ReleaseLeaseOptions, ReleaseResult } from "./types.js";
 import { getDefaultBranch, resetWorktree } from "./git/index.js";
 import { withStateLock } from "./lock.js";
+import { assertPathWithinPool } from "./path-boundary.js";
 import { isWorktreeInUse } from "./process/detect.js";
 import { assertWorktreeSafeForCleanup } from "./process/cleanup-safety.js";
 import {
@@ -304,6 +305,7 @@ async function completeRelease(
       context.leaseId,
       context.pendingCleanup.force,
     );
+    await assertPathWithinPool(poolDir, context.wtPath);
     try {
       await resetWorktree(
         context.wtPath,
