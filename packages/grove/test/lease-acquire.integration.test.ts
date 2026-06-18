@@ -69,7 +69,7 @@ describe("lease acquire integration", () => {
         branch: "other",
         ifLeased: "return-existing",
       }),
-    ).rejects.toThrow("Lease conflict");
+    ).rejects.toMatchObject({ code: "LEASE_CONFLICT" });
 
     await expect(
       grove.acquire({
@@ -78,7 +78,27 @@ describe("lease acquire integration", () => {
         branch: "test-branch-1",
         ifLeased: "fail",
       }),
-    ).rejects.toThrow("already exists");
+    ).rejects.toMatchObject({ code: "LEASE_ALREADY_EXISTS" });
+  });
+
+  it("rejects acquire for a nonexistent detached ref with REF_NOT_FOUND", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    cleanup.tmpDirs.push(tmpDir);
+
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
+
+    await expect(
+      grove.acquire({
+        leaseId: "fail-detached-ref",
+        mode: "detached",
+        ref: "no-such-ref",
+      }),
+    ).rejects.toMatchObject({
+      code: "REF_NOT_FOUND",
+      details: { ref: "no-such-ref", reason: "not_found" },
+    });
+
+    expect(await grove.list()).toEqual([]);
   });
 
   it("failed checkout quarantines lease and preserves pendingAcquire for repair", async () => {
@@ -93,7 +113,7 @@ describe("lease acquire integration", () => {
         mode: "branch",
         branch: "does-not-exist",
       }),
-    ).rejects.toThrow(/Branch not found/);
+    ).rejects.toMatchObject({ code: "BRANCH_NOT_FOUND" });
 
     const leases = await grove.list();
     expect(leases).toHaveLength(1);
