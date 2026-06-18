@@ -39,3 +39,13 @@ export function invalidInputFromCommander(err: CommanderError): InvalidInputErro
 export function isCommanderError(err: unknown): err is CommanderError {
   return err instanceof CommanderError;
 }
+
+const BENIGN_COMMANDER_EXIT_CODES = new Set([
+  "commander.help",
+  "commander.helpDisplayed",
+  "commander.version",
+]);
+
+export function isBenignCommanderExit(err: unknown): err is CommanderError {
+  return isCommanderError(err) && BENIGN_COMMANDER_EXIT_CODES.has(err.code);
+}
