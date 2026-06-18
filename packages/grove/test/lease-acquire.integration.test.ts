@@ -1,9 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { execa } from "execa";
-import { rm } from "node:fs/promises";
+import { rm, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { createTestGrove } from "./helpers/test-grove.js";
 import { setupRepo } from "./helpers/git-repo.js";
 import { registerLeaseIntegrationCleanup } from "./helpers/lease-integration.js";
+import {
+  finalizeLeaseCheckout,
+  quarantineFailedAcquire,
+} from "../src/lease-acquire.js";
 
 describe("lease acquire integration", () => {
   const cleanup = registerLeaseIntegrationCleanup();
@@ -213,5 +218,88 @@ describe("lease acquire integration", () => {
     ).rejects.toMatchObject({ code: "INVALID_INPUT" });
 
     expect(await grove.list()).toEqual([]);
+  });
+
+  it("finalizeLeaseCheckout rejects missing lease explicitly", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    cleanup.tmpDirs.push(tmpDir);
+
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "finalize-missing-lease",
+      mode: "detached",
+      ref: "main",
+    });
+
+    const statePath = join(grove.poolDir, "grove-state.json");
+    const state = JSON.parse(await readFile(statePath, "utf8"));
+
+    await expect(
+      finalizeLeaseCheckout(
+        grove.poolDir,
+        repoDir,
+        "other-lease-id",
+        lease.path,
+        state.leases[0].target,
+      ),
+    ).rejects.toMatchObject({ code: "LEASE_NOT_FOUND" });
+  });
+
+  it("finalizeLeaseCheckout rejects invalid acquire transition explicitly", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    cleanup.tmpDirs.push(tmpDir);
+
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    await grove.acquire({
+      leaseId: "finalize-invalid-transition",
+      mode: "detached",
+      ref: "main",
+    });
+
+    const statePath = join(grove.poolDir, "grove-state.json");
+    const state = JSON.parse(await readFile(statePath, "utf8"));
+    const target = state.leases[0].target;
+    const wtPath = state.leases[0].path;
+    state.leases[0] = {
+      ...state.leases[0],
+      state: "releasing",
+      pendingCleanup: { cleanup: "preserve" },
+      pendingAcquire: undefined,
+    };
+    await writeFile(statePath, JSON.stringify(state));
+
+    await expect(
+      finalizeLeaseCheckout(
+        grove.poolDir,
+        repoDir,
+        "finalize-invalid-transition",
+        wtPath,
+        target,
+      ),
+    ).rejects.toMatchObject({ code: "INVALID_TRANSITION" });
+  });
+
+  it("quarantineFailedAcquire is best-effort when lease record is missing", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    cleanup.tmpDirs.push(tmpDir);
+
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    await grove.acquire({
+      leaseId: "finalize-quarantine",
+      mode: "detached",
+      ref: "main",
+    });
+
+    await expect(
+      quarantineFailedAcquire(
+        grove.poolDir,
+        repoDir,
+        "missing-lease-id",
+        "checkout failed",
+        "checkout",
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(await grove.inspect("finalize-quarantine")).toMatchObject({ state: "leased" });
   });
 });
