@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { setupPathFixture } from "./helpers/git-repo.js";
+import { setupPathFixture, setupRepo } from "./helpers/git-repo.js";
 import {
   migrateLegacyToLeaseFirst,
   parseLeaseFirstState,
@@ -14,6 +14,9 @@ import {
 import { InvalidGroveStateError } from "../src/errors.js";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { execa } from "execa";
+import { healPoolState, findOrAllocateSlot, loadPoolState } from "../src/pool-state.js";
+import { createTestGrove } from "./helpers/test-grove.js";
 
 const NOW = "2026-06-11T00:00:00.000Z";
 
@@ -274,6 +277,137 @@ describe("Lease-first state", () => {
       await mkdir(groveDir, { recursive: true });
       await writeFile(join(groveDir, "grove-state.json"), "{ bad json");
       await expect(readLeaseFirstState(groveDir)).rejects.toThrowError(InvalidGroveStateError);
+    });
+  });
+
+  describe("healPoolState", () => {
+    it("reclaims destroying slot with no matching destroying lease and dead owner", async () => {
+      const slotPath = join(tmpDir, "slot-1");
+      await mkdir(slotPath, { recursive: true });
+      const state: LeaseFirstGroveState = {
+        slots: [
+          {
+            slotName: "1",
+            path: slotPath,
+            state: "destroying",
+            ownerPid: -1,
+            ownerStartedAt: 1,
+            createdAt: NOW,
+            updatedAt: NOW,
+          },
+        ],
+        leases: [],
+      };
+
+      const healed = await healPoolState(state);
+      expect(healed.slots).toHaveLength(1);
+      expect(healed.slots[0]?.state).toBe("available");
+      expect(healed.slots[0]?.ownerPid).toBeUndefined();
+    });
+
+    it("keeps destroying slot when matching lease is destroying", async () => {
+      const slotPath = join(tmpDir, "slot-1");
+      await mkdir(slotPath, { recursive: true });
+      const state: LeaseFirstGroveState = {
+        slots: [
+          {
+            slotName: "1",
+            path: slotPath,
+            state: "destroying",
+            ownerPid: -1,
+            ownerStartedAt: 1,
+            createdAt: NOW,
+            updatedAt: NOW,
+          },
+        ],
+        leases: [
+          {
+            leaseId: "job-1",
+            slotName: "1",
+            path: slotPath,
+            repoRoot: tmpDir,
+            state: "destroying",
+            createdAt: NOW,
+            updatedAt: NOW,
+          },
+        ],
+      };
+
+      const healed = await healPoolState(state);
+      expect(healed.slots[0]?.state).toBe("destroying");
+    });
+  });
+
+  describe("findOrAllocateSlot", () => {
+    it("does not reclaim destroying slot that is still in use", async () => {
+      const { repoDir, tmpDir, groveDir } = await setupRepo();
+      const grove = await createTestGrove({
+        repoRoot: repoDir,
+        groveRoot: groveDir,
+        maxTrees: 2,
+      });
+      const lease = await grove.acquire({
+        leaseId: "busy-destroy-slot",
+        mode: "detached",
+        ref: "main",
+      });
+
+      const state = await loadPoolState(grove.poolDir, repoDir, { heal: false });
+      state.leases = [];
+      state.slots[0] = {
+        ...state.slots[0]!,
+        state: "destroying",
+        ownerPid: undefined,
+        ownerStartedAt: undefined,
+      };
+
+      const scriptPath = join(tmpDir, "sleep.mjs");
+      await writeFile(scriptPath, "setInterval(() => {}, 1000);");
+      const child = execa("node", [scriptPath], { cwd: lease.path });
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      try {
+        const result = await findOrAllocateSlot(state, grove.poolDir, {
+          repoRoot: repoDir,
+          maxTrees: 2,
+        });
+
+        expect(result.isNew).toBe(true);
+        expect(state.slots[0]?.state).toBe("destroying");
+      } finally {
+        child.kill();
+        await child.catch(() => {});
+        await rm(tmpDir, { recursive: true, force: true });
+      }
+    });
+
+    it("reclaims idle destroying slot for reuse", async () => {
+      const { repoDir, tmpDir, groveDir } = await setupRepo();
+      const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
+      await grove.acquire({
+        leaseId: "idle-destroy-slot",
+        mode: "detached",
+        ref: "main",
+      });
+
+      const state = await loadPoolState(grove.poolDir, repoDir, { heal: false });
+      state.leases = [];
+      state.slots[0] = {
+        ...state.slots[0]!,
+        state: "destroying",
+        ownerPid: -1,
+        ownerStartedAt: 1,
+      };
+
+      const result = await findOrAllocateSlot(state, grove.poolDir, {
+        repoRoot: repoDir,
+        maxTrees: 16,
+      });
+
+      expect(result.isNew).toBe(false);
+      expect(result.slot.slotName).toBe("1");
+      expect(result.slot.state).toBe("available");
+      await rm(tmpDir, { recursive: true, force: true });
     });
   });
 });
