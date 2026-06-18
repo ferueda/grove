@@ -19,7 +19,6 @@ import { releaseLease } from "./lease-release.js";
 import { repairLease } from "./lease-repair.js";
 import { buildLeaseHookEnv, inspectLeaseRecord, listLeaseRecords } from "./lease-view.js";
 import { loadPoolState } from "./pool-state.js";
-import { HookFailedError } from "./errors.js";
 import { parseLeaseId } from "./parse-lease-id.js";
 
 export class Grove {
@@ -34,19 +33,13 @@ export class Grove {
     env: Record<string, string> = {},
   ) {
     if (!hookNames || hookNames.length === 0) return;
-    try {
-      await runHooks(hookNames, workDir, {
-        stdout: process.stderr,
-        stderr: process.stderr,
-        timeoutMs: this.config.hookTimeoutMs,
-        env,
-        onFailure: this.config.onHookFailure,
-      });
-    } catch (err: unknown) {
-      if (err instanceof HookFailedError) {
-        throw err;
-      }
-    }
+    await runHooks(hookNames, workDir, {
+      stdout: process.stderr,
+      stderr: process.stderr,
+      timeoutMs: this.config.hookTimeoutMs,
+      env,
+      onFailure: this.config.onHookFailure,
+    });
   }
 
   async acquire(options: AcquireLeaseOptions): Promise<GroveLease> {

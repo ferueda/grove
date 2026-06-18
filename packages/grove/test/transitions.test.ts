@@ -346,6 +346,18 @@ describe("transitionSlot", () => {
     expect(next?.state).toBe("quarantined");
   });
 
+  it("destroying -> available on RECLAIM_DESTROYING_SLOT", () => {
+    const next = transitionSlot(
+      leasedSlot({ state: "destroying" }),
+      { type: "RECLAIM_DESTROYING_SLOT" },
+      NOW,
+    );
+    expect(next?.state).toBe("available");
+    expect(next?.updatedAt).toBe(NOW);
+    expect(next?.slotName).toBe("slot-1");
+    expect(next?.path).toBe("/pool/slot-1");
+  });
+
   const invalidSlotTransitions: Array<{
     name: string;
     slot: GroveSlot;
@@ -365,6 +377,11 @@ describe("transitionSlot", () => {
       name: "DESTROY_COMPLETE from leased",
       slot: leasedSlot(),
       event: { type: "DESTROY_COMPLETE" },
+    },
+    {
+      name: "RECLAIM_DESTROYING_SLOT from leased",
+      slot: leasedSlot(),
+      event: { type: "RECLAIM_DESTROYING_SLOT" },
     },
   ];
 

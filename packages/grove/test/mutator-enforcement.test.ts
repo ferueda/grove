@@ -7,6 +7,7 @@ const MUTATOR_FILES = [
   "lease-release.ts",
   "lease-destroy.ts",
   "lease-repair.ts",
+  "pool-state.ts",
 ] as const;
 
 const DIRECT_STATE_ASSIGNMENT = /\.state\s*=(?!=)/;

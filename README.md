@@ -382,6 +382,8 @@ Lease hooks receive: `GROVE_LEASE_ID`, `GROVE_SLOT_NAME`, `GROVE_BRANCH`, `GROVE
 
 Set `onHookFailure: "fail"` to throw `HOOK_FAILED` on hook errors.
 
+`preRelease` failures can quarantine the lease when `onHookFailure` is `"fail"`. `postRelease` runs after release state is finalized; with `onHookFailure: "fail"`, the operation may throw even though the release outcome was already committed (same post-commit pattern as `postAcquire`).
+
 ### Error model
 
 All Grove errors extend `GroveError` with a stable `.code` property and optional `.details` for structured, JSON-safe context. The CLI maps most codes to exit categories via `packages/grove-cli/src/exit-codes.ts`; unmapped codes exit `1`. With `--json`, `error.details` is included in the stdout envelope.

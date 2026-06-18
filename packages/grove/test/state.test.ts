@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { setupPathFixture } from "./helpers/git-repo.js";
-import { readState, writeState, healState } from "../src/state.js";
+import { readState, writeState, healState, stateFilePath } from "../src/state.js";
 import { withStateLock } from "../src/lock.js";
 import type { GroveState } from "../src/schemas.js";
 import { InvalidGroveStateError, LockFailedError } from "../src/errors.js";
-import { rm, writeFile, mkdir } from "node:fs/promises";
+import { rm, writeFile, mkdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { execa } from "execa";
 import { fileURLToPath } from "node:url";
@@ -55,6 +55,19 @@ describe("State & Locking", () => {
         JSON.stringify({ worktrees: [{ bad: 1 }] }),
       );
       await expect(readState(groveDir)).rejects.toThrowError(InvalidGroveStateError);
+    });
+
+    it("writes state file without group/other permission bits on POSIX", async () => {
+      if (process.platform === "win32") {
+        return;
+      }
+
+      await mkdir(groveDir, { recursive: true });
+      const s: GroveState = { worktrees: [] };
+      await writeState(groveDir, s);
+
+      const fileStat = await stat(stateFilePath(groveDir));
+      expect(fileStat.mode & 0o077).toBe(0);
     });
   });
 
