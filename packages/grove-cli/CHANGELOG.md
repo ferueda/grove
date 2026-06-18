@@ -1,5 +1,13 @@
 # @ferueda/grove-cli
 
+## [1.3.1](https://github.com/ferueda/grove/compare/grove-cli-v1.3.0...grove-cli-v1.3.1) (2026-06-15)
+
+
+### Dependencies
+
+* **deps:** bump commander from 13.1.0 to 15.0.0 ([93864ff](https://github.com/ferueda/grove/commit/93864ff77031fd0f63931ed914946564a773e1e9))
+* **deps:** bump commander from 13.1.0 to 15.0.0 ([813658a](https://github.com/ferueda/grove/commit/813658ab17e236b849d9a73cb6f92aee30dc68be))
+
 ## [1.3.0](https://github.com/ferueda/grove/compare/grove-cli-v1.2.0...grove-cli-v1.3.0) (2026-06-13)
 
 
