@@ -217,6 +217,6 @@ export async function writeLeaseFirstState(
   const data = JSON.stringify(parsed.data, null, 2);
   const target = stateFilePath(groveDir);
   const tmp = `${target}.tmp`;
-  await writeFile(tmp, data, { mode: 0o644 });
+  await writeFile(tmp, data, { mode: 0o600 });
   await rename(tmp, target);
 }
