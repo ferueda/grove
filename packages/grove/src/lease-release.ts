@@ -8,12 +8,14 @@ import type {
 import type { ReleaseLeaseOptions, ReleaseResult } from "./types.js";
 import { getDefaultBranch, resetWorktree } from "./git/index.js";
 import { withStateLock } from "./lock.js";
+import { assertPathWithinPool } from "./path-boundary.js";
 import { isWorktreeInUse } from "./process/detect.js";
 import { assertWorktreeSafeForCleanup } from "./process/cleanup-safety.js";
 import {
   LeaseBusyError,
   LeaseNotFoundError,
   LeaseQuarantinedError,
+  PathOutsidePoolError,
   RepairNotAvailableError,
   UnsafeCleanupError,
 } from "./errors.js";
@@ -304,6 +306,14 @@ async function completeRelease(
       context.leaseId,
       context.pendingCleanup.force,
     );
+    try {
+      await assertPathWithinPool(poolDir, context.wtPath);
+    } catch (err: unknown) {
+      if (err instanceof PathOutsidePoolError) {
+        await quarantineFailedRelease(poolDir, repoRoot, context.leaseId, err.message, "reset");
+      }
+      throw err;
+    }
     try {
       await resetWorktree(
         context.wtPath,

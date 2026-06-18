@@ -308,6 +308,38 @@ describe("lease release integration", () => {
     expect(existsSync(lease.path)).toBe(true);
   });
 
+  it("release reset rejects paths outside the pool boundary", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    cleanup.tmpDirs.push(tmpDir);
+
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "reset-outside-lease",
+      mode: "branch",
+      branch: "reset-outside-branch",
+      createBranch: { from: "main", ifExists: "fail" },
+    });
+
+    const outsidePath = join(tmpDir, "outside-pool", "repo");
+    await mkdir(outsidePath, { recursive: true });
+    const statePath = join(grove.poolDir, "grove-state.json");
+    const state = JSON.parse(await readFile(statePath, "utf8"));
+    state.slots[0].path = outsidePath;
+    state.leases[0].path = outsidePath;
+    await writeFile(statePath, JSON.stringify(state));
+
+    await expect(
+      grove.release(lease.leaseId, {
+        cleanup: "reset",
+        resetTo: "main",
+        force: true,
+      }),
+    ).rejects.toMatchObject({ code: "PATH_OUTSIDE_POOL" });
+
+    expect(existsSync(outsidePath)).toBe(true);
+    expect(await grove.inspect("reset-outside-lease")).toMatchObject({ state: "quarantined" });
+  });
+
   it("release rejects physical worktree paths and only accepts leaseId", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     cleanup.tmpDirs.push(tmpDir);
