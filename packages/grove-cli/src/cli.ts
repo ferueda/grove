@@ -12,6 +12,7 @@ import { commandsCmd } from "./commands/commands.js";
 import { statusCmd } from "./commands/status.js";
 import { applyCliErrorRouting } from "./cli-error-routing.js";
 import { isBenignCommanderExit } from "./commander-error.js";
+import { cliVersion } from "./version.js";
 
 process.on("uncaughtException", (err) => {
   console.error(pc.red(`Fatal: ${err.message}`));
@@ -32,7 +33,7 @@ const program = new Command();
 program
   .name("grove")
   .description("CLI for Grove - lease-first git worktree pool manager")
-  .version("0.1.0")
+  .version(cliVersion)
   .option("--debug", "Show verbose error output including stack traces")
   .hook("preAction", (_thisCommand, actionCommand) => {
     const opts = actionCommand.optsWithGlobals();

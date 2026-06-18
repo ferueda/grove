@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { rm } from "node:fs/promises";
 import { setupRepo } from "../../grove/test/helpers/git-repo.js";
 import { seedLease } from "./helpers/seed-lease.js";
+import packageJson from "../package.json" with { type: "json" };
 
 const CLI_PATH = join(import.meta.dirname, "..", "dist", "cli.js");
 
@@ -653,7 +654,7 @@ describe("grove CLI informational exits", () => {
   it("version flags print version without INVALID_INPUT on stderr", async () => {
     for (const flag of ["-V", "--version"]) {
       const result = await runCli([flag]);
-      expect(result.stdout.trim()).toBe("0.1.0");
+      expect(result.stdout.trim()).toBe(packageJson.version);
       expect(result.stderr).toBe("");
       expect(result.exitCode).toBe(0);
     }
