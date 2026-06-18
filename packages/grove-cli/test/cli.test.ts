@@ -636,3 +636,34 @@ describe("grove CLI lease-first JSON", () => {
     expect(result.stderr).toBe("");
   });
 });
+
+describe("grove CLI informational exits", () => {
+  async function runCli(args: string[]) {
+    return execa("node", [CLI_PATH, ...args], { reject: false });
+  }
+
+  it("bare invocation shows help without INVALID_INPUT on stderr", async () => {
+    const result = await runCli([]);
+    expect(result.stdout).toContain("Usage: grove");
+    expect(result.stderr).toBe("");
+    expect(result.exitCode).toBe(1);
+  });
+
+  it("version flags print version without INVALID_INPUT on stderr", async () => {
+    for (const flag of ["-V", "--version"]) {
+      const result = await runCli([flag]);
+      expect(result.stdout.trim()).toBe("0.1.0");
+      expect(result.stderr).toBe("");
+      expect(result.exitCode).toBe(0);
+    }
+  });
+
+  it("help flags show help without INVALID_INPUT on stderr", async () => {
+    for (const flag of ["-h", "--help"]) {
+      const result = await runCli([flag]);
+      expect(result.stdout).toContain("Usage: grove");
+      expect(result.stderr).toBe("");
+      expect(result.exitCode).toBe(0);
+    }
+  });
+});
