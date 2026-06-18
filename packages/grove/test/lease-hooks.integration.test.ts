@@ -1,9 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createTestGrove } from "./helpers/test-grove.js";
 import { setupRepo } from "./helpers/git-repo.js";
 import { failOnceHook, registerLeaseIntegrationCleanup } from "./helpers/lease-integration.js";
+import { releaseLease } from "../src/lease-release.js";
+import * as hooksModule from "../src/hooks.js";
 
 describe("lease hooks integration", () => {
   const cleanup = registerLeaseIntegrationCleanup();
@@ -173,6 +175,95 @@ describe("lease hooks integration", () => {
     expect(result).toMatchObject({ status: "preserved", leaseId: "repair-pre-release" });
     expect(await readFile(attemptsPath, "utf8")).toBe("2");
     expect(await grove.inspect("repair-pre-release")).toMatchObject({
+      state: "leased",
+      pendingCleanup: undefined,
+    });
+  });
+
+  it("runHook does not swallow unexpected hook failures when onHookFailure is fail", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    cleanup.tmpDirs.push(tmpDir);
+
+    const runHooksSpy = vi
+      .spyOn(hooksModule, "runHooks")
+      .mockRejectedValueOnce(new Error("boom"));
+
+    try {
+      const grove = await createTestGrove({
+        repoRoot: repoDir,
+        groveRoot: groveDir,
+        onHookFailure: "fail",
+        hooks: {
+          preRelease: ["exit 0"],
+        },
+      });
+
+      const lease = await grove.acquire({
+        leaseId: "unexpected-hook-fail",
+        mode: "branch",
+        branch: "unexpected-hook-fail-branch",
+        createBranch: { from: "main", ifExists: "fail" },
+      });
+
+      await expect(grove.release(lease.leaseId, { cleanup: "preserve" })).rejects.toThrow("boom");
+    } finally {
+      runHooksSpy.mockRestore();
+    }
+  });
+
+  it("releaseLease propagates unexpected injected preRelease hook failures", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    cleanup.tmpDirs.push(tmpDir);
+
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "injected-hook-fail",
+      mode: "branch",
+      branch: "injected-hook-fail-branch",
+      createBranch: { from: "main", ifExists: "fail" },
+    });
+
+    await expect(
+      releaseLease(
+        grove.poolDir,
+        { repoRoot: repoDir, fetchOnAcquire: false },
+        lease.leaseId,
+        { cleanup: "preserve" },
+        {
+          preRelease: async () => {
+            throw new Error("boom");
+          },
+        },
+      ),
+    ).rejects.toThrow("boom");
+  });
+
+  it("postRelease hook failure surfaces after release state is finalized", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    cleanup.tmpDirs.push(tmpDir);
+
+    const grove = await createTestGrove({
+      repoRoot: repoDir,
+      groveRoot: groveDir,
+      onHookFailure: "fail",
+      hooks: {
+        postRelease: ["exit 1"],
+      },
+    });
+
+    const lease = await grove.acquire({
+      leaseId: "post-release-fail",
+      mode: "branch",
+      branch: "post-release-fail-branch",
+      createBranch: { from: "main", ifExists: "fail" },
+    });
+
+    await expect(grove.release(lease.leaseId, { cleanup: "preserve" })).rejects.toMatchObject({
+      code: "HOOK_FAILED",
+    });
+
+    expect(await grove.inspect("post-release-fail")).toMatchObject({
+      leaseId: "post-release-fail",
       state: "leased",
       pendingCleanup: undefined,
     });
