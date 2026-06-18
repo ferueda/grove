@@ -1,5 +1,14 @@
 # @ferueda/grove
 
+## [1.3.1](https://github.com/ferueda/grove/compare/grove-v1.3.0...grove-v1.3.1) (2026-06-18)
+
+
+### Bug Fixes
+
+* guard release reset paths inside the pool ([59583b9](https://github.com/ferueda/grove/commit/59583b9c3ec20200e82b957a7d3c966c2882f46a))
+* guard release reset paths inside the pool ([262ea94](https://github.com/ferueda/grove/commit/262ea946649b6d3587bc0f505635779b6545d4fe))
+* quarantine release on out-of-pool path boundary failure ([36d0c68](https://github.com/ferueda/grove/commit/36d0c68391dba8b7b801519413b789df1c758547))
+
 ## [1.3.0](https://github.com/ferueda/grove/compare/grove-v1.2.0...grove-v1.3.0) (2026-06-13)
 
 
