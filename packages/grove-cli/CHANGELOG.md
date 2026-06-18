@@ -1,5 +1,14 @@
 # @ferueda/grove-cli
 
+## [1.3.2](https://github.com/ferueda/grove/compare/grove-cli-v1.3.1...grove-cli-v1.3.2) (2026-06-18)
+
+
+### Bug Fixes
+
+* recognize benign commander help and version exits ([e46d670](https://github.com/ferueda/grove/commit/e46d67045a4a36c66a7425be49d522542421322b))
+* stop INVALID_INPUT on CLI help and version ([169a4b5](https://github.com/ferueda/grove/commit/169a4b58c354ebfb39532935979c35aadd4e3e1b))
+* stop mapping help and version exits to INVALID_INPUT ([5a6bf47](https://github.com/ferueda/grove/commit/5a6bf47d33120edab8fb458be1bf106ee46a3c29))
+
 ## [1.3.1](https://github.com/ferueda/grove/compare/grove-cli-v1.3.0...grove-cli-v1.3.1) (2026-06-15)
 
 
