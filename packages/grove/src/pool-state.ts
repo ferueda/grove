@@ -26,8 +26,10 @@ export async function healPoolState(state: LeaseFirstGroveState): Promise<LeaseF
     if (slot.state === "destroying" && !(await ownerAlive(slotOwnerEntry(slot)))) {
       const lease = leaseForSlot(state, slot.slotName);
       if (!lease || lease.state !== "destroying") {
-        slot.state = "available";
-        await clearSlotOwner(slot);
+        const reclaimed = transitionSlot(slot, { type: "RECLAIM_DESTROYING_SLOT" })!;
+        await clearSlotOwner(reclaimed);
+        slots.push(reclaimed);
+        continue;
       }
     }
     slots.push(slot);
@@ -151,7 +153,8 @@ export async function findOrAllocateSlot(
   for (const slot of state.slots) {
     if (slot.state === "destroying") {
       if (await slotIsIdle(slot)) {
-        slot.state = "available";
+        const reclaimed = transitionSlot(slot, { type: "RECLAIM_DESTROYING_SLOT" })!;
+        Object.assign(slot, reclaimed);
         await clearSlotOwner(slot);
       } else {
         continue;
