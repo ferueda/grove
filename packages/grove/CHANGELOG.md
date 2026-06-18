@@ -1,5 +1,25 @@
 # @ferueda/grove
 
+## [1.4.0](https://github.com/ferueda/grove/compare/grove-v1.3.1...grove-v1.4.0) (2026-06-18)
+
+
+### Features
+
+* implement advisor plans 004–008 ([f84c020](https://github.com/ferueda/grove/commit/f84c0205475d8f9bb3fe7a7d29f7cd10e81eccdf))
+
+
+### Bug Fixes
+
+* fail explicitly during acquire finalization ([f9aa24f](https://github.com/ferueda/grove/commit/f9aa24feb8c0ddf638aa2402cc0bda6d425b51b8))
+* restrict lease-first state file permissions ([ddfd74c](https://github.com/ferueda/grove/commit/ddfd74c7e0a8d2b70145c0f55055f8be0d87d3bf))
+* restrict legacy state file permissions ([673c84f](https://github.com/ferueda/grove/commit/673c84f9e6e5446fe3ed2157f0ed310c32ea677e))
+* stop runHook from swallowing unexpected hook errors ([e261243](https://github.com/ferueda/grove/commit/e261243e1edfa667b57fa699aaf9b91e5434b4ef))
+
+
+### Performance Improvements
+
+* avoid duplicate process scans in list ([4503faf](https://github.com/ferueda/grove/commit/4503faf7ee7bbd4d03eb0f654a380c6cc0695699))
+
 ## [1.3.1](https://github.com/ferueda/grove/compare/grove-v1.3.0...grove-v1.3.1) (2026-06-18)
 
 
