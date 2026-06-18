@@ -12,11 +12,12 @@ import {
   type LeaseFirstGroveState,
 } from "../src/schemas.js";
 import { InvalidGroveStateError } from "../src/errors.js";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { execa } from "execa";
 import { healPoolState, findOrAllocateSlot, loadPoolState } from "../src/pool-state.js";
 import { createTestGrove } from "./helpers/test-grove.js";
+import { stateFilePath } from "../src/state.js";
 
 const NOW = "2026-06-11T00:00:00.000Z";
 
@@ -277,6 +278,19 @@ describe("Lease-first state", () => {
       await mkdir(groveDir, { recursive: true });
       await writeFile(join(groveDir, "grove-state.json"), "{ bad json");
       await expect(readLeaseFirstState(groveDir)).rejects.toThrowError(InvalidGroveStateError);
+    });
+
+    it("writes state file without group/other permission bits on POSIX", async () => {
+      if (process.platform === "win32") {
+        return;
+      }
+
+      await mkdir(groveDir, { recursive: true });
+      const state: LeaseFirstGroveState = { slots: [], leases: [] };
+      await writeLeaseFirstState(groveDir, state);
+
+      const fileStat = await stat(stateFilePath(groveDir));
+      expect(fileStat.mode & 0o077).toBe(0);
     });
   });
 
