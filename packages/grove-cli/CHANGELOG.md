@@ -1,5 +1,14 @@
 # @ferueda/grove-cli
 
+## [1.3.3](https://github.com/ferueda/grove/compare/grove-cli-v1.3.2...grove-cli-v1.3.3) (2026-06-18)
+
+
+### Bug Fixes
+
+* read CLI version from package.json ([5663e4c](https://github.com/ferueda/grove/commit/5663e4ced569aa0f7097a818d16710642df13b8b))
+* read CLI version from package.json ([5891650](https://github.com/ferueda/grove/commit/589165054d3a41ef0effabe8c3b63b92b3d8bdb0))
+* wire commander version flag to package.json version ([91a74b6](https://github.com/ferueda/grove/commit/91a74b6cab5a2622ea39cd8a616a728ed4cd7e43))
+
 ## [1.3.2](https://github.com/ferueda/grove/compare/grove-cli-v1.3.1...grove-cli-v1.3.2) (2026-06-18)
 
 
