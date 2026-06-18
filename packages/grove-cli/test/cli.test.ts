@@ -307,6 +307,32 @@ describe("grove CLI lease-first JSON", () => {
     expect(result.stderr).toBe("");
   });
 
+  it("acquire --json on missing ref reports REF_NOT_FOUND", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    const result = await runCli(
+      [
+        "acquire",
+        "--json",
+        "--lease-id",
+        "missing-ref-lease",
+        "--ref",
+        "no-such-ref",
+        "-r",
+        repoDir,
+      ],
+      { GROVE_DIR: groveDir },
+    );
+
+    expect(result.exitCode).toBe(13);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      ok: false,
+      error: { code: "REF_NOT_FOUND" },
+    });
+    expect(result.stderr).toBe("");
+  });
+
   it("acquire --json on missing branch reports BRANCH_NOT_FOUND with structured details", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
