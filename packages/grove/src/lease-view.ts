@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import type { GroveLeaseRecord, GroveLeaseTarget, LeaseFirstGroveState } from "./schemas.js";
 import type { GroveLease } from "./types.js";
 import { getHeadSha } from "./git/index.js";
-import { findInWorktree } from "./process/detect.js";
+import { findInWorktree, type ProcessScanResult } from "./process/detect.js";
 
 export function targetBranch(target: GroveLeaseTarget | undefined): string | undefined {
   return target?.mode === "branch" ? target.branch : undefined;
@@ -59,7 +59,10 @@ export function recordToGroveLease(
   };
 }
 
-export async function enrichLeaseReadOnly(lease: GroveLeaseRecord): Promise<GroveLease> {
+export async function enrichLeaseReadOnly(
+  lease: GroveLeaseRecord,
+  scan?: ProcessScanResult,
+): Promise<GroveLease> {
   const missingPath = !existsSync(lease.path);
   if (missingPath) {
     lease.diagnostics = { ...lease.diagnostics, missingPath: true };
@@ -71,9 +74,13 @@ export async function enrichLeaseReadOnly(lease: GroveLeaseRecord): Promise<Grov
     }
   }
 
-  const { unverified } = missingPath ? { unverified: true } : await findInWorktree(lease.path);
+  const unverified = missingPath
+    ? true
+    : scan
+      ? scan.unverified
+      : (await findInWorktree(lease.path)).unverified;
 
-  if (unverified) {
+  if (unverified && !lease.diagnostics?.lastProcessSafetyCheck) {
     lease.diagnostics = {
       ...lease.diagnostics,
       lastProcessSafetyCheck: {
@@ -102,8 +109,9 @@ export async function listLeaseRecords(
   const leases: GroveLease[] = [];
   for (const lease of state.leases) {
     const copy = { ...lease };
+    let scan: ProcessScanResult | undefined;
     if (options?.includeProcesses && existsSync(copy.path)) {
-      const scan = await findInWorktree(copy.path);
+      scan = await findInWorktree(copy.path);
       copy.diagnostics = {
         ...copy.diagnostics,
         lastProcessSafetyCheck: {
@@ -113,7 +121,7 @@ export async function listLeaseRecords(
         },
       };
     }
-    leases.push(await enrichLeaseReadOnly(copy));
+    leases.push(await enrichLeaseReadOnly(copy, scan));
   }
   return leases;
 }
