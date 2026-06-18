@@ -642,10 +642,11 @@ describe("grove CLI informational exits", () => {
     return execa("node", [CLI_PATH, ...args], { reject: false });
   }
 
-  it("bare invocation shows help without INVALID_INPUT on stderr", async () => {
+  it("bare invocation shows help on stderr without INVALID_INPUT", async () => {
     const result = await runCli([]);
-    expect(result.stdout).toContain("Usage: grove");
-    expect(result.stderr).toBe("");
+    expect(result.stdout).toBe("");
+    expect(result.stderr).toContain("Usage: grove");
+    expect(result.stderr).not.toContain("[INVALID_INPUT]");
     expect(result.exitCode).toBe(1);
   });
 
