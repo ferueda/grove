@@ -27,6 +27,15 @@ describe("grove CLI lease-first JSON", () => {
     });
   }
 
+  function parseJson(result: { stdout: string }) {
+    return JSON.parse(result.stdout);
+  }
+
+  function expectStdoutOnly(result: { stdout: string; stderr: string }) {
+    expect(result.stderr).toBe("");
+    return parseJson(result);
+  }
+
   it("acquire --json writes lease envelope to stdout only", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
@@ -140,6 +149,30 @@ describe("grove CLI lease-first JSON", () => {
     expect(result.stderr).toBe("");
   });
 
+  it("inspect --json writes lease envelope to stdout only", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    await seedLease(repoDir, groveDir, {
+      leaseId: "inspect-lease",
+      mode: "detached",
+      ref: "main",
+    });
+
+    const result = await runCli(
+      ["inspect", "--json", "--lease-id", "inspect-lease", "-r", repoDir],
+      { GROVE_DIR: groveDir },
+    );
+
+    expect(result.exitCode).toBe(0);
+    const body = expectStdoutOnly(result);
+    expect(body).toMatchObject({
+      ok: true,
+      lease: { leaseId: "inspect-lease", state: "leased" },
+    });
+    expect(body.suggestions).toEqual(expect.any(Array));
+  });
+
   it("release --json writes result envelope to stdout", async () => {
     const { repoDir, tmpDir, groveDir } = await setupRepo();
     tmpDirs.push(tmpDir);
@@ -163,6 +196,42 @@ describe("grove CLI lease-first JSON", () => {
     });
     expect(body.suggestions).toEqual(expect.any(Array));
     expect(result.stderr).toBe("");
+  });
+
+  it("destroy --json writes result envelope to stdout only", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    await seedLease(repoDir, groveDir, {
+      leaseId: "destroy-lease",
+      mode: "detached",
+      ref: "main",
+    });
+
+    const result = await runCli(
+      ["destroy", "--json", "--lease-id", "destroy-lease", "--force", "-r", repoDir],
+      { GROVE_DIR: groveDir },
+    );
+
+    expect(result.exitCode).toBe(0);
+    const body = expectStdoutOnly(result);
+    expect(body).toMatchObject({
+      ok: true,
+      result: { status: "destroyed", leaseId: "destroy-lease" },
+    });
+    expect(body.suggestions).toEqual(expect.any(Array));
+
+    const missing = await runCli(
+      ["inspect", "--json", "--lease-id", "destroy-lease", "-r", repoDir],
+      { GROVE_DIR: groveDir },
+    );
+
+    expect(missing.exitCode).toBe(8);
+    expect(parseJson(missing)).toMatchObject({
+      ok: false,
+      error: { code: "LEASE_NOT_FOUND" },
+    });
+    expect(missing.stderr).toBe("");
   });
 
   it("errors use stable JSON envelope on stdout with mapped exit code", async () => {
@@ -463,6 +532,41 @@ describe("grove CLI lease-first JSON", () => {
       },
     });
     expect(result.stderr).toBe("");
+  });
+
+  it("repair --json quarantine writes result envelope to stdout only", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+
+    await seedLease(repoDir, groveDir, {
+      leaseId: "repair-quarantine-lease",
+      mode: "detached",
+      ref: "main",
+    });
+
+    const result = await runCli(
+      [
+        "repair",
+        "--json",
+        "--lease-id",
+        "repair-quarantine-lease",
+        "--action",
+        "quarantine",
+        "-r",
+        repoDir,
+      ],
+      { GROVE_DIR: groveDir },
+    );
+
+    expect(result.exitCode).toBe(0);
+    const body = expectStdoutOnly(result);
+    expect(body.ok).toBe(true);
+    expect(body.result).toMatchObject({
+      status: "quarantined",
+      leaseId: "repair-quarantine-lease",
+      lease: { leaseId: "repair-quarantine-lease", state: "quarantined" },
+    });
+    expect(body.suggestions).toEqual(expect.any(Array));
   });
 
   it("repair --json rejects invalid action with structured INVALID_INPUT", async () => {
