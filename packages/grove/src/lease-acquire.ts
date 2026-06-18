@@ -23,6 +23,7 @@ import {
 import { enrichLeaseReadOnly } from "./lease-view.js";
 import {
   BranchExistsError,
+  InvalidTransitionError,
   LeaseAlreadyExistsError,
   LeaseNotFoundError,
   LeaseQuarantinedError,
@@ -54,15 +55,22 @@ export async function finalizeLeaseCheckout(
   await withStateLock(poolDir, async () => {
     const state = await loadPoolState(poolDir, repoRoot);
     const lease = findLease(state, leaseId);
-    const slot = lease ? findSlot(state, lease.slotName) : undefined;
-    if (!lease || !slot) return;
+    if (!lease) {
+      throw new LeaseNotFoundError(`Lease ${leaseId} not found during acquire finalization`);
+    }
+    const slot = findSlot(state, lease.slotName);
+    if (!slot) {
+      throw new LeaseNotFoundError(`Lease ${leaseId} slot not found during acquire finalization`);
+    }
 
     const nextLease = transitionLease(lease, {
       type: "ACQUIRE_COMPLETE",
       target: finalizedTarget,
       headSha,
     });
-    if (!nextLease) return;
+    if (!nextLease) {
+      throw new InvalidTransitionError("ACQUIRE_COMPLETE transition returned no lease");
+    }
 
     const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === leaseId);
     state.leases[leaseIndex] = nextLease;
@@ -72,7 +80,7 @@ export async function finalizeLeaseCheckout(
   const state = await loadPoolState(poolDir, repoRoot);
   const lease = findLease(state, leaseId);
   if (!lease) {
-    throw new Error(`Lease ${leaseId} missing after acquire complete`);
+    throw new LeaseNotFoundError(`Lease ${leaseId} missing after acquire finalization`);
   }
   return enrichLeaseReadOnly(lease);
 }
@@ -88,6 +96,7 @@ export async function quarantineFailedAcquire(
     const state = await loadPoolState(poolDir, repoRoot);
     const lease = findLease(state, leaseId);
     const slot = lease ? findSlot(state, lease.slotName) : undefined;
+    // Best-effort cleanup while handling an earlier failure; do not throw here or mask it.
     if (!lease || !slot) return;
 
     const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === leaseId);
