@@ -337,6 +337,7 @@ describe("lease release integration", () => {
     ).rejects.toMatchObject({ code: "PATH_OUTSIDE_POOL" });
 
     expect(existsSync(outsidePath)).toBe(true);
+    expect(await grove.inspect("reset-outside-lease")).toMatchObject({ state: "quarantined" });
   });
 
   it("release rejects physical worktree paths and only accepts leaseId", async () => {
