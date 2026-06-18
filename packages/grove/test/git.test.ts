@@ -18,7 +18,6 @@ import {
   isDirty,
   fetchOrigin,
 } from "../src/git/worktree.js";
-import { GitCommandError } from "../src/errors.js";
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { execa } from "execa";
@@ -48,7 +47,9 @@ describe("Git Layer", () => {
     });
 
     it("throws GitCommandError on git failure", async () => {
-      await expect(runGit(repoDir, ["not-a-command"])).rejects.toThrowError(GitCommandError);
+      await expect(runGit(repoDir, ["not-a-command"])).rejects.toMatchObject({
+        code: "GIT_COMMAND_FAILED",
+      });
     });
   });
 

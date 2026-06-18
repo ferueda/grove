@@ -49,9 +49,9 @@ describe("lease destroy integration", () => {
     state.leases[0].path = outsidePath;
     await writeFile(statePath, JSON.stringify(state));
 
-    await expect(grove.destroy(lease.leaseId, { force: true })).rejects.toThrow(
-      /outside the pool boundary/,
-    );
+    await expect(grove.destroy(lease.leaseId, { force: true })).rejects.toMatchObject({
+      code: "PATH_OUTSIDE_POOL",
+    });
 
     const quarantined = await grove.inspect("boundary-lease");
     expect(quarantined?.state).toBe("quarantined");

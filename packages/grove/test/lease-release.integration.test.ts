@@ -32,9 +32,9 @@ describe("lease release integration", () => {
     try {
       await expect(
         grove.release(lease.leaseId, { cleanup: "reset", resetTo: "main" }),
-      ).rejects.toThrow(/Unsafe cleanup: active processes/);
+      ).rejects.toMatchObject({ code: "UNSAFE_CLEANUP" });
 
-      await expect(grove.destroy(lease.leaseId)).rejects.toThrow(/is in use/);
+      await expect(grove.destroy(lease.leaseId)).rejects.toMatchObject({ code: "UNSAFE_CLEANUP" });
 
       // forceful bypass
       await grove.destroy(lease.leaseId, { force: true });
@@ -225,7 +225,7 @@ describe("lease release integration", () => {
     try {
       await expect(
         grove.repair({ leaseId: "fresh-safety", action: "resume-cleanup" }),
-      ).rejects.toThrow(/Unsafe cleanup: active processes/);
+      ).rejects.toMatchObject({ code: "UNSAFE_CLEANUP" });
     } finally {
       child.kill();
       await child.catch(() => {});
