@@ -40,7 +40,7 @@ export async function writeState(groveDir: string, state: GroveState): Promise<v
   const data = JSON.stringify(state, null, 2);
   const target = stateFilePath(groveDir);
   const tmp = `${target}.tmp`;
-  await writeFile(tmp, data, { mode: 0o644 });
+  await writeFile(tmp, data, { mode: 0o600 });
   await rename(tmp, target);
 }
 
