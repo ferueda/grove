@@ -11,6 +11,7 @@ import { repairCmd } from "./commands/repair.js";
 import { commandsCmd } from "./commands/commands.js";
 import { statusCmd } from "./commands/status.js";
 import { applyCliErrorRouting } from "./cli-error-routing.js";
+import { isBenignCommanderExit } from "./commander-error.js";
 
 process.on("uncaughtException", (err) => {
   console.error(pc.red(`Fatal: ${err.message}`));
@@ -53,5 +54,9 @@ applyCliErrorRouting(program);
 try {
   await program.parseAsync(process.argv);
 } catch (err: unknown) {
-  handleError(err);
+  if (isBenignCommanderExit(err)) {
+    process.exitCode = err.exitCode;
+  } else {
+    handleError(err);
+  }
 }
