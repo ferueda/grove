@@ -16,7 +16,7 @@
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",
     "@commitlint/config-conventional": "^21.0.2",
-    "@types/node": "^25.9.3",
+    "@types/node": "^26.0.0",
     "@types/proper-lockfile": "^4.1.4",
     "@typescript/native-preview": "^7.0.0-dev",
     "husky": "^9.1.7",
