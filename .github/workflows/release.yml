@@ -61,7 +61,7 @@ jobs:
             echo "value=auto" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Prepare forced release config
+      - name: Prepare forced release commit
         if: ${{ steps.mode.outputs.value == 'force' }}
         id: force
         env:
@@ -76,11 +76,11 @@ jobs:
             *) echo "Unsupported bump: $BUMP" >&2; exit 1 ;;
           esac
           echo "version=$NEXT" >> "$GITHUB_OUTPUT"
-          jq --arg version "$NEXT" \
-            '.packages."packages/grove" += { "release-as": $version } |
-             .packages."packages/grove-cli" += { "release-as": $version }' \
-            release-please-config.json > release-please-config.force.json
-          echo "Prepared release-as $NEXT"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "chore: force release ${NEXT}" -m "Release-As: ${NEXT}"
+          git push origin HEAD:main
+          echo "Prepared Release-As $NEXT"
 
       - name: Open or refresh release PR
         if: ${{ steps.mode.outputs.value == 'force' || steps.mode.outputs.value == 'release-pr' }}
@@ -88,7 +88,7 @@ jobs:
         id: release_pr
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          config-file: ${{ steps.mode.outputs.value == 'force' && 'release-please-config.force.json' || 'release-please-config.json' }}
+          config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
           skip-github-release: true
 
