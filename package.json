@@ -14,15 +14,15 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@commitlint/cli": "^21.1.0",
-    "@commitlint/config-conventional": "^21.1.0",
-    "@types/node": "^26.0.1",
+    "@commitlint/cli": "^21.2.0",
+    "@commitlint/config-conventional": "^21.2.0",
+    "@types/node": "^26.1.0",
     "@types/proper-lockfile": "^4.1.4",
     "@typescript/native-preview": "^7.0.0-dev",
     "husky": "^9.1.7",
-    "oxfmt": "^0.56.0",
-    "oxlint": "^1.71.0",
-    "vitest": "^4.1.9"
+    "oxfmt": "^0.57.0",
+    "oxlint": "^1.72.0",
+    "vitest": "^4.1.10"
   },
   "engines": {
     "node": ">=24"
