@@ -22,5 +22,12 @@
     "packages/grove-cli": {
       "release-type": "node"
     }
-  }
+  },
+  "plugins": [
+    {
+      "type": "linked-versions",
+      "groupName": "grove",
+      "components": ["grove", "grove-cli"]
+    }
+  ]
 }

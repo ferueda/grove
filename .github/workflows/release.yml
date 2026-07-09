@@ -7,7 +7,7 @@ on:
         description: >-
           auto — default release-please behavior (publish when a release PR was merged).
           release-pr — open or refresh the release PR only; merge it yourself to publish.
-          force — bump version from current main and publish (for dependency-only changes).
+          force — open a Release-As marker PR for dependency-only changes.
         required: true
         default: auto
         type: choice
@@ -61,29 +61,77 @@ jobs:
             echo "value=auto" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Prepare forced release commit
+      - name: Resolve forced release version
         if: ${{ steps.mode.outputs.value == 'force' }}
         id: force
         env:
           BUMP: ${{ inputs.bump || 'patch' }}
         run: |
-          CURRENT=$(jq -r '."packages/grove-cli"' .release-please-manifest.json)
-          IFS=. read -r MAJOR MINOR PATCH <<< "$CURRENT"
-          case "$BUMP" in
-            major) NEXT="$((MAJOR + 1)).0.0" ;;
-            minor) NEXT="${MAJOR}.$((MINOR + 1)).0" ;;
-            patch) NEXT="${MAJOR}.${MINOR}.$((PATCH + 1))" ;;
-            *) echo "Unsupported bump: $BUMP" >&2; exit 1 ;;
-          esac
+          NEXT=$(node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+
+          const bump = process.env.BUMP;
+          const manifest = JSON.parse(readFileSync(".release-please-manifest.json", "utf8"));
+          const versions = Object.values(manifest).map((version) => {
+            const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+            if (!match) throw new Error(`Unsupported manifest version: ${version}`);
+            return match.slice(1).map(Number);
+          });
+          const [major, minor, patch] = versions.reduce((max, version) => {
+            for (let i = 0; i < 3; i += 1) {
+              if (version[i] > max[i]) return version;
+              if (version[i] < max[i]) return max;
+            }
+            return max;
+          });
+
+          if (bump === "major") console.log(`${major + 1}.0.0`);
+          else if (bump === "minor") console.log(`${major}.${minor + 1}.0`);
+          else if (bump === "patch") console.log(`${major}.${minor}.${patch + 1}`);
+          else throw new Error(`Unsupported bump: ${bump}`);
+          NODE
+          )
           echo "version=$NEXT" >> "$GITHUB_OUTPUT"
+          echo "Resolved forced release version $NEXT"
+
+      - name: Open forced release marker PR
+        if: ${{ steps.mode.outputs.value == 'force' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEXT: ${{ steps.force.outputs.version }}
+        run: |
+          set -euo pipefail
+          BRANCH="release-force/${NEXT}"
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit --allow-empty -m "chore: force release ${NEXT}" -m "Release-As: ${NEXT}"
-          git push origin HEAD:main
-          echo "Prepared Release-As $NEXT"
+
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$BRANCH"
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+          else
+            git checkout -B "$BRANCH"
+            git commit --allow-empty -m "chore: force release ${NEXT}" -m "Release-As: ${NEXT}"
+            git push --set-upstream origin "$BRANCH"
+          fi
+
+          BODY=$(cat <<EOF
+          Opens a protected-branch compliant Release-As marker.
+
+          After this PR is merged, the normal push workflow will open the release-please PR for ${NEXT}. Merge that release PR to publish to npm.
+          EOF
+          )
+
+          PR=$(gh pr list --head "$BRANCH" --base main --json number --jq '.[0].number')
+          if [ -z "$PR" ] || [ "$PR" = "null" ]; then
+            gh pr create --base main --head "$BRANCH" --title "chore: force release ${NEXT}" --body "$BODY"
+          else
+            gh pr edit "$PR" --title "chore: force release ${NEXT}" --body "$BODY"
+            echo "Updated existing force release PR #$PR"
+          fi
 
       - name: Open or refresh release PR
-        if: ${{ steps.mode.outputs.value == 'force' || steps.mode.outputs.value == 'release-pr' }}
+        if: ${{ steps.mode.outputs.value == 'release-pr' }}
         uses: googleapis/release-please-action@v5
         id: release_pr
         with:
@@ -92,28 +140,14 @@ jobs:
           manifest-file: .release-please-manifest.json
           skip-github-release: true
 
-      - name: Merge release PR
-        if: ${{ steps.mode.outputs.value == 'force' }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          PR=$(gh pr list --head release-please--branches--main --base main --json number --jq '.[0].number')
-          if [ -z "$PR" ] || [ "$PR" = "null" ]; then
-            echo "No release PR found to merge" >&2
-            exit 1
-          fi
-          gh pr merge "$PR" --merge --delete-branch
-          git pull origin main
-
       - name: Release Please
-        if: ${{ steps.mode.outputs.value != 'release-pr' }}
+        if: ${{ steps.mode.outputs.value == 'auto' }}
         uses: googleapis/release-please-action@v5
         id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-          skip-github-pull-request: ${{ steps.mode.outputs.value == 'force' }}
 
       - name: Install Dependencies
         if: ${{ steps.release.outputs.releases_created == 'true' }}
@@ -129,6 +163,52 @@ jobs:
 
       - name: Publish to NPM
         if: ${{ steps.release.outputs.releases_created == 'true' }}
-        run: pnpm -r publish --access public
         env:
           NPM_CONFIG_PROVENANCE: true
+          PATHS_RELEASED: ${{ steps.release.outputs.paths_released }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE' > /tmp/released-packages
+          const paths = JSON.parse(process.env.PATHS_RELEASED || "[]");
+          for (const path of paths) console.log(path);
+          NODE
+
+          if [ ! -s /tmp/released-packages ]; then
+            echo "No released package paths reported by release-please" >&2
+            exit 1
+          fi
+
+          while IFS= read -r path; do
+            echo "Publishing ${path}"
+            pnpm --filter "./${path}" publish --access public --no-git-checks
+          done < /tmp/released-packages
+
+      - name: Verify NPM dist-tags
+        if: ${{ steps.release.outputs.releases_created == 'true' }}
+        env:
+          PATHS_RELEASED: ${{ steps.release.outputs.paths_released }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync } from "node:child_process";
+          import { readFileSync } from "node:fs";
+          import { join } from "node:path";
+
+          const paths = JSON.parse(process.env.PATHS_RELEASED || "[]");
+          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+          for (const path of paths) {
+            const pkg = JSON.parse(readFileSync(join(path, "package.json"), "utf8"));
+            let latest = "";
+            for (let attempt = 1; attempt <= 6; attempt += 1) {
+              latest = execFileSync("npm", ["view", `${pkg.name}@latest`, "version"], {
+                encoding: "utf8",
+              }).trim();
+              if (latest === pkg.version) break;
+              await sleep(10000);
+            }
+            if (latest !== pkg.version) {
+              throw new Error(`${pkg.name}@latest is ${latest}, expected ${pkg.version}`);
+            }
+            console.log(`${pkg.name}@latest -> ${latest}`);
+          }
+          NODE
