@@ -5,9 +5,9 @@ on:
     inputs:
       mode:
         description: >-
-          auto — default release-please behavior (publish when a release PR was merged).
-          release-pr — open or refresh the release PR only; merge it yourself to publish.
-          force — bump version from current main and publish (for dependency-only changes).
+          auto - default release-please behavior (publish when a release PR was merged).
+          release-pr - open or refresh the release PR only; merge it yourself to publish.
+          force - bump version from current main and publish (for dependency-only changes).
         required: true
         default: auto
         type: choice
