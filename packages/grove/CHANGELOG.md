@@ -1,5 +1,13 @@
 # @ferueda/grove
 
+## [1.4.1](https://github.com/ferueda/grove/compare/grove-v1.4.0...grove-v1.4.1) (2026-07-09)
+
+
+### Dependencies
+
+* force release 1.4.1 ([c5a93cf](https://github.com/ferueda/grove/commit/c5a93cf4a497f55f02bfc48bedac8f3114606c8b))
+* force release 1.4.1 ([13e060e](https://github.com/ferueda/grove/commit/13e060ec463b41588bb4a1ab5c18a0a2efdbd5e7))
+
 ## [1.4.0](https://github.com/ferueda/grove/compare/grove-v1.3.1...grove-v1.4.0) (2026-06-18)
 
 
