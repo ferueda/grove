@@ -61,6 +61,8 @@ jobs:
             echo "value=auto" >> "$GITHUB_OUTPUT"
           fi
 
+      # release-please-action fetches config files from the base branch, not the checkout.
+      # Force-mode configs must be checked in before this action can read them.
       - name: Resolve release config
         id: config
         env:
