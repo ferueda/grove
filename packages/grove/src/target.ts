@@ -74,8 +74,12 @@ export async function buildAcquireTarget(
   }
 }
 
-export function buildPendingAcquire(target: GroveLeaseTarget, startedAt: string): PendingAcquire {
-  return { target, startedAt };
+export function buildPendingAcquire(
+  target: GroveLeaseTarget,
+  startedAt: string,
+  postCreatePending: boolean,
+): PendingAcquire {
+  return { target, startedAt, postCreatePending };
 }
 
 export function finalizeBranchTarget(target: GroveLeaseTarget, headSha: string): GroveLeaseTarget {

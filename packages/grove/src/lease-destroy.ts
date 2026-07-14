@@ -1,4 +1,4 @@
-import { dirname } from "node:path";
+import { basename, dirname, normalize } from "node:path";
 import { rm } from "node:fs/promises";
 import type { GroveConfig, GroveLeaseRecord, GroveSlot } from "./schemas.js";
 import type { DestroyLeaseOptions } from "./types.js";
@@ -7,7 +7,12 @@ import { withStateLock } from "./lock.js";
 import { assertPathWithinPool } from "./path-boundary.js";
 import { isWorktreeInUse } from "./process/detect.js";
 import { assertWorktreeSafeForCleanup } from "./process/cleanup-safety.js";
-import { InvalidInputError, LeaseBusyError, LeaseNotFoundError } from "./errors.js";
+import {
+  InvalidInputError,
+  LeaseBusyError,
+  LeaseNotFoundError,
+  PathOutsidePoolError,
+} from "./errors.js";
 import { buildLeaseHookEnv, recordToGroveLease } from "./lease-view.js";
 import {
   findLease,
@@ -37,6 +42,19 @@ function assertDeleteBranchNotRequested(options?: DestroyLeaseOptions): void {
   if (options?.deleteBranch) {
     throw new InvalidInputError("deleteBranch is not supported in lease-first destroy MVP");
   }
+}
+
+function destroySlotDirectory(poolDir: string, wtPath: string, slotName: string): string {
+  const normalizedPool = normalize(poolDir);
+  const slotDir = dirname(normalize(wtPath));
+  if (
+    slotDir === normalizedPool ||
+    dirname(slotDir) !== normalizedPool ||
+    basename(slotDir) !== slotName
+  ) {
+    throw new PathOutsidePoolError("Worktree is not inside its owned pool slot directory");
+  }
+  return slotDir;
 }
 
 function assertLeaseDestroyable(
@@ -254,8 +272,9 @@ async function completeDestroy(
     });
 
     await assertPathWithinPool(poolDir, wtPath);
+    const slotDir = destroySlotDirectory(poolDir, wtPath, slot.slotName);
     await removeWorktree(config.repoRoot, wtPath);
-    await rm(dirname(wtPath), { recursive: true, force: true });
+    await rm(slotDir, { recursive: true, force: true });
   } catch (err) {
     const reason = err instanceof Error ? err.message : "destroy failed";
     await quarantineFailedDestroy(poolDir, config.repoRoot, context.leaseId, reason);

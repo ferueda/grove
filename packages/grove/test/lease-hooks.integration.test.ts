@@ -64,7 +64,7 @@ describe("lease hooks integration", () => {
     expect(lease).toMatchObject({
       leaseId: "post-create-fail",
       state: "quarantined",
-      pendingAcquire: expect.anything(),
+      pendingAcquire: expect.objectContaining({ postCreatePending: true }),
       diagnostics: { failedPhase: "postCreate" },
     });
   });

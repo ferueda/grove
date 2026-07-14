@@ -6,6 +6,22 @@ import { join } from "node:path";
 import { createTestGrove } from "./helpers/test-grove.js";
 import { setupRepo } from "./helpers/git-repo.js";
 import { registerLeaseIntegrationCleanup } from "./helpers/lease-integration.js";
+import { repairLease } from "../src/lease-repair.js";
+
+async function markLeasePreparing(statePath: string, postCreatePending: boolean): Promise<void> {
+  const state = JSON.parse(await readFile(statePath, "utf8"));
+  const lease = state.leases[0];
+  lease.pendingAcquire = {
+    target: lease.target,
+    startedAt: lease.updatedAt,
+    postCreatePending,
+  };
+  lease.state = "preparing";
+  delete lease.target;
+  delete lease.acquiredHeadSha;
+  delete lease.currentHeadSha;
+  await writeFile(statePath, JSON.stringify(state));
+}
 
 describe("lease repair integration", () => {
   const cleanup = registerLeaseIntegrationCleanup();
@@ -257,6 +273,129 @@ describe("lease repair integration", () => {
     expect(result).toEqual({ status: "destroyed", leaseId: "force-destroy-lease" });
     expect(await grove.inspect("force-destroy-lease")).toBeNull();
     expect(existsSync(lease.path)).toBe(false);
+  });
+
+  it("repair force-destroy preserves caller force intent after preDestroy", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    cleanup.tmpDirs.push(tmpDir);
+
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "force-intent-lease",
+      mode: "branch",
+      branch: "force-intent-branch",
+      createBranch: { from: "main", ifExists: "fail" },
+    });
+    await grove.release(lease.leaseId, { cleanup: "quarantine" });
+
+    let stopChild = async (): Promise<void> => {};
+    try {
+      await expect(
+        repairLease(
+          grove.poolDir,
+          { repoRoot: repoDir },
+          { leaseId: lease.leaseId, action: "force-destroy" },
+          {
+            preDestroy: async (wtPath) => {
+              const child = execa("node", ["-e", "setInterval(() => {}, 1000)"], {
+                cwd: wtPath,
+              });
+              stopChild = async () => {
+                child.kill();
+                await child.catch(() => {});
+              };
+              await new Promise((resolve) => setTimeout(resolve, 500));
+            },
+          },
+        ),
+      ).rejects.toMatchObject({ code: "UNSAFE_CLEANUP" });
+
+      expect(await grove.inspect(lease.leaseId)).toMatchObject({ state: "quarantined" });
+      expect(existsSync(lease.path)).toBe(true);
+
+      const result = await grove.repair({
+        leaseId: lease.leaseId,
+        action: "force-destroy",
+        force: true,
+      });
+      expect(result).toEqual({ status: "destroyed", leaseId: lease.leaseId });
+      expect(await grove.inspect(lease.leaseId)).toBeNull();
+      expect(existsSync(lease.path)).toBe(false);
+    } finally {
+      await stopChild();
+    }
+  });
+
+  it("repair resume-acquire completes a preparing lease without replaying postCreate", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    cleanup.tmpDirs.push(tmpDir);
+
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const firstLease = await grove.acquire({
+      leaseId: "preparing-slot-source",
+      mode: "detached",
+      ref: "main",
+    });
+    await grove.release(firstLease.leaseId, {
+      cleanup: "reset",
+      resetTo: "main",
+      force: true,
+    });
+
+    const lease = await grove.acquire({
+      leaseId: "preparing-resume",
+      mode: "branch",
+      branch: "preparing-resume-branch",
+      createBranch: { from: "main", ifExists: "fail" },
+    });
+    expect(lease.slotName).toBe(firstLease.slotName);
+    await markLeasePreparing(join(grove.poolDir, "grove-state.json"), false);
+
+    let postCreateRuns = 0;
+    const repaired = await repairLease(
+      grove.poolDir,
+      { repoRoot: repoDir },
+      { leaseId: lease.leaseId, action: "resume-acquire" },
+      { postCreate: async () => void postCreateRuns++ },
+    );
+
+    expect(repaired).toMatchObject({
+      state: "leased",
+      branch: "preparing-resume-branch",
+      pendingAcquire: undefined,
+    });
+    expect(postCreateRuns).toBe(0);
+  });
+
+  it("repair resume-acquire recreates a missing worktree and replays postCreate", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    cleanup.tmpDirs.push(tmpDir);
+
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "preparing-post-create",
+      mode: "branch",
+      branch: "preparing-post-create-branch",
+      createBranch: { from: "main", ifExists: "fail" },
+    });
+    await execa("git", ["worktree", "remove", "--force", lease.path], { cwd: repoDir });
+    await markLeasePreparing(join(grove.poolDir, "grove-state.json"), false);
+
+    let postCreateRuns = 0;
+    const repaired = await repairLease(
+      grove.poolDir,
+      { repoRoot: repoDir },
+      { leaseId: lease.leaseId, action: "resume-acquire" },
+      { postCreate: async () => void postCreateRuns++ },
+    );
+
+    expect(repaired).toMatchObject({
+      state: "leased",
+      branch: "preparing-post-create-branch",
+      pendingAcquire: undefined,
+    });
+    expect(postCreateRuns).toBe(1);
+    expect(existsSync(lease.path)).toBe(true);
   });
 
   it("repair resume-acquire completes a quarantined pending acquire", async () => {
