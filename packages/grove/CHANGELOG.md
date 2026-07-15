@@ -1,5 +1,12 @@
 # @ferueda/grove
 
+## [1.4.4](https://github.com/ferueda/grove/compare/grove-v1.4.3...grove-v1.4.4) (2026-07-15)
+
+
+### Bug Fixes
+
+* harden destroy recovery safety ([#98](https://github.com/ferueda/grove/issues/98)) ([c34336e](https://github.com/ferueda/grove/commit/c34336e732ea1c914d49cb313bfbde88abe2a5f3))
+
 ## [1.4.3](https://github.com/ferueda/grove/compare/grove-v1.4.2...grove-v1.4.3) (2026-07-15)
 
 
