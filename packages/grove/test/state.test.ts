@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { setupPathFixture } from "./helpers/git-repo.js";
 import { readState, writeState, healState, stateFilePath } from "../src/state.js";
-import { withStateLock } from "../src/lock.js";
+import { withLeaseHookLock, withStateLock } from "../src/lock.js";
 import type { GroveState } from "../src/schemas.js";
 import { InvalidGroveStateError, LockFailedError } from "../src/errors.js";
 import { rm, writeFile, mkdir, stat } from "node:fs/promises";
@@ -95,6 +95,51 @@ describe("State & Locking", () => {
       child.kill();
       // wait for child to die to prevent ECOMPROMISED errors from proper-lockfile on directory deletion
       await child.catch(() => {});
+    });
+  });
+
+  describe("withLeaseHookLock", () => {
+    it("serializes callbacks for the same worktree", async () => {
+      const worktreePath = join(tmpDir, "hook-lock-worktree");
+      await mkdir(worktreePath, { recursive: true });
+
+      const events: string[] = [];
+      let signalFirstStarted!: () => void;
+      const firstStarted = new Promise<void>((resolve) => {
+        signalFirstStarted = resolve;
+      });
+      let releaseFirst!: () => void;
+      const holdFirst = new Promise<void>((resolve) => {
+        releaseFirst = resolve;
+      });
+      const first = withLeaseHookLock(worktreePath, async () => {
+        events.push("first:start");
+        signalFirstStarted();
+        await holdFirst;
+        events.push("first:end");
+      });
+      await firstStarted;
+
+      let signalSecondCalled!: () => void;
+      const secondCalled = new Promise<void>((resolve) => {
+        signalSecondCalled = resolve;
+      });
+      const second = (async () => {
+        signalSecondCalled();
+        await withLeaseHookLock(worktreePath, async () => {
+          events.push("second:start");
+        });
+      })();
+      await secondCalled;
+
+      try {
+        expect(events).toEqual(["first:start"]);
+      } finally {
+        releaseFirst();
+        await Promise.all([first, second]);
+      }
+
+      expect(events).toEqual(["first:start", "first:end", "second:start"]);
     });
   });
 
