@@ -376,11 +376,13 @@ Configure shell commands in `createGrove({ hooks })`. Hook cwd is the worktree p
 | `postAcquire` | After a fresh branch/ref checkout and on every compatible re-acquire |
 | `preRelease` | Before lease cleanup |
 | `postRelease` | After lease cleanup |
-| `preDestroy` | Before worktree removal |
+| `preDestroy` | Before worktree removal, while the worktree path still exists |
 
 Crash recovery may run `postCreate` more than once. Keep that hook idempotent; reused physical slots do not run it.
 
 `postAcquire` runs once for every compatible `acquire()` call, including calls that return an existing lease. A retry starts the configured command list from the beginning, so keep every command idempotent. Grove serializes `postAcquire` executions for the same worktree, while different worktrees may run hooks concurrently.
+
+Resuming `destroy()` after the worktree was already removed skips `preDestroy` and converges the remaining Git registration, slot directory, and state cleanup. Process safety checks cover the entire owned slot directory before hooks and physical removal.
 
 Hook configuration is programmatic and is not persisted with lease state. Every process that acquires from a pool must create Grove with the intended, consistent hook configuration.
 
