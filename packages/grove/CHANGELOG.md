@@ -1,5 +1,12 @@
 # @ferueda/grove
 
+## [1.4.3](https://github.com/ferueda/grove/compare/grove-v1.4.2...grove-v1.4.3) (2026-07-15)
+
+
+### Bug Fixes
+
+* rerun post-acquire hooks on compatible reacquire ([#96](https://github.com/ferueda/grove/issues/96)) ([7e85429](https://github.com/ferueda/grove/commit/7e85429c40de85ce8137261ba9224fdf341f0d73))
+
 ## [1.4.2](https://github.com/ferueda/grove/compare/grove-v1.4.1...grove-v1.4.2) (2026-07-15)
 
 
