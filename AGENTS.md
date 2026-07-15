@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Work style: telegraph; noun-phrases ok; drop grammar; min tokens; always respond in English.
+Use clear, simple language. Avoid jargon and unnecessary complexity. Prefer short, familiar words over technical terms.
 
 ## Project Overview
 
