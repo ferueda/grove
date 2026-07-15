@@ -1,8 +1,9 @@
 import { basename, dirname, normalize } from "node:path";
+import { existsSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import type { GroveConfig, GroveLeaseRecord, GroveSlot } from "./schemas.js";
 import type { DestroyLeaseOptions } from "./types.js";
-import { removeWorktree } from "./git/index.js";
+import { removeWorktreeIfRegistered } from "./git/index.js";
 import { withStateLock } from "./lock.js";
 import { assertPathWithinPool } from "./path-boundary.js";
 import { isWorktreeInUse } from "./process/detect.js";
@@ -151,6 +152,23 @@ async function loadDestroyRemovalTarget(
   return { lease, slot, wtPath: slot.path };
 }
 
+async function loadValidatedDestroyTarget(
+  poolDir: string,
+  repoRoot: string,
+  context: DestroyContext,
+): Promise<{ lease: GroveLeaseRecord; slot: GroveSlot; wtPath: string; slotDir: string }> {
+  const target = await loadDestroyRemovalTarget(
+    poolDir,
+    repoRoot,
+    context.leaseId,
+    context.slotName,
+    context.wtPath,
+  );
+  await assertPathWithinPool(poolDir, target.wtPath);
+  const slotDir = destroySlotDirectory(poolDir, target.wtPath, target.slot.slotName);
+  return { ...target, slotDir };
+}
+
 async function assertDestroyStillPending(
   poolDir: string,
   repoRoot: string,
@@ -244,7 +262,16 @@ async function completeDestroy(
       return;
     }
 
-    await hooks.preDestroy?.(context.wtPath, context.leaseEnvVars);
+    const beforeHook = await loadValidatedDestroyTarget(poolDir, config.repoRoot, context);
+    await assertWorktreeSafeForCleanup(beforeHook.slotDir, beforeHook.slot, beforeHook.lease, {
+      force: context.force,
+      ignoreOwnerReservation: true,
+      message: DESTROY_UNSAFE_MESSAGE(beforeHook.slotDir),
+    });
+
+    if (existsSync(beforeHook.wtPath)) {
+      await hooks.preDestroy?.(beforeHook.wtPath, context.leaseEnvVars);
+    }
 
     if (
       !(await assertDestroyStillPending(
@@ -257,23 +284,19 @@ async function completeDestroy(
       return;
     }
 
-    const { lease, slot, wtPath } = await loadDestroyRemovalTarget(
+    const { lease, slot, wtPath, slotDir } = await loadValidatedDestroyTarget(
       poolDir,
       config.repoRoot,
-      context.leaseId,
-      context.slotName,
-      context.wtPath,
+      context,
     );
 
-    await assertWorktreeSafeForCleanup(wtPath, slot, lease, {
+    await assertWorktreeSafeForCleanup(slotDir, slot, lease, {
       force: context.force,
       ignoreOwnerReservation: true,
-      message: DESTROY_UNSAFE_MESSAGE(wtPath),
+      message: DESTROY_UNSAFE_MESSAGE(slotDir),
     });
 
-    await assertPathWithinPool(poolDir, wtPath);
-    const slotDir = destroySlotDirectory(poolDir, wtPath, slot.slotName);
-    await removeWorktree(config.repoRoot, wtPath);
+    await removeWorktreeIfRegistered(config.repoRoot, wtPath);
     await rm(slotDir, { recursive: true, force: true });
   } catch (err) {
     const reason = err instanceof Error ? err.message : "destroy failed";
