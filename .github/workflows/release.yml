@@ -7,23 +7,12 @@ on:
         description: >-
           auto — default release-please behavior (publish when a release PR was merged).
           release-pr — open or refresh the release PR only; merge it yourself to publish.
-          force — open a Release-As marker PR for dependency-only changes.
         required: true
         default: auto
         type: choice
         options:
           - auto
           - release-pr
-          - force
-      bump:
-        description: Version bump when mode is force
-        required: false
-        default: patch
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
   push:
     branches:
       - main
@@ -59,75 +48,6 @@ jobs:
             echo "value=${{ inputs.mode }}" >> "$GITHUB_OUTPUT"
           else
             echo "value=auto" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Resolve forced release version
-        if: ${{ steps.mode.outputs.value == 'force' }}
-        id: force
-        env:
-          BUMP: ${{ inputs.bump || 'patch' }}
-        run: |
-          NEXT=$(node --input-type=module <<'NODE'
-          import { readFileSync } from "node:fs";
-
-          const bump = process.env.BUMP;
-          const manifest = JSON.parse(readFileSync(".release-please-manifest.json", "utf8"));
-          const versions = Object.values(manifest).map((version) => {
-            const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
-            if (!match) throw new Error(`Unsupported manifest version: ${version}`);
-            return match.slice(1).map(Number);
-          });
-          const [major, minor, patch] = versions.reduce((max, version) => {
-            for (let i = 0; i < 3; i += 1) {
-              if (version[i] > max[i]) return version;
-              if (version[i] < max[i]) return max;
-            }
-            return max;
-          });
-
-          if (bump === "major") console.log(`${major + 1}.0.0`);
-          else if (bump === "minor") console.log(`${major}.${minor + 1}.0`);
-          else if (bump === "patch") console.log(`${major}.${minor}.${patch + 1}`);
-          else throw new Error(`Unsupported bump: ${bump}`);
-          NODE
-          )
-          echo "version=$NEXT" >> "$GITHUB_OUTPUT"
-          echo "Resolved forced release version $NEXT"
-
-      - name: Open forced release marker PR
-        if: ${{ steps.mode.outputs.value == 'force' }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NEXT: ${{ steps.force.outputs.version }}
-        run: |
-          set -euo pipefail
-          BRANCH="release-force/${NEXT}"
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
-            git fetch origin "$BRANCH"
-            git checkout -B "$BRANCH" "origin/$BRANCH"
-          else
-            git checkout -B "$BRANCH"
-            git commit --allow-empty -m "chore: force release ${NEXT}" -m "Release-As: ${NEXT}"
-            git push --set-upstream origin "$BRANCH"
-          fi
-
-          BODY=$(cat <<EOF
-          Opens a protected-branch compliant Release-As marker.
-
-          After this PR is merged, the normal push workflow will open the release-please PR for ${NEXT}. Merge that release PR to publish to npm.
-          EOF
-          )
-
-          PR=$(gh pr list --head "$BRANCH" --base main --json number --jq '.[0].number')
-          if [ -z "$PR" ] || [ "$PR" = "null" ]; then
-            gh pr create --base main --head "$BRANCH" --title "chore: force release ${NEXT}" --body "$BODY"
-          else
-            gh pr edit "$PR" --title "chore: force release ${NEXT}" --body "$BODY"
-            echo "Updated existing force release PR #$PR"
           fi
 
       - name: Open or refresh release PR

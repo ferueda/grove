@@ -1,12 +1,18 @@
 # @ferueda/grove
 
+## [1.4.3](https://github.com/ferueda/grove/compare/grove-v1.4.2...grove-v1.4.3) (2026-07-15)
+
+
+### Bug Fixes
+
+* rerun post-acquire hooks on compatible reacquire ([#96](https://github.com/ferueda/grove/issues/96)) ([7e85429](https://github.com/ferueda/grove/commit/7e85429c40de85ce8137261ba9224fdf341f0d73))
+
 ## [1.4.2](https://github.com/ferueda/grove/compare/grove-v1.4.1...grove-v1.4.2) (2026-07-15)
 
 
 ### Bug Fixes
 
 * harden worktree lifecycle correctness ([f330e00](https://github.com/ferueda/grove/commit/f330e00a12b65319338bf15574633453e120deb3))
-* harden worktree lifecycle correctness ([2bcabb4](https://github.com/ferueda/grove/commit/2bcabb4efb9dcecfb515b522e7dbf33c1c0b872d))
 
 ## [1.4.1](https://github.com/ferueda/grove/compare/grove-v1.4.0...grove-v1.4.1) (2026-07-09)
 
