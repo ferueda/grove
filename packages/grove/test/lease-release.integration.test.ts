@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { createTestGrove } from "./helpers/test-grove.js";
 import { setupRepo } from "./helpers/git-repo.js";
 import { registerLeaseIntegrationCleanup } from "./helpers/lease-integration.js";
+import { findInWorktree } from "../src/process/detect.js";
 
 describe("lease release integration", () => {
   const cleanup = registerLeaseIntegrationCleanup();
@@ -42,6 +43,48 @@ describe("lease release integration", () => {
       child.kill();
       await child.catch(() => {});
     }
+  });
+
+  it("treats an unavailable macOS process scan as unverified", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    cleanup.tmpDirs.push(tmpDir);
+
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "unverified-scan",
+      mode: "branch",
+      branch: "unverified-scan-branch",
+      createBranch: { from: "main", ifExists: "fail" },
+    });
+    await grove.release(lease.leaseId, { cleanup: "preserve" });
+
+    const originalPlatform = process.platform;
+    const originalPath = process.env.PATH;
+    Object.defineProperty(process, "platform", { value: "darwin", configurable: true });
+    process.env.PATH = join(tmpDir, "missing-bin");
+
+    try {
+      await expect(findInWorktree(lease.path)).resolves.toEqual({
+        processes: [],
+        unverified: true,
+      });
+      await expect(
+        grove.release(lease.leaseId, { cleanup: "reset", resetTo: "main" }),
+      ).rejects.toMatchObject({ code: "UNSAFE_CLEANUP" });
+    } finally {
+      Object.defineProperty(process, "platform", {
+        value: originalPlatform,
+        configurable: true,
+      });
+      if (originalPath === undefined) {
+        delete process.env.PATH;
+      } else {
+        process.env.PATH = originalPath;
+      }
+    }
+
+    expect(await grove.inspect(lease.leaseId)).toMatchObject({ state: "leased" });
+    expect(existsSync(lease.path)).toBe(true);
   });
 
   it("preserve release keeps dirty files and returns preserved lease", async () => {

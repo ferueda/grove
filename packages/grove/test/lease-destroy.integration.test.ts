@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { createTestGrove } from "./helpers/test-grove.js";
 import { setupRepo } from "./helpers/git-repo.js";
 import { registerLeaseIntegrationCleanup } from "./helpers/lease-integration.js";
+import { readLeaseFirstState, writeLeaseFirstState } from "../src/state-v1.js";
 
 describe("lease destroy integration", () => {
   const cleanup = registerLeaseIntegrationCleanup();
@@ -55,6 +56,36 @@ describe("lease destroy integration", () => {
 
     const quarantined = await grove.inspect("boundary-lease");
     expect(quarantined?.state).toBe("quarantined");
+  });
+
+  it("destroy rejects a worktree whose parent is the pool root", async () => {
+    const { repoDir, tmpDir, groveDir } = await setupRepo();
+    cleanup.tmpDirs.push(tmpDir);
+
+    const grove = await createTestGrove({ repoRoot: repoDir, groveRoot: groveDir });
+    const lease = await grove.acquire({
+      leaseId: "shallow-layout-lease",
+      mode: "branch",
+      branch: "shallow-layout-branch",
+      createBranch: { from: "main", ifExists: "fail" },
+    });
+
+    const shallowPath = join(grove.poolDir, "repo");
+    await execa("git", ["worktree", "move", lease.path, shallowPath], { cwd: repoDir });
+    const state = await readLeaseFirstState(grove.poolDir);
+    state.slots[0]!.path = shallowPath;
+    state.leases[0]!.path = shallowPath;
+    await writeLeaseFirstState(grove.poolDir, state);
+
+    const sentinelPath = join(grove.poolDir, "sentinel.txt");
+    await writeFile(sentinelPath, "keep");
+
+    await expect(grove.destroy(lease.leaseId, { force: true })).rejects.toMatchObject({
+      code: "PATH_OUTSIDE_POOL",
+    });
+    expect(existsSync(sentinelPath)).toBe(true);
+    expect(existsSync(shallowPath)).toBe(true);
+    expect(await grove.inspect(lease.leaseId)).toMatchObject({ state: "quarantined" });
   });
 
   it("idempotent destroy resumes an in-progress destroying lease", async () => {

@@ -104,6 +104,7 @@ export type GroveLeaseTarget = z.infer<typeof GroveLeaseTargetSchema>;
 export const PendingAcquireSchema = z.object({
   target: GroveLeaseTargetSchema,
   startedAt: z.string(),
+  postCreatePending: z.boolean().optional(),
 });
 
 export type PendingAcquire = z.infer<typeof PendingAcquireSchema>;

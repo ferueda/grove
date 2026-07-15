@@ -16,6 +16,7 @@ import {
 export type LeaseEvent =
   | { type: "ACQUIRE_COMPLETE"; target: GroveLeaseTarget; headSha: string }
   | { type: "ACQUIRE_FAILED"; reason: string; failedPhase?: GroveFailedPhase }
+  | { type: "ACQUIRE_POST_CREATE_COMPLETE" }
   | { type: "RELEASE_START"; cleanup: LeaseFirstCleanupIntent }
   | { type: "RELEASE_PRESERVE_COMPLETE" }
   | { type: "RELEASE_RESET_COMPLETE" }
@@ -24,7 +25,7 @@ export type LeaseEvent =
   | { type: "DESTROY_START" }
   | { type: "DESTROY_COMPLETE" }
   | { type: "DESTROY_FAILED"; reason: string }
-  | { type: "REPAIR_RESUME_ACQUIRE" }
+  | { type: "REPAIR_RESUME_ACQUIRE"; postCreatePending?: boolean }
   | { type: "REPAIR_RESUME_CLEANUP" };
 
 export type SlotEvent =
@@ -79,6 +80,21 @@ export function transitionLease(
         ...base,
         state: "quarantined",
         diagnostics: quarantineDiagnostics(lease, event.reason, event.failedPhase),
+      };
+    }
+    case "ACQUIRE_POST_CREATE_COMPLETE": {
+      if (
+        lease.state !== "preparing" ||
+        !lease.pendingAcquire ||
+        lease.pendingAcquire.postCreatePending !== true
+      ) {
+        throw new InvalidTransitionError(
+          `ACQUIRE_POST_CREATE_COMPLETE invalid from lease state ${lease.state}`,
+        );
+      }
+      return {
+        ...base,
+        pendingAcquire: { ...lease.pendingAcquire, postCreatePending: false },
       };
     }
     case "RELEASE_START": {
@@ -172,7 +188,7 @@ export function transitionLease(
       };
     }
     case "REPAIR_RESUME_ACQUIRE": {
-      if (lease.state !== "quarantined") {
+      if (lease.state !== "quarantined" && lease.state !== "preparing") {
         throw new InvalidTransitionError(
           `REPAIR_RESUME_ACQUIRE invalid from lease state ${lease.state}`,
         );
@@ -180,7 +196,18 @@ export function transitionLease(
       if (!lease.pendingAcquire) {
         throw new RepairNotAvailableError("resume-acquire requires pendingAcquire");
       }
-      return { ...base, state: "preparing" };
+      return {
+        ...base,
+        state: "preparing",
+        ...(event.postCreatePending === undefined
+          ? {}
+          : {
+              pendingAcquire: {
+                ...lease.pendingAcquire,
+                postCreatePending: event.postCreatePending,
+              },
+            }),
+      };
     }
     case "REPAIR_RESUME_CLEANUP": {
       if (lease.state !== "quarantined") {

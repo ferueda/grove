@@ -74,6 +74,45 @@ describe("Lease-first state", () => {
       expect(parsed.slots[0]?.state).toBe("leased");
     });
 
+    it.each([
+      { name: "pre-change intent", postCreatePending: undefined },
+      { name: "intent with pending postCreate", postCreatePending: true },
+    ])("parses $name", ({ postCreatePending }) => {
+      const parsed = parseLeaseFirstState({
+        slots: [
+          {
+            slotName: "slot-1",
+            path: "/pool/slot-1",
+            state: "leased",
+            createdAt: NOW,
+            updatedAt: NOW,
+          },
+        ],
+        leases: [
+          {
+            leaseId: "job-1",
+            slotName: "slot-1",
+            path: "/pool/slot-1",
+            repoRoot: "/repo",
+            state: "preparing",
+            pendingAcquire: {
+              target: {
+                mode: "detached",
+                requestedRef: "main",
+                resolvedRefSha: "abc123",
+              },
+              startedAt: NOW,
+              ...(postCreatePending === undefined ? {} : { postCreatePending }),
+            },
+            createdAt: NOW,
+            updatedAt: NOW,
+          },
+        ],
+      });
+
+      expect(parsed.leases[0]?.pendingAcquire?.postCreatePending).toBe(postCreatePending);
+    });
+
     it("migrates legacy worktrees state", () => {
       const legacy: GroveState = {
         worktrees: [

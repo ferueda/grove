@@ -206,8 +206,46 @@ describe("transitionLease", () => {
       state: "quarantined",
       pendingAcquire: { target: TARGET, startedAt: NOW },
     });
-    const next = transitionLease(lease, { type: "REPAIR_RESUME_ACQUIRE" }, NOW);
+    const next = transitionLease(
+      lease,
+      { type: "REPAIR_RESUME_ACQUIRE", postCreatePending: false },
+      NOW,
+    );
     expect(next?.state).toBe("preparing");
+    expect(next?.pendingAcquire?.postCreatePending).toBe(false);
+  });
+
+  it("preparing -> preparing on REPAIR_RESUME_ACQUIRE", () => {
+    const lease = createPreparingLease({
+      leaseId: "job-1",
+      slotName: "slot-1",
+      path: "/pool/slot-1",
+      repoRoot: "/repo",
+      pendingAcquire: { target: TARGET, startedAt: NOW },
+      now: NOW,
+    });
+
+    const next = transitionLease(
+      lease,
+      { type: "REPAIR_RESUME_ACQUIRE", postCreatePending: true },
+      NOW,
+    );
+    expect(next?.state).toBe("preparing");
+    expect(next?.pendingAcquire?.postCreatePending).toBe(true);
+  });
+
+  it("records completed postCreate work", () => {
+    const lease = createPreparingLease({
+      leaseId: "job-1",
+      slotName: "slot-1",
+      path: "/pool/slot-1",
+      repoRoot: "/repo",
+      pendingAcquire: { target: TARGET, startedAt: NOW, postCreatePending: true },
+      now: NOW,
+    });
+
+    const next = transitionLease(lease, { type: "ACQUIRE_POST_CREATE_COMPLETE" }, NOW);
+    expect(next?.pendingAcquire?.postCreatePending).toBe(false);
   });
 
   it("quarantined -> releasing on REPAIR_RESUME_CLEANUP when pendingCleanup exists", () => {
@@ -290,6 +328,23 @@ describe("transitionLease", () => {
         now: NOW,
       }),
       event: { type: "DESTROY_START" },
+    },
+    {
+      name: "ACQUIRE_POST_CREATE_COMPLETE from leased",
+      lease: leasedLease(),
+      event: { type: "ACQUIRE_POST_CREATE_COMPLETE" },
+    },
+    {
+      name: "ACQUIRE_POST_CREATE_COMPLETE without pending work",
+      lease: createPreparingLease({
+        leaseId: "job-1",
+        slotName: "slot-1",
+        path: "/pool/slot-1",
+        repoRoot: "/repo",
+        pendingAcquire: { target: TARGET, startedAt: NOW, postCreatePending: false },
+        now: NOW,
+      }),
+      event: { type: "ACQUIRE_POST_CREATE_COMPLETE" },
     },
     {
       name: "RELEASE_PRESERVE_COMPLETE from leased",

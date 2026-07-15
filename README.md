@@ -378,6 +378,8 @@ Configure shell commands in `createGrove({ hooks })`. Hook cwd is the worktree p
 | `postRelease` | After lease cleanup |
 | `preDestroy` | Before worktree removal |
 
+Crash recovery may run `postCreate` more than once. Keep that hook idempotent; reused physical slots do not run it.
+
 Lease hooks receive: `GROVE_LEASE_ID`, `GROVE_SLOT_NAME`, `GROVE_BRANCH`, `GROVE_REPO_ROOT`, `GROVE_WORKTREE_PATH`.
 
 Set `onHookFailure: "fail"` to throw `HOOK_FAILED` on hook errors.

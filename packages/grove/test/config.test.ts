@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { resolveGroveDir } from "../src/config.js";
-import { setupPathFixture } from "./helpers/git-repo.js";
-import { rm } from "node:fs/promises";
+import { setupPathFixture, setupRepo } from "./helpers/git-repo.js";
+import { mkdir, rm } from "node:fs/promises";
 import { join, basename } from "node:path";
 import { homedir } from "node:os";
+import { execa } from "execa";
 
 describe("Config", () => {
   let tmpDirs: string[] = [];
@@ -78,5 +79,16 @@ describe("Config", () => {
 
     delete process.env["TEST_GROVE_ROOT"];
     delete process.env["var2"];
+  });
+
+  it("uses distinct pools for same-named clones of one remote", async () => {
+    const { repoDir, remoteDir, tmpDir } = await setupRepo();
+    tmpDirs.push(tmpDir);
+    const secondParent = join(tmpDir, "second");
+    const secondRepoDir = join(secondParent, basename(repoDir));
+    await mkdir(secondParent, { recursive: true });
+    await execa("git", ["clone", remoteDir, secondRepoDir]);
+
+    await expect(resolveGroveDir(repoDir)).resolves.not.toBe(await resolveGroveDir(secondRepoDir));
   });
 });

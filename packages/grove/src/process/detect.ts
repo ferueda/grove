@@ -130,8 +130,11 @@ export async function findInWorktree(worktreePath: string): Promise<ProcessScanR
     return { processes: result, unverified: false };
   } else if (process.platform === "darwin") {
     try {
-      const { stdout } = await execa("lsof", ["-F", "pn", "-d", "cwd"], { reject: false });
-      const lines = stdout.split("\n");
+      const scan = await execa("lsof", ["-F", "pn", "-d", "cwd"], { reject: false });
+      if (scan.failed) {
+        return { processes: [], unverified: true };
+      }
+      const lines = scan.stdout.split("\n");
       let currentPid = -1;
       for (const line of lines) {
         if (line.startsWith("p")) {

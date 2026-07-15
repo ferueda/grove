@@ -85,6 +85,27 @@ export async function finalizeLeaseCheckout(
   return enrichLeaseReadOnly(lease);
 }
 
+async function persistPostCreatePending(
+  poolDir: string,
+  repoRoot: string,
+  leaseId: string,
+  postCreatePending: boolean,
+): Promise<void> {
+  await withStateLock(poolDir, async () => {
+    const state = await loadPoolState(poolDir, repoRoot);
+    const lease = findLease(state, leaseId);
+    if (!lease) {
+      throw new LeaseNotFoundError(`Lease ${leaseId} not found after postCreate`);
+    }
+
+    const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === leaseId);
+    state.leases[leaseIndex] = postCreatePending
+      ? transitionLease(lease, { type: "REPAIR_RESUME_ACQUIRE", postCreatePending: true })!
+      : transitionLease(lease, { type: "ACQUIRE_POST_CREATE_COMPLETE" })!;
+    await savePoolState(poolDir, state);
+  });
+}
+
 export async function quarantineFailedAcquire(
   poolDir: string,
   repoRoot: string,
@@ -127,7 +148,6 @@ export async function acquireLease(
 
   const pendingTarget = await buildAcquireTarget(options, repoRoot);
   const now = new Date().toISOString();
-  const pendingAcquire = buildPendingAcquire(pendingTarget, now);
 
   let targetWtPath = "";
   let isNewSlot = false;
@@ -184,6 +204,7 @@ export async function acquireLease(
     }
 
     const { slot, isNew } = await findOrAllocateSlot(state, poolDir, config);
+    const pendingAcquire = buildPendingAcquire(pendingTarget, now, isNew);
 
     const reservedSlot = transitionSlot(slot, { type: "RESERVE_FOR_LEASE" }, now)!;
     const slotIndex = state.slots.findIndex((entry) => entry.slotName === slot.slotName);
@@ -238,6 +259,7 @@ export async function acquireLease(
       await quarantineFailedAcquire(poolDir, repoRoot, leaseIdForCheckout, reason, "postCreate");
       throw err;
     }
+    await persistPostCreatePending(poolDir, repoRoot, leaseIdForCheckout, false);
   }
 
   try {
@@ -286,14 +308,21 @@ export async function resumeAcquireLease(
     if (!lease.pendingAcquire) {
       throw new RepairNotAvailableError("resume-acquire requires pendingAcquire");
     }
-    if (lease.state !== "quarantined") {
+    if (lease.state !== "quarantined" && lease.state !== "preparing") {
       throw new RepairNotAvailableError(
-        `resume-acquire requires quarantined lease, got ${lease.state}`,
+        `resume-acquire requires quarantined or preparing lease, got ${lease.state}`,
       );
     }
 
+    const postCreatePending =
+      !existsSync(lease.path) ||
+      (lease.pendingAcquire.postCreatePending ?? lease.diagnostics?.failedPhase === "postCreate");
+
     const leaseIndex = state.leases.findIndex((entry) => entry.leaseId === leaseId);
-    state.leases[leaseIndex] = transitionLease(lease, { type: "REPAIR_RESUME_ACQUIRE" })!;
+    state.leases[leaseIndex] = transitionLease(lease, {
+      type: "REPAIR_RESUME_ACQUIRE",
+      postCreatePending,
+    })!;
 
     const slot = findSlot(state, lease.slotName);
     if (slot && slot.state === "quarantined") {
@@ -304,7 +333,7 @@ export async function resumeAcquireLease(
     await savePoolState(poolDir, state);
     wtPath = lease.path;
     slotName = lease.slotName;
-    runPostCreate = lease.diagnostics?.failedPhase === "postCreate";
+    runPostCreate = postCreatePending;
     pendingTarget = lease.pendingAcquire.target;
   });
 
@@ -312,6 +341,7 @@ export async function resumeAcquireLease(
   let lease: GroveLease;
   if (!existsSync(wtPath)) {
     try {
+      await persistPostCreatePending(poolDir, repoRoot, leaseId, true);
       const state = await loadPoolState(poolDir, repoRoot, { heal: false });
       const slot = findSlot(state, slotName);
       if (!slot) {
@@ -333,6 +363,7 @@ export async function resumeAcquireLease(
       await quarantineFailedAcquire(poolDir, repoRoot, leaseId, reason, "postCreate");
       throw err;
     }
+    await persistPostCreatePending(poolDir, repoRoot, leaseId, false);
   }
 
   try {

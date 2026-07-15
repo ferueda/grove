@@ -1,6 +1,5 @@
 import type { GroveConfig } from "./schemas.js";
 import type {
-  DestroyLeaseOptions,
   GroveLease,
   ReleaseResult,
   RepairLeaseOptions,
@@ -79,9 +78,8 @@ async function repairForceDestroy(
     }
   });
 
-  const destroyOptions: DestroyLeaseOptions = { force: true };
   const destroyHooks = hooks.preDestroy ? { preDestroy: hooks.preDestroy } : {};
-  await destroyLease(poolDir, config, leaseId, destroyOptions, destroyHooks);
+  await destroyLease(poolDir, config, leaseId, options, destroyHooks);
 
   return { status: "destroyed", leaseId };
 }
