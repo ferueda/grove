@@ -6,7 +6,6 @@
 ### Bug Fixes
 
 * harden worktree lifecycle correctness ([f330e00](https://github.com/ferueda/grove/commit/f330e00a12b65319338bf15574633453e120deb3))
-* harden worktree lifecycle correctness ([2bcabb4](https://github.com/ferueda/grove/commit/2bcabb4efb9dcecfb515b522e7dbf33c1c0b872d))
 
 ## [1.4.1](https://github.com/ferueda/grove/compare/grove-v1.4.0...grove-v1.4.1) (2026-07-09)
 
