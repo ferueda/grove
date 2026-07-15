@@ -362,7 +362,7 @@ interface GroveLease {
 | `destroying` | Worktree removal in progress; idempotent `destroy()` resumes |
 | `quarantined` | Blocked; requires `repair()` or `destroy()` |
 
-Re-acquiring the same `leaseId` with a compatible branch/ref is idempotent. Conflicting targets throw `LEASE_CONFLICT`.
+Re-acquiring the same `leaseId` with a compatible branch/ref reuses its lease allocation and checkout. Lifecycle hooks may still run for the new call. Conflicting targets throw `LEASE_CONFLICT`.
 
 Branch creation defaults should be fail-first for new work. Use `ifExists: "reuse"` only when intentionally resuming or attaching to an existing local branch. `repair({ action: "resume-acquire" })` may reuse a branch created by the interrupted acquire so recovery can complete.
 
@@ -373,12 +373,16 @@ Configure shell commands in `createGrove({ hooks })`. Hook cwd is the worktree p
 | Hook | When |
 |------|------|
 | `postCreate` | After a new physical slot is created |
-| `postAcquire` | After branch/ref checkout |
+| `postAcquire` | After a fresh branch/ref checkout and on every compatible re-acquire |
 | `preRelease` | Before lease cleanup |
 | `postRelease` | After lease cleanup |
 | `preDestroy` | Before worktree removal |
 
 Crash recovery may run `postCreate` more than once. Keep that hook idempotent; reused physical slots do not run it.
+
+`postAcquire` runs once for every compatible `acquire()` call, including calls that return an existing lease. A retry starts the configured command list from the beginning, so keep every command idempotent. Grove serializes `postAcquire` executions for the same worktree, while different worktrees may run hooks concurrently.
+
+Hook configuration is programmatic and is not persisted with lease state. Every process that acquires from a pool must create Grove with the intended, consistent hook configuration.
 
 Lease hooks receive: `GROVE_LEASE_ID`, `GROVE_SLOT_NAME`, `GROVE_BRANCH`, `GROVE_REPO_ROOT`, `GROVE_WORKTREE_PATH`.
 

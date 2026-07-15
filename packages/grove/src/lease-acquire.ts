@@ -1,8 +1,13 @@
 import { existsSync } from "node:fs";
-import type { GroveConfig, GroveFailedPhase, GroveLeaseTarget } from "./schemas.js";
+import type {
+  GroveConfig,
+  GroveFailedPhase,
+  GroveLeaseRecord,
+  GroveLeaseTarget,
+} from "./schemas.js";
 import type { AcquireLeaseOptions, GroveLease } from "./types.js";
 import { checkoutBranch, checkoutDetached, getDefaultBranch, getHeadSha } from "./git/index.js";
-import { withStateLock } from "./lock.js";
+import { withLeaseHookLock, withStateLock } from "./lock.js";
 import {
   assertCompatibleReacquire,
   branchOwnedByOtherLease,
@@ -134,6 +139,16 @@ export async function quarantineFailedAcquire(
   });
 }
 
+async function runPostAcquireHook(
+  lease: GroveLease,
+  postAcquire?: (path: string, lease: GroveLease) => Promise<void>,
+): Promise<void> {
+  if (!postAcquire) return;
+
+  // postAcquire runs after the lease is usable; hook failures surface without quarantine.
+  await withLeaseHookLock(lease.path, () => postAcquire(lease.path, lease));
+}
+
 /** Internal acquire mutator; `fetchOrigin` is handled by `Grove.acquire()` at the public boundary. */
 export async function acquireLease(
   poolDir: string,
@@ -151,7 +166,7 @@ export async function acquireLease(
 
   let targetWtPath = "";
   let isNewSlot = false;
-  let returningExisting = false;
+  let existingLeaseRecord: GroveLeaseRecord | undefined;
   let leaseIdForCheckout = options.leaseId;
 
   await withStateLock(poolDir, async () => {
@@ -191,7 +206,7 @@ export async function acquireLease(
         }
         await savePoolState(poolDir, state);
         targetWtPath = existing.path;
-        returningExisting = true;
+        existingLeaseRecord = { ...existing };
         return;
       }
     }
@@ -230,10 +245,10 @@ export async function acquireLease(
     leaseIdForCheckout = options.leaseId;
   });
 
-  if (returningExisting) {
-    const state = await loadPoolState(poolDir, repoRoot);
-    const lease = findLease(state, options.leaseId)!;
-    return enrichLeaseReadOnly(lease);
+  if (existingLeaseRecord) {
+    const lease = await enrichLeaseReadOnly(existingLeaseRecord);
+    await runPostAcquireHook(lease, hooks.postAcquire);
+    return lease;
   }
 
   let lease: GroveLease;
@@ -277,10 +292,7 @@ export async function acquireLease(
     throw err;
   }
 
-  if (hooks.postAcquire) {
-    // postAcquire runs after the lease is usable; hook failures are surfaced without quarantine.
-    await hooks.postAcquire(targetWtPath, lease);
-  }
+  await runPostAcquireHook(lease, hooks.postAcquire);
   return lease;
 }
 
@@ -375,10 +387,7 @@ export async function resumeAcquireLease(
     throw err;
   }
 
-  if (hooks.postAcquire) {
-    // postAcquire runs after the lease is usable; hook failures are surfaced without quarantine.
-    await hooks.postAcquire(wtPath, lease);
-  }
+  await runPostAcquireHook(lease, hooks.postAcquire);
   return lease;
 }
 
