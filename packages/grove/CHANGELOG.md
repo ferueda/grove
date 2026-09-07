@@ -1,5 +1,12 @@
 # @ferueda/grove
 
+## [1.4.5](https://github.com/ferueda/grove/compare/grove-v1.4.4...grove-v1.4.5) (2026-09-07)
+
+
+### Dependencies
+
+* bump the npm-non-major group across 1 directory with 4 updates ([#110](https://github.com/ferueda/grove/issues/110)) ([44bb65d](https://github.com/ferueda/grove/commit/44bb65d4b538c3b2d2d966e4540eac58ae3fab77))
+
 ## [1.4.4](https://github.com/ferueda/grove/compare/grove-v1.4.3...grove-v1.4.4) (2026-07-15)
 
 
