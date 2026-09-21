@@ -16,13 +16,13 @@
   "devDependencies": {
     "@commitlint/cli": "^21.2.2",
     "@commitlint/config-conventional": "^21.2.2",
-    "@types/node": "^26.5.1",
+    "@types/node": "^26.6.1",
     "@types/proper-lockfile": "^4.1.4",
     "@typescript/native-preview": "^7.0.0-dev",
     "husky": "^9.1.7",
-    "oxfmt": "^0.67.0",
-    "oxlint": "^1.82.0",
-    "vitest": "^5.0.0"
+    "oxfmt": "^0.68.0",
+    "oxlint": "^1.83.0",
+    "vitest": "^5.0.1"
   },
   "engines": {
     "node": ">=24"
