@@ -1,5 +1,12 @@
 # @ferueda/grove-cli
 
+## [1.4.6](https://github.com/ferueda/grove/compare/grove-cli-v1.4.5...grove-cli-v1.4.6) (2026-09-22)
+
+
+### Dependencies
+
+* **grove-cli:** Synchronize grove versions
+
 ## [1.4.5](https://github.com/ferueda/grove/compare/grove-cli-v1.4.4...grove-cli-v1.4.5) (2026-09-07)
 
 

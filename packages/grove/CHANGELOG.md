@@ -1,5 +1,13 @@
 # @ferueda/grove
 
+## [1.4.6](https://github.com/ferueda/grove/compare/grove-v1.4.5...grove-v1.4.6) (2026-09-22)
+
+
+### Dependencies
+
+* bump the npm-non-major group with 4 updates ([#113](https://github.com/ferueda/grove/issues/113)) ([6d758c0](https://github.com/ferueda/grove/commit/6d758c05740829d714222826a3fe46fb0b36866f))
+* bump the npm-non-major group with 5 updates ([#115](https://github.com/ferueda/grove/issues/115)) ([31d36c4](https://github.com/ferueda/grove/commit/31d36c49b7454079e3b988c8a37e73d340684c94))
+
 ## [1.4.5](https://github.com/ferueda/grove/compare/grove-v1.4.4...grove-v1.4.5) (2026-09-07)
 
 
